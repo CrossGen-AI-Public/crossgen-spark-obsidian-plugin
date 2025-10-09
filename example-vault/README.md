@@ -2,6 +2,12 @@
 
 This is an example Obsidian vault configured with Spark Assistant.
 
+## Current Status
+
+✅ **Command Palette Working** - Try typing `/` or `@` in any note!  
+🚧 **Chat Widget Coming Soon** - Cmd+K will open conversational AI  
+🚧 **Daemon In Development** - Automation triggers pending
+
 
 ## Directory Structure
 

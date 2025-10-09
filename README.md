@@ -96,11 +96,15 @@ spark/
 │   ├── tasks/                         # Example task management
 │   └── README.md
 │
-├── obsidian-spark/                    # Obsidian plugin (UI layer)
+├── plugin/                            # Obsidian plugin (UI layer)
 │   ├── src/
 │   │   ├── main.ts
-│   │   ├── command-palette/
-│   │   └── chat-widget/
+│   │   ├── settings.ts
+│   │   ├── command-palette/           # ✅ Complete
+│   │   ├── chat-widget/               # 🚧 TODO
+│   │   └── types/
+│   ├── dist/                          # Build output
+│   ├── PLUGIN_PROGRESS.md             # Detailed progress tracking
 │   └── package.json
 │
 └── spark-daemon/                      # Node.js daemon (intelligence layer)
@@ -409,8 +413,10 @@ npm run test:watch
 
 ### Implementation
 
-- **[Plugin Plan](IMPLEMENTATION_PLAN_PLUGIN.md)** - 6 phases, 4-6 weeks
-- **[Daemon Plan](IMPLEMENTATION_PLAN_DAEMON.md)** - 7 phases, 6-8 weeks
+- **[Plugin Plan](specs/IMPLEMENTATION_PLAN_PLUGIN.md)** - 6 phases, 4-6 weeks
+- **[Daemon Plan](specs/IMPLEMENTATION_PLAN_DAEMON.md)** - 7 phases, 6-8 weeks
+- **[Plugin Progress](PLUGIN_PROGRESS.md)** - Detailed task tracking (Phase 2 ✅)
+- **[Fuzzy Matching Analysis](FUZZY_MATCHING_IMPROVEMENTS.md)** - Algorithm review and improvements
 
 ### Examples
 
@@ -430,7 +436,7 @@ npm run test:watch
 - [x] Example vault created
 
 ### Phase 2: Core Implementation (Current)
-- [ ] Plugin: Command palette
+- [x] Plugin: Command palette ✅
 - [ ] Plugin: Chat widget
 - [ ] Daemon: File watching
 - [ ] Daemon: Mention parser
@@ -565,22 +571,27 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## ⚡ Status
 
-**Current Phase:** Specification Complete, Implementation Starting
+**Current Phase:** Plugin Phase 2 Complete, Chat Widget Next
 
 **Latest Updates:**
 - ✅ All architecture decisions finalized
 - ✅ Complete specifications written
 - ✅ Implementation plans created
 - ✅ Example vault with working configs
-- 🚧 Plugin development starting
-- 🚧 Daemon development starting
+- ✅ Command palette complete with fuzzy search ✨
+  - Slash commands (`/`) trigger detection
+  - Mentions (`@`) for agents/files/folders
+  - Keyboard navigation and auto-insertion
+  - Smart fuzzy matching algorithm
+- 🚧 Chat widget development next
+- 🚧 Daemon development starting soon
 
 **Next Milestones:**
-- Week 2: Command palette working
 - Week 4: Chat widget functional
-- Week 6: Full daemon with triggers
-- Week 8: System service installation
-- Week 10: Production-ready for dogfooding
+- Week 6: Daemon with file watching & parsing
+- Week 8: Full daemon with triggers
+- Week 10: System service installation
+- Week 12: Production-ready for dogfooding
 
 ---
 

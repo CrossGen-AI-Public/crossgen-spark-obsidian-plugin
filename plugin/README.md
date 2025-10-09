@@ -2,6 +2,22 @@
 
 AI-powered automation for Obsidian with slash commands, chat widget, and intelligent workflows.
 
+## Features
+
+### ✅ Command Palette (Available Now)
+
+- **Slash Commands (`/`)**: Type `/` anywhere to see available commands
+- **Mentions (`@`)**: Type `@` to reference agents, files, or folders
+- **Fuzzy Search**: Smart matching as you type
+- **Keyboard Navigation**: Use ↑↓ arrows, Enter to select, Esc to close
+- **Auto-insertion**: Selected items are inserted inline
+
+### 🚧 Coming Soon
+
+- **Chat Widget**: Floating AI chat with conversation history
+- **Smart Notifications**: Real-time updates from the daemon
+- **Enhanced Settings**: Customizable hotkeys and preferences
+
 ## Development
 
 ### Initial Setup
@@ -89,11 +105,17 @@ plugin/
 ├── src/
 │   ├── main.ts              # Plugin entry point
 │   ├── settings.ts          # Settings panel
-│   ├── command-palette/     # Slash command UI (TODO)
+│   ├── command-palette/     # Slash command UI 
+│   │   ├── CommandPaletteManager.ts  # Main coordinator
+│   │   ├── ItemLoader.ts             # Load commands/agents/files
+│   │   ├── FuzzyMatcher.ts           # Search & ranking
+│   │   └── PaletteView.ts            # UI rendering
 │   ├── chat-widget/         # Chat interface (TODO)
 │   ├── notifications/       # Notification watcher (TODO)
 │   ├── utils/               # Shared utilities
 │   └── types/               # TypeScript types
+│       ├── index.ts         # Core types
+│       └── command-palette.ts  # Palette-specific types
 ├── dist/                    # Build output (gitignored)
 │   └── main.js              # Compiled plugin
 ├── manifest.json            # Plugin metadata
@@ -112,12 +134,15 @@ plugin/
 - [x] Settings panel
 - [x] Development environment
 
-### ⏸️ Phase 2: Command Palette (Not Started)
+### ✅ Phase 2: Command Palette (Complete)
 
-- [ ] Trigger detection (`/`, `@`)
-- [ ] Fuzzy search interface
-- [ ] Command/agent/file listing
-- [ ] Selection and insertion
+- [x] Trigger detection (`/`, `@`)
+- [x] Fuzzy search interface
+- [x] Command/agent/file listing
+- [x] Selection and insertion
+- [x] Keyboard navigation (↑↓ Enter Esc)
+- [x] Cursor positioning
+- [x] Cache management
 
 ### ⏸️ Phase 3: Chat Widget (Not Started)
 
@@ -160,7 +185,12 @@ The daemon handles:
 - Executing commands
 - Writing results
 
+## Documentation
+
+- **[PLUGIN_PROGRESS.md](../PLUGIN_PROGRESS.md)**: Detailed implementation progress and task tracking
+- **[FUZZY_MATCHING_IMPROVEMENTS.md](../FUZZY_MATCHING_IMPROVEMENTS.md)**: Fuzzy search algorithm analysis and future enhancements
+- **[specs/](../specs/)**: Complete technical specifications
+
 ## License
 
 MIT
-
