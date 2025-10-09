@@ -2,10 +2,12 @@ import { Plugin } from 'obsidian';
 import { SparkSettingTab, DEFAULT_SETTINGS } from './settings';
 import { SparkSettings, ISparkPlugin } from './types';
 import { CommandPaletteManager } from './command-palette/CommandPaletteManager';
+import { MentionDecorator, handleMentionClick } from './command-palette/MentionDecorator';
 
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
     settings: SparkSettings;
     private commandPaletteManager: CommandPaletteManager;
+    private mentionDecorator: MentionDecorator;
 
     async onload() {
         console.log('Spark Assistant: Loading plugin...');
@@ -16,6 +18,15 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         // Initialize command palette manager
         this.commandPaletteManager = new CommandPaletteManager(this);
         this.commandPaletteManager.register();
+
+        // Initialize mention decorator
+        this.mentionDecorator = new MentionDecorator(this.app);
+        this.registerEditorExtension(this.mentionDecorator.createExtension());
+
+        // Register click handler for mentions
+        this.registerDomEvent(document, 'click', (event: MouseEvent) => {
+            handleMentionClick(this.app, event);
+        });
 
         // Add settings tab
         this.addSettingTab(new SparkSettingTab(this.app, this));

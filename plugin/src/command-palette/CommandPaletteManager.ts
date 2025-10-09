@@ -78,6 +78,38 @@ export class CommandPaletteManager {
 		} else if (this.activeTrigger) {
 			// User is typing after trigger - update query
 			this.updateQuery(editor, cursor);
+		} else {
+			// Check if user is editing an existing mention
+			// Find the last @ or / before cursor that's preceded by whitespace
+			const triggerMatch = charsBefore.match(/(?:^|\s)([@/])[\w-]*$/);
+			if (triggerMatch) {
+				const triggerChar = triggerMatch[1];
+				const triggerIndex = charsBefore.lastIndexOf(triggerChar);
+				const charBeforeTrigger = charsBefore[triggerIndex - 1];
+
+				// Verify it's a standalone trigger
+				if (
+					!charBeforeTrigger ||
+					charBeforeTrigger === ' ' ||
+					charBeforeTrigger === '\n' ||
+					charBeforeTrigger === '\t'
+				) {
+					// Clear cache when editing existing mention
+					this.cachedItems = null;
+
+					// Create trigger context
+					this.activeTrigger = {
+						editor,
+						line: cursor.line,
+						ch: triggerIndex + 1, // Position after the trigger char
+						triggerChar,
+						query: charsBefore.substring(triggerIndex + 1),
+					};
+
+					// Show palette
+					void this.showPalette();
+				}
+			}
 		}
 	}
 
@@ -210,7 +242,8 @@ export class CommandPaletteManager {
 				evt.stopPropagation();
 				this.paletteView.selectPrevious();
 				break;
-			case 'Enter': {
+			case 'Enter':
+			case 'Tab': {
 				evt.preventDefault();
 				evt.stopPropagation();
 				const selectedItem = this.paletteView.getSelectedItem();

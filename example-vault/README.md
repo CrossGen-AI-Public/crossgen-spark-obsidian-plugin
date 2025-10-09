@@ -1,6 +1,6 @@
 # Example Spark Vault
 
-This is an example Obsidian vault configured with Spark Assistant.
+This is an example of an Obsidian vault configured with Spark Assistant.
 
 ## Current Status
 

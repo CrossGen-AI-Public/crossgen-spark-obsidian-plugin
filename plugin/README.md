@@ -11,6 +11,10 @@ AI-powered automation for Obsidian with slash commands, chat widget, and intelli
 - **Fuzzy Search**: Smart matching as you type
 - **Keyboard Navigation**: Use ↑↓ arrows, Enter to select, Esc to close
 - **Auto-insertion**: Selected items are inserted inline
+- **Clickable Mentions**: All inserted mentions are clickable!
+  - 🤖 **Agents** (purple) - TODO: In future, could show agent info or open chat with this agent
+  - 📝 **Files** (blue) - Click to open file
+  - 📁 **Folders** (green) - Click to navigate to folder
 
 ### 🚧 Coming Soon
 
@@ -105,11 +109,12 @@ plugin/
 ├── src/
 │   ├── main.ts              # Plugin entry point
 │   ├── settings.ts          # Settings panel
-│   ├── command-palette/     # Slash command UI 
+│   ├── command-palette/     # Slash command UI ✅
 │   │   ├── CommandPaletteManager.ts  # Main coordinator
 │   │   ├── ItemLoader.ts             # Load commands/agents/files
 │   │   ├── FuzzyMatcher.ts           # Search & ranking
-│   │   └── PaletteView.ts            # UI rendering
+│   │   ├── PaletteView.ts            # UI rendering
+│   │   └── MentionDecorator.ts       # Clickable mentions
 │   ├── chat-widget/         # Chat interface (TODO)
 │   ├── notifications/       # Notification watcher (TODO)
 │   ├── utils/               # Shared utilities

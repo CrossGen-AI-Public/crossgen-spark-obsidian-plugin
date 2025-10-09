@@ -64,3 +64,49 @@
     color: var(--text-muted);
     font-style: italic;
 }
+
+/* Mention Decorations */
+.spark-mention {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+    border-radius: 3px;
+    padding: 0 2px;
+    transition: all 0.15s ease;
+}
+
+.spark-mention:hover {
+    background: var(--background-modifier-hover);
+    text-decoration-style: solid;
+}
+
+/* Agent mentions - purple tint */
+.spark-mention-agent {
+    color: var(--text-accent);
+    text-decoration-color: var(--text-accent);
+}
+
+.spark-mention-agent:hover {
+    background: rgba(120, 82, 238, 0.15);
+}
+
+/* File mentions - blue tint */
+.spark-mention-file {
+    color: var(--link-color);
+    text-decoration-color: var(--link-color);
+}
+
+.spark-mention-file:hover {
+    background: rgba(82, 139, 255, 0.15);
+}
+
+/* Folder mentions - green tint */
+.spark-mention-folder {
+    color: var(--link-color);
+    text-decoration-color: var(--link-color);
+}
+
+.spark-mention-folder:hover {
+    background: rgba(73, 208, 103, 0.15);
+}

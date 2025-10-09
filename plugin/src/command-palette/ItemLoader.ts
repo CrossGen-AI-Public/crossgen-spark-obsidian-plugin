@@ -99,7 +99,7 @@ export class ItemLoader {
 
 			files.push({
 				type: 'file',
-				id: `@${file.basename}`,
+				id: `@${file.basename}`, // Show without .md extension
 				name: file.basename,
 				description: file.path,
 				path: file.path,
