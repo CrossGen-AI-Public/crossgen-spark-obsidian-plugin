@@ -50,10 +50,29 @@ import { IMainPlugin } from './types';
 
 ## Type Organization
 
-1. **Central Types File:** Keep all shared types in `src/types/index.ts`
-2. **Module-Specific Types:** Keep types only used in one module co-located
-3. **Interface Contracts:** Use interfaces to define contracts between modules
-4. **Export Public Types:** Always export types that might be used elsewhere
+**All types live in `src/types/` directory, organized by domain:**
+
+1. **Core Types:** `src/types/index.ts` - Plugin settings, main interfaces
+2. **Domain Types:** `src/types/command-palette.ts`, `src/types/chat.ts`, etc. - Feature-specific types
+3. **Shared Types:** Put cross-feature types in appropriate domain file or `index.ts`
+4. **Import Pattern:** Always import from `../types/` or `../types/domain-name`
+
+**Examples:**
+```typescript
+// ✅ GOOD: Organized by domain
+src/types/
+  ├── index.ts              // SparkSettings, ISparkPlugin
+  ├── command-palette.ts    // PaletteItem, TriggerContext
+  └── chat.ts               // ChatMessage, ChatSession
+
+// Import from types directory
+import { ISparkPlugin } from '../types';
+import { PaletteItem } from '../types/command-palette';
+
+// ❌ BAD: Types scattered in feature directories
+src/command-palette/types.ts
+src/chat/types.ts
+```
 
 ## Type Naming Conventions
 

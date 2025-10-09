@@ -2,6 +2,7 @@
 
 This is an example Obsidian vault configured with Spark Assistant.
 
+
 ## Directory Structure
 
 - `/emails/` - Email drafts (Kanban integration)

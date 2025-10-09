@@ -8,8 +8,59 @@
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     max-height: 300px;
+    min-width: 350px;
     overflow-y: auto;
-    z-index: 1000;
+    z-index: 9999;
+    padding: 4px;
 }
 
-/* Placeholder for future styles */
+.spark-palette-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 4px;
+    transition: background-color 0.1s;
+}
+
+.spark-palette-item:hover,
+.spark-palette-item.selected {
+    background: var(--background-modifier-hover);
+}
+
+.spark-palette-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+.spark-palette-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.spark-palette-name {
+    font-weight: 500;
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spark-palette-desc {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.spark-palette-no-results {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}

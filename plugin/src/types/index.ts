@@ -15,14 +15,6 @@ export interface ISparkPlugin extends Plugin {
 	saveSettings(): Promise<void>;
 }
 
-export interface PaletteItem {
-	type: 'command' | 'agent' | 'file' | 'folder';
-	id: string;
-	name: string;
-	description?: string;
-	path?: string;
-}
-
 export interface SparkNotification {
 	id: string;
 	type: 'success' | 'error' | 'warning' | 'info';

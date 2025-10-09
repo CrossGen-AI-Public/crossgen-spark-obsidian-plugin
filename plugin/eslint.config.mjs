@@ -16,6 +16,8 @@ export default [
 			globals: {
 				console: 'readonly',
 				process: 'readonly',
+				document: 'readonly',
+				window: 'readonly',
 			},
 		},
 		plugins: {
@@ -25,15 +27,16 @@ export default [
 			// TypeScript rules
 			'@typescript-eslint/no-explicit-any': 'error', // Never use any!
 			'@typescript-eslint/explicit-function-return-type': 'off',
-			'@typescript-eslint/no-unused-vars': ['warn', {
+			'@typescript-eslint/no-unused-vars': ['error', {
 				argsIgnorePattern: '^_',
 				varsIgnorePattern: '^_',
 			}],
 			'@typescript-eslint/no-floating-promises': 'error',
 			'@typescript-eslint/await-thenable': 'error',
-			
+
 			// General rules
 			'no-console': 'off', // Allow console.log for debugging
+			'no-unused-vars': 'error',
 			'prefer-const': 'error',
 			'no-var': 'error',
 		},

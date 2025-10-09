@@ -1,15 +1,21 @@
 import { Plugin } from 'obsidian';
 import { SparkSettingTab, DEFAULT_SETTINGS } from './settings';
 import { SparkSettings, ISparkPlugin } from './types';
+import { CommandPaletteManager } from './command-palette/CommandPaletteManager';
 
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
     settings: SparkSettings;
+    private commandPaletteManager: CommandPaletteManager;
 
     async onload() {
         console.log('Spark Assistant: Loading plugin...');
 
         // Load settings
         await this.loadSettings();
+
+        // Initialize command palette manager
+        this.commandPaletteManager = new CommandPaletteManager(this);
+        this.commandPaletteManager.register();
 
         // Add settings tab
         this.addSettingTab(new SparkSettingTab(this.app, this));
@@ -22,6 +28,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
     }
 
     async onunload() {
+        this.commandPaletteManager?.unload();
         console.log('Spark Assistant: Plugin unloaded');
     }
 
