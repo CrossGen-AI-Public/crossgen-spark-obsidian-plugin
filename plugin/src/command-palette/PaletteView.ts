@@ -25,8 +25,8 @@ export class PaletteView {
 		// Create container
 		this.containerEl = document.body.createDiv('spark-palette');
 
-		// Position near cursor
-		this.containerEl.style.position = 'absolute';
+		// Position near cursor using fixed positioning
+		this.containerEl.style.position = 'fixed';
 		this.containerEl.style.top = `${cursorCoords.top + 20}px`;
 		this.containerEl.style.left = `${cursorCoords.left}px`;
 

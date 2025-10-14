@@ -13,6 +13,7 @@ export class CommandPaletteManager {
 	private paletteView: PaletteView;
 	private cachedItems: PaletteItem[] | null = null;
 	private paletteSelectHandler: EventListener;
+	private isInserting: boolean = false;
 
 	constructor(plugin: ISparkPlugin) {
 		this.plugin = plugin;
@@ -55,6 +56,9 @@ export class CommandPaletteManager {
 	 * Handle editor change events
 	 */
 	private handleEditorChange(editor: Editor): void {
+		// Skip if we're in the middle of inserting text
+		if (this.isInserting) return;
+
 		const cursor = editor.getCursor();
 		const line = editor.getLine(cursor.line);
 		const charsBefore = line.substring(0, cursor.ch);
@@ -65,13 +69,15 @@ export class CommandPaletteManager {
 		if (lastChar === '/' || lastChar === '@') {
 			// Check if this is a standalone trigger (not part of a word)
 			// e.g., "test/" should trigger, but "http://" should not
+			// Also allow | for table cells
 			const charBeforeTrigger = charsBefore[charsBefore.length - 2];
 
 			if (
 				!charBeforeTrigger ||
 				charBeforeTrigger === ' ' ||
 				charBeforeTrigger === '\n' ||
-				charBeforeTrigger === '\t'
+				charBeforeTrigger === '\t' ||
+				charBeforeTrigger === '|'
 			) {
 				this.onTriggerDetected(editor, cursor, lastChar);
 			}
@@ -80,19 +86,20 @@ export class CommandPaletteManager {
 			this.updateQuery(editor, cursor);
 		} else {
 			// Check if user is editing an existing mention
-			// Find the last @ or / before cursor that's preceded by whitespace
-			const triggerMatch = charsBefore.match(/(?:^|\s)([@/])[\w-]*$/);
+			// Find the last @ or / before cursor that's preceded by whitespace or pipe (for tables)
+			const triggerMatch = charsBefore.match(/(?:^|\s|\|)([@/])[\w-]*$/);
 			if (triggerMatch) {
 				const triggerChar = triggerMatch[1];
 				const triggerIndex = charsBefore.lastIndexOf(triggerChar);
 				const charBeforeTrigger = charsBefore[triggerIndex - 1];
 
-				// Verify it's a standalone trigger
+				// Verify it's a standalone trigger (preceded by whitespace, pipe, or start of line)
 				if (
 					!charBeforeTrigger ||
 					charBeforeTrigger === ' ' ||
 					charBeforeTrigger === '\n' ||
-					charBeforeTrigger === '\t'
+					charBeforeTrigger === '\t' ||
+					charBeforeTrigger === '|'
 				) {
 					// Clear cache when editing existing mention
 					this.cachedItems = null;
@@ -142,7 +149,7 @@ export class CommandPaletteManager {
 		const query = line.substring(this.activeTrigger.ch, cursor.ch);
 
 		// Check if user moved away from trigger (e.g., pressed space or deleted trigger)
-		if (query.includes(' ') || !line[this.activeTrigger.ch - 1]) {
+		if (query.includes(' ') || line[this.activeTrigger.ch - 1] !== this.activeTrigger.triggerChar) {
 			this.closePalette();
 			return;
 		}
@@ -157,32 +164,48 @@ export class CommandPaletteManager {
 	 * Show the command palette
 	 */
 	private async showPalette(): Promise<void> {
-		const items = await this.getFilteredItems();
-
 		if (!this.activeTrigger) return;
 
-		// Get cursor coordinates from editor
+		const items = await this.getFilteredItems();
 		const coords = this.getCursorCoordinates(this.activeTrigger.editor);
 
-		this.paletteView.show(items, coords);
+		if (coords) {
+			this.paletteView.show(items, coords);
+		}
 	}
 
 	/**
 	 * Get screen coordinates for the cursor position
 	 */
-	private getCursorCoordinates(editor: Editor): { top: number; left: number } {
+	private getCursorCoordinates(editor: Editor): { top: number; left: number } | null {
 		const cursor = editor.getCursor();
+		const line = editor.getLine(cursor.line);
 		const coords = (editor as EditorWithCoords).coordsAtPos(cursor);
+		const isTable = line.includes('|');
 
-		if (coords) {
-			return {
-				top: coords.top,
-				left: coords.left,
-			};
+		if (!coords) return null;
+
+		// For tables, try to use browser selection API for better accuracy
+		if (isTable) {
+			const selection = window.getSelection();
+			if (selection && selection.rangeCount > 0) {
+				const rect = selection.getRangeAt(0).getBoundingClientRect();
+
+				// Use selection rect if it has valid coordinates
+				if (rect.left > 0 && rect.top > 0) {
+					return { top: rect.top, left: rect.left };
+				}
+				return null;
+			}
 		}
 
-		// Fallback to a reasonable default
-		return { top: 100, left: 100 };
+		// Use CodeMirror coordinates if they're valid
+		if (coords.top > 0 && coords.left > 0) {
+			console.log('Using CodeMirror coordinates:', coords);
+			return { top: coords.top, left: coords.left };
+		}
+
+		return null;
 	}
 
 	/**
@@ -266,9 +289,16 @@ export class CommandPaletteManager {
 	private onItemSelected(item: PaletteItem): void {
 		if (!this.activeTrigger) return;
 
+		// Capture trigger context before closing palette
 		const editor = this.activeTrigger.editor;
 		const line = this.activeTrigger.line;
 		const triggerCh = this.activeTrigger.ch;
+
+		// Close palette first to prevent re-triggering
+		this.closePalette();
+
+		// Set flag to prevent editor change handler from interfering
+		this.isInserting = true;
 
 		// Get current line content
 		const lineContent = editor.getLine(line);
@@ -276,7 +306,10 @@ export class CommandPaletteManager {
 		// Remove trigger character and replace with selected item ID
 		const before = lineContent.substring(0, triggerCh - 1);
 		const after = lineContent.substring(editor.getCursor().ch);
-		const newLine = before + item.id + after;
+
+		// Add a space after the mention
+		const insertion = item.id + ' ';
+		const newLine = before + insertion + after;
 
 		// Update the line
 		editor.setLine(line, newLine);
@@ -284,11 +317,16 @@ export class CommandPaletteManager {
 		// Set cursor after inserted text
 		editor.setCursor({
 			line,
-			ch: triggerCh - 1 + item.id.length,
+			ch: triggerCh - 1 + insertion.length,
 		});
 
-		// Close palette
-		this.closePalette();
+		// Refocus the editor to keep cursor visible
+		editor.focus();
+
+		// Clear flag after a brief delay to allow editor to settle
+		window.setTimeout(() => {
+			this.isInserting = false;
+		}, 50);
 	}
 
 	/**

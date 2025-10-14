@@ -4,10 +4,12 @@ import { App, SuggestModal, TFile } from 'obsidian';
 
 /**
  * Decorator that makes @mentions clickable and visually distinct
+ * Handles both CodeMirror (active table cells) and HTML (inactive table cells)
  */
 export class MentionDecorator {
 	private app: App;
 	private validAgents: Set<string> = new Set();
+	private observer: MutationObserver | null = null;
 
 	constructor(app: App) {
 		this.app = app;
@@ -33,7 +35,141 @@ export class MentionDecorator {
 	}
 
 	/**
-	 * Create the editor extension
+	 * Start observing HTML table cells for mention styling
+	 */
+	startTableObserver() {
+		this.observer = new MutationObserver(() => {
+			this.processAllTableCells();
+		});
+
+		this.observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		});
+
+		// Process existing cells
+		this.processAllTableCells();
+	}
+
+	/**
+	 * Stop observing
+	 */
+	stopTableObserver() {
+		this.observer?.disconnect();
+		this.observer = null;
+	}
+
+	/**
+	 * Process all inactive table cells
+	 */
+	private processAllTableCells() {
+		const tables = document.querySelectorAll('.table-editor');
+		tables.forEach(table => {
+			const cells = table.querySelectorAll('.table-cell-wrapper');
+			cells.forEach(cell => this.processTableCell(cell as HTMLElement));
+		});
+	}
+
+	/**
+	 * Process a single inactive table cell to add mention styling
+	 */
+	private processTableCell(cell: HTMLElement) {
+		// Skip if cell is being edited (contains CodeMirror)
+		if (cell.querySelector('.cm-content, .cm-editor')) {
+			cell.removeAttribute('data-spark-processed');
+			cell.removeAttribute('data-spark-text');
+			return;
+		}
+
+		// Skip if already processed and content hasn't changed
+		const currentText = cell.textContent || '';
+		const lastProcessedText = cell.getAttribute('data-spark-text');
+		if (cell.hasAttribute('data-spark-processed') && lastProcessedText === currentText) {
+			return;
+		}
+
+		const text = currentText;
+		if (!text.includes('@') && !text.includes('/')) {
+			cell.removeAttribute('data-spark-processed');
+			cell.removeAttribute('data-spark-text');
+			return;
+		}
+
+		// Find mentions
+		const mentionRegex = /(@[\w-]+\/?)/g;
+		const matches = Array.from(text.matchAll(mentionRegex));
+
+		if (matches.length === 0) {
+			cell.removeAttribute('data-spark-processed');
+			cell.removeAttribute('data-spark-text');
+			return;
+		}
+
+		// Build HTML with styled mentions
+		let html = '';
+		let lastIndex = 0;
+
+		for (const match of matches) {
+			const mention = match[0];
+			const index = match.index!;
+
+			html += this.escapeHtml(text.substring(lastIndex, index));
+
+			// Validate mention
+			const isFolder = mention.endsWith('/');
+			let mentionType: 'folder' | 'file' | 'agent' | null = null;
+
+			if (isFolder) {
+				const folderPath = mention.substring(1);
+				const folderExists = this.app.vault
+					.getMarkdownFiles()
+					.some(f => f.path.startsWith(folderPath));
+				if (folderExists) {
+					mentionType = 'folder';
+				}
+			} else {
+				const basename = mention.substring(1);
+				const fileExists = this.app.vault.getMarkdownFiles().some(f => f.basename === basename);
+
+				if (fileExists) {
+					mentionType = 'file';
+				} else if (this.validAgents.has(basename)) {
+					mentionType = 'agent';
+				}
+			}
+
+			// Add styled mention or plain text
+			if (mentionType) {
+				html += `<span class="spark-mention spark-mention-${mentionType}" data-mention="${this.escapeHtml(mention)}" data-type="${mentionType}">${this.escapeHtml(mention)}</span>`;
+			} else {
+				html += this.escapeHtml(mention);
+			}
+
+			lastIndex = index + mention.length;
+		}
+
+		html += this.escapeHtml(text.substring(lastIndex));
+
+		cell.innerHTML = html || '<br>';
+		cell.setAttribute('data-spark-processed', 'true');
+		cell.setAttribute('data-spark-text', text);
+	}
+
+	/**
+	 * Escape HTML special characters
+	 */
+	private escapeHtml(text: string): string {
+		return text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
+
+	/**
+	 * Create the editor extension for CodeMirror
 	 */
 	createExtension() {
 		const app = this.app;
@@ -85,19 +221,8 @@ function buildMentionDecorations(
 			const from = line.from + match.index;
 			const to = from + mention.length;
 
-			// Skip decoration if cursor is INSIDE this mention (user is editing it)
-			if (cursor > from && cursor < to) {
-				continue;
-			}
-
-			// Check if there's a valid separator after the mention (space, newline, punctuation, or end of line)
-			const charAfter = text[match.index + mention.length];
-			const validSeparators = ' \n,.!?)]}\t';
-			const hasValidSeparator = !charAfter || validSeparators.includes(charAfter);
-
-			// Only decorate if there's a valid separator (mention is complete)
-			// OR if cursor is not immediately after the mention (user moved away)
-			if (!hasValidSeparator && cursor === to) {
+			// Skip decoration if cursor is inside or at the end (user is editing)
+			if (cursor >= from && cursor <= to) {
 				continue;
 			}
 

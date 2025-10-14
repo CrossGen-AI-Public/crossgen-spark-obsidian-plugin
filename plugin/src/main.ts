@@ -23,6 +23,9 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         this.mentionDecorator = new MentionDecorator(this.app);
         this.registerEditorExtension(this.mentionDecorator.createExtension());
 
+        // Start observing HTML table cells for mention styling
+        this.mentionDecorator.startTableObserver();
+
         // Register click handler for mentions
         this.registerDomEvent(document, 'click', (event: MouseEvent) => {
             handleMentionClick(this.app, event);
@@ -40,6 +43,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
     async onunload() {
         this.commandPaletteManager?.unload();
+        this.mentionDecorator?.stopTableObserver();
         console.log('Spark Assistant: Plugin unloaded');
     }
 

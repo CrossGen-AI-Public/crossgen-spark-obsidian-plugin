@@ -1,6 +1,8 @@
 # Example Spark Vault
 
 This is an example of an Obsidian vault configured with Spark Assistant.
+@tasks/
+@draft-client-proposal
 
 ## Current Status
 
@@ -11,7 +13,7 @@ This is an example of an Obsidian vault configured with Spark Assistant.
 
 ## Directory Structure
 
-- `/emails/` - Email drafts (Kanban integration)
+- `/emails/` - Email drafts (Kanban integration) 
 - `/tasks/` - Tasks and to-dos
 - `/finance/` - Financial documents
 - `/invoices/` - Invoice files
@@ -41,3 +43,11 @@ You: @betty what's our burn rate?
 3. Email automatically sent!
 
 See `.spark/` directory for all configuration.
+
+
+@test 
+
+|         |       |     |     |
+| ------- | ----- | --- | --- |
+|         |       |     |     |
+| @README | @test |     |     |
