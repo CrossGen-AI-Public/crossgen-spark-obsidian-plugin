@@ -1,27 +1,38 @@
-import { Editor, EditorPosition } from 'obsidian';
+import { Editor } from 'obsidian';
 import { ISparkPlugin } from '../types';
-import { EditorWithCoords, PaletteItem, TriggerContext } from '../types/command-palette';
+import { PaletteItem, TriggerContext } from '../types/command-palette';
 import { ItemLoader } from './ItemLoader';
 import { FuzzyMatcher } from './FuzzyMatcher';
 import { PaletteView } from './PaletteView';
+import { CoordinateDetector } from './CoordinateDetector';
+import { TriggerDetector } from './TriggerDetector';
 
+/**
+ * Orchestrates the command palette functionality
+ * Handles trigger detection, item loading, and palette display
+ */
 export class CommandPaletteManager {
 	private plugin: ISparkPlugin;
 	private activeTrigger: TriggerContext | null = null;
+	private cachedItems: PaletteItem[] | null = null;
+	private isInserting: boolean = false;
+
+	// Services
 	private itemLoader: ItemLoader;
 	private fuzzyMatcher: FuzzyMatcher;
 	private paletteView: PaletteView;
-	private cachedItems: PaletteItem[] | null = null;
+	private coordinateDetector: CoordinateDetector;
+	private triggerDetector: TriggerDetector;
 	private paletteSelectHandler: EventListener;
-	private isInserting: boolean = false;
 
 	constructor(plugin: ISparkPlugin) {
 		this.plugin = plugin;
 		this.itemLoader = new ItemLoader(plugin.app);
 		this.fuzzyMatcher = new FuzzyMatcher();
 		this.paletteView = new PaletteView(plugin.app);
+		this.coordinateDetector = new CoordinateDetector();
+		this.triggerDetector = new TriggerDetector();
 
-		// Store event handler for cleanup
 		this.paletteSelectHandler = ((evt: CustomEvent) => {
 			this.onItemSelected(evt.detail.item);
 		}) as EventListener;
@@ -56,107 +67,84 @@ export class CommandPaletteManager {
 	 * Handle editor change events
 	 */
 	private handleEditorChange(editor: Editor): void {
-		// Skip if we're in the middle of inserting text
-		if (this.isInserting) return;
+		if (this.isInserting) {
+			return;
+		}
 
-		const cursor = editor.getCursor();
-		const line = editor.getLine(cursor.line);
-		const charsBefore = line.substring(0, cursor.ch);
+		// Check for new trigger character
+		const newTrigger = this.triggerDetector.detectNewTrigger(editor);
+		if (newTrigger) {
+			this.activateNewTrigger(editor, newTrigger);
+			return;
+		}
 
-		// Check if last character is a trigger
-		const lastChar = charsBefore[charsBefore.length - 1];
+		// Check if updating existing query
+		if (this.activeTrigger) {
+			this.updateExistingQuery(editor);
+			return;
+		}
 
-		if (lastChar === '/' || lastChar === '@') {
-			// Check if this is a standalone trigger (not part of a word)
-			// e.g., "test/" should trigger, but "http://" should not
-			// Also allow | for table cells
-			const charBeforeTrigger = charsBefore[charsBefore.length - 2];
-
-			if (
-				!charBeforeTrigger ||
-				charBeforeTrigger === ' ' ||
-				charBeforeTrigger === '\n' ||
-				charBeforeTrigger === '\t' ||
-				charBeforeTrigger === '|'
-			) {
-				this.onTriggerDetected(editor, cursor, lastChar);
-			}
-		} else if (this.activeTrigger) {
-			// User is typing after trigger - update query
-			this.updateQuery(editor, cursor);
-		} else {
-			// Check if user is editing an existing mention
-			// Find the last @ or / before cursor that's preceded by whitespace or pipe (for tables)
-			const triggerMatch = charsBefore.match(/(?:^|\s|\|)([@/])[\w-]*$/);
-			if (triggerMatch) {
-				const triggerChar = triggerMatch[1];
-				const triggerIndex = charsBefore.lastIndexOf(triggerChar);
-				const charBeforeTrigger = charsBefore[triggerIndex - 1];
-
-				// Verify it's a standalone trigger (preceded by whitespace, pipe, or start of line)
-				if (
-					!charBeforeTrigger ||
-					charBeforeTrigger === ' ' ||
-					charBeforeTrigger === '\n' ||
-					charBeforeTrigger === '\t' ||
-					charBeforeTrigger === '|'
-				) {
-					// Clear cache when editing existing mention
-					this.cachedItems = null;
-
-					// Create trigger context
-					this.activeTrigger = {
-						editor,
-						line: cursor.line,
-						ch: triggerIndex + 1, // Position after the trigger char
-						triggerChar,
-						query: charsBefore.substring(triggerIndex + 1),
-					};
-
-					// Show palette
-					void this.showPalette();
-				}
-			}
+		// Check if editing an existing mention
+		const existingMention = this.triggerDetector.detectExistingMention(editor);
+		if (existingMention) {
+			this.activateExistingMention(editor, existingMention);
 		}
 	}
 
 	/**
-	 * Called when a trigger character is detected
+	 * Activate a newly typed trigger
 	 */
-	private onTriggerDetected(editor: Editor, cursor: EditorPosition, triggerChar: string): void {
-		// Clear cache when new trigger is detected
+	private activateNewTrigger(
+		editor: Editor,
+		trigger: { char: string; position: { line: number; ch: number } }
+	): void {
 		this.cachedItems = null;
-
 		this.activeTrigger = {
 			editor,
-			line: cursor.line,
-			ch: cursor.ch,
-			triggerChar,
+			line: trigger.position.line,
+			ch: trigger.position.ch,
+			triggerChar: trigger.char,
 			query: '',
 		};
-
-		// Show palette
 		void this.showPalette();
 	}
 
 	/**
-	 * Update the search query as user types
+	 * Activate editing of an existing mention
 	 */
-	private updateQuery(editor: Editor, cursor: EditorPosition): void {
+	private activateExistingMention(
+		editor: Editor,
+		trigger: { char: string; position: { line: number; ch: number }; ch: number; query: string }
+	): void {
+		this.cachedItems = null;
+		this.activeTrigger = {
+			editor,
+			line: trigger.position.line,
+			ch: trigger.ch,
+			triggerChar: trigger.char,
+			query: trigger.query,
+		};
+		void this.showPalette();
+	}
+
+	/**
+	 * Update query for active trigger
+	 */
+	private updateExistingQuery(editor: Editor): void {
 		if (!this.activeTrigger) return;
 
-		const line = editor.getLine(cursor.line);
-		const query = line.substring(this.activeTrigger.ch, cursor.ch);
+		const query = this.triggerDetector.extractQuery(
+			editor,
+			this.activeTrigger.ch,
+			this.activeTrigger.triggerChar
+		);
 
-		// Check if user moved away from trigger (e.g., pressed space or deleted trigger)
-		if (query.includes(' ') || line[this.activeTrigger.ch - 1] !== this.activeTrigger.triggerChar) {
+		if (query === null) {
 			this.closePalette();
 			return;
 		}
 
 		this.activeTrigger.query = query;
-
-		// Update palette with filtered results
 		void this.showPalette();
 	}
 
@@ -167,7 +155,7 @@ export class CommandPaletteManager {
 		if (!this.activeTrigger) return;
 
 		const items = await this.getFilteredItems();
-		const coords = this.getCursorCoordinates(this.activeTrigger.editor);
+		const coords = this.coordinateDetector.getCoordinates(this.activeTrigger.editor);
 
 		if (coords) {
 			this.paletteView.show(items, coords);
@@ -175,77 +163,45 @@ export class CommandPaletteManager {
 	}
 
 	/**
-	 * Get screen coordinates for the cursor position
-	 */
-	private getCursorCoordinates(editor: Editor): { top: number; left: number } | null {
-		const cursor = editor.getCursor();
-		const line = editor.getLine(cursor.line);
-		const coords = (editor as EditorWithCoords).coordsAtPos(cursor);
-		const isTable = line.includes('|');
-
-		if (!coords) return null;
-
-		// For tables, try to use browser selection API for better accuracy
-		if (isTable) {
-			const selection = window.getSelection();
-			if (selection && selection.rangeCount > 0) {
-				const rect = selection.getRangeAt(0).getBoundingClientRect();
-
-				// Use selection rect if it has valid coordinates
-				if (rect.left > 0 && rect.top > 0) {
-					return { top: rect.top, left: rect.left };
-				}
-				return null;
-			}
-		}
-
-		// Use CodeMirror coordinates if they're valid
-		if (coords.top > 0 && coords.left > 0) {
-			console.log('Using CodeMirror coordinates:', coords);
-			return { top: coords.top, left: coords.left };
-		}
-
-		return null;
-	}
-
-	/**
 	 * Get filtered items based on current query
 	 */
 	private async getFilteredItems(): Promise<PaletteItem[]> {
-		const allItems = await this.loadItems();
+		const allItems = await this.loadItemsForTrigger();
 		const query = this.activeTrigger?.query || '';
-
 		return this.fuzzyMatcher.match(query, allItems);
 	}
 
 	/**
-	 * Load all available palette items
+	 * Load items based on trigger type
 	 */
-	private async loadItems(): Promise<PaletteItem[]> {
-		// Cache items to avoid reloading on every trigger
+	private async loadItemsForTrigger(): Promise<PaletteItem[]> {
 		if (this.cachedItems) {
 			return this.cachedItems;
 		}
 
-		const items: PaletteItem[] = [];
+		const triggerChar = this.activeTrigger?.triggerChar;
 
-		// Load based on trigger type
-		if (this.activeTrigger?.triggerChar === '/') {
-			// Show commands only for "/"
-			const commands = await this.itemLoader.loadCommands();
-			items.push(...commands);
-		} else if (this.activeTrigger?.triggerChar === '@') {
-			// Show agents, files, and folders for "@"
-			const [agents, files, folders] = await Promise.all([
-				this.itemLoader.loadAgents(),
-				this.itemLoader.loadFiles(),
-				this.itemLoader.loadFolders(),
-			]);
-			items.push(...agents, ...files, ...folders);
+		if (triggerChar === '/') {
+			this.cachedItems = await this.itemLoader.loadCommands();
+		} else if (triggerChar === '@') {
+			this.cachedItems = await this.loadMentionItems();
+		} else {
+			this.cachedItems = [];
 		}
 
-		this.cachedItems = items;
-		return items;
+		return this.cachedItems;
+	}
+
+	/**
+	 * Load all mention items (agents, files, folders)
+	 */
+	private async loadMentionItems(): Promise<PaletteItem[]> {
+		const [agents, files, folders] = await Promise.all([
+			this.itemLoader.loadAgents(),
+			this.itemLoader.loadFiles(),
+			this.itemLoader.loadFolders(),
+		]);
+		return [...agents, ...files, ...folders];
 	}
 
 	/**
@@ -289,41 +245,33 @@ export class CommandPaletteManager {
 	private onItemSelected(item: PaletteItem): void {
 		if (!this.activeTrigger) return;
 
-		// Capture trigger context before closing palette
-		const editor = this.activeTrigger.editor;
-		const line = this.activeTrigger.line;
-		const triggerCh = this.activeTrigger.ch;
-
-		// Close palette first to prevent re-triggering
+		const { editor, line, ch } = this.activeTrigger;
 		this.closePalette();
 
-		// Set flag to prevent editor change handler from interfering
+		this.insertItem(editor, line, ch, item.id);
+		this.scheduleInsertionFlagClear();
+	}
+
+	/**
+	 * Insert selected item into editor
+	 */
+	private insertItem(editor: Editor, line: number, triggerCh: number, itemId: string): void {
 		this.isInserting = true;
 
-		// Get current line content
-		const lineContent = editor.getLine(line);
+		const currentCursor = editor.getCursor();
+		const replacement = `${itemId} `;
 
-		// Remove trigger character and replace with selected item ID
-		const before = lineContent.substring(0, triggerCh - 1);
-		const after = lineContent.substring(editor.getCursor().ch);
+		// Use replaceRange instead of setLine - better for tables
+		// Replaces from trigger char position to current cursor
+		editor.replaceRange(replacement, { line, ch: triggerCh - 1 }, { line, ch: currentCursor.ch });
 
-		// Add a space after the mention
-		const insertion = item.id + ' ';
-		const newLine = before + insertion + after;
+		// replaceRange automatically positions cursor at end of replacement
+	}
 
-		// Update the line
-		editor.setLine(line, newLine);
-
-		// Set cursor after inserted text
-		editor.setCursor({
-			line,
-			ch: triggerCh - 1 + insertion.length,
-		});
-
-		// Refocus the editor to keep cursor visible
-		editor.focus();
-
-		// Clear flag after a brief delay to allow editor to settle
+	/**
+	 * Schedule clearing of insertion flag
+	 */
+	private scheduleInsertionFlagClear(): void {
 		window.setTimeout(() => {
 			this.isInserting = false;
 		}, 50);

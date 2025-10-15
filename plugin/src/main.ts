@@ -26,6 +26,19 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         // Start observing HTML table cells for mention styling
         this.mentionDecorator.startTableObserver();
 
+        // Register mousedown handler to prevent cursor movement when clicking mentions
+        this.registerDomEvent(
+            document,
+            'mousedown',
+            (event: MouseEvent) => {
+                const target = event.target as HTMLElement;
+                if (target.classList.contains('spark-mention')) {
+                    event.preventDefault();
+                }
+            },
+            true
+        );
+
         // Register click handler for mentions
         this.registerDomEvent(document, 'click', (event: MouseEvent) => {
             handleMentionClick(this.app, event);

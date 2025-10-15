@@ -1,6 +1,16 @@
 import { App, TFolder } from 'obsidian';
 import { PaletteItem } from '../types/command-palette';
 
+interface ItemConfig {
+	type: PaletteItem['type'];
+	folder: string;
+	prefix: string;
+	descriptionField?: string;
+}
+
+/**
+ * Loads palette items from various sources
+ */
 export class ItemLoader {
 	private app: App;
 
@@ -12,126 +22,147 @@ export class ItemLoader {
 	 * Load all commands from .spark/commands/
 	 */
 	async loadCommands(): Promise<PaletteItem[]> {
-		const commands: PaletteItem[] = [];
-
-		try {
-			const folderPath = '.spark/commands';
-			const exists = await this.app.vault.adapter.exists(folderPath);
-
-			if (!exists) {
-				return commands;
-			}
-
-			const files = await this.app.vault.adapter.list(folderPath);
-
-			for (const filePath of files.files) {
-				if (filePath.endsWith('.md')) {
-					const content = await this.app.vault.adapter.read(filePath);
-					const metadata = this.parseFrontmatter(content);
-					const fileName = filePath.split('/').pop()?.replace('.md', '') || '';
-
-					commands.push({
-						type: 'command' as const,
-						id: `/${fileName}`,
-						name: metadata.name || fileName,
-						description: metadata.description,
-						path: filePath,
-					});
-				}
-			}
-		} catch (error) {
-			console.error('Error loading commands:', error);
-		}
-
-		return commands;
+		return this.loadFromFolder({
+			type: 'command',
+			folder: '.spark/commands',
+			prefix: '/',
+		});
 	}
 
 	/**
 	 * Load all agents from .spark/agents/
 	 */
 	async loadAgents(): Promise<PaletteItem[]> {
-		const agents: PaletteItem[] = [];
-
-		try {
-			const folderPath = '.spark/agents';
-			const exists = await this.app.vault.adapter.exists(folderPath);
-
-			if (!exists) {
-				return agents;
-			}
-
-			const files = await this.app.vault.adapter.list(folderPath);
-
-			for (const filePath of files.files) {
-				if (filePath.endsWith('.md')) {
-					const content = await this.app.vault.adapter.read(filePath);
-					const metadata = this.parseFrontmatter(content);
-					const fileName = filePath.split('/').pop()?.replace('.md', '') || '';
-
-					agents.push({
-						type: 'agent' as const,
-						id: `@${fileName}`,
-						name: metadata.name || fileName,
-						description: metadata.description || metadata.role,
-						path: filePath,
-					});
-				}
-			}
-		} catch (error) {
-			console.error('Error loading agents:', error);
-		}
-
-		return agents;
+		return this.loadFromFolder({
+			type: 'agent',
+			folder: '.spark/agents',
+			prefix: '@',
+			descriptionField: 'role',
+		});
 	}
 
 	/**
 	 * Load all markdown files from vault
 	 */
 	async loadFiles(): Promise<PaletteItem[]> {
-		const files: PaletteItem[] = [];
-		const allFiles = this.app.vault.getMarkdownFiles();
-
-		for (const file of allFiles) {
-			// Skip .spark folder files
-			if (file.path.startsWith('.spark/')) {
-				continue;
-			}
-
-			files.push({
-				type: 'file',
-				id: `@${file.basename}`, // Show without .md extension
-				name: file.basename,
-				description: file.path,
-				path: file.path,
-			});
-		}
-
-		return files;
+		return this.app.vault
+			.getMarkdownFiles()
+			.filter(file => !file.path.startsWith('.spark/'))
+			.map(file => this.createFileItem(file));
 	}
 
 	/**
 	 * Load all folders from vault
 	 */
 	async loadFolders(): Promise<PaletteItem[]> {
-		const folders: PaletteItem[] = [];
-		const allFolders = this.getAllFolders(this.app.vault.getRoot());
+		return this.getAllFolders(this.app.vault.getRoot())
+			.filter(folder => this.shouldIncludeFolder(folder))
+			.map(folder => this.createFolderItem(folder));
+	}
 
-		for (const folder of allFolders) {
-			// Skip .spark and .obsidian folders
-			if (folder.path.startsWith('.spark') || folder.path.startsWith('.obsidian')) {
-				continue;
+	/**
+	 * Create a file palette item
+	 */
+	private createFileItem(file: { basename: string; path: string }): PaletteItem {
+		return {
+			type: 'file',
+			id: `@${file.basename}`,
+			name: file.basename,
+			description: file.path,
+			path: file.path,
+		};
+	}
+
+	/**
+	 * Create a folder palette item
+	 */
+	private createFolderItem(folder: { name: string; path: string }): PaletteItem {
+		return {
+			type: 'folder',
+			id: `@${folder.path}/`,
+			name: folder.name,
+			description: folder.path,
+			path: folder.path,
+		};
+	}
+
+	/**
+	 * Check if folder should be included in results
+	 */
+	private shouldIncludeFolder(folder: TFolder): boolean {
+		return !folder.path.startsWith('.spark') && !folder.path.startsWith('.obsidian');
+	}
+
+	/**
+	 * Load items from a specific folder with configuration
+	 */
+	private async loadFromFolder(config: ItemConfig): Promise<PaletteItem[]> {
+		const items: PaletteItem[] = [];
+
+		try {
+			if (!(await this.folderExists(config.folder))) {
+				return items;
 			}
 
-			folders.push({
-				type: 'folder',
-				id: `@${folder.path}/`,
-				name: folder.name,
-				description: folder.path,
-				path: folder.path,
-			});
+			const files = await this.getMarkdownFiles(config.folder);
+
+			for (const filePath of files) {
+				const item = await this.createItemFromFile(filePath, config);
+				if (item) {
+					items.push(item);
+				}
+			}
+		} catch (error) {
+			console.error(`Error loading ${config.type}s from ${config.folder}:`, error);
 		}
 
-		return folders;
+		return items;
+	}
+
+	/**
+	 * Create a palette item from a file
+	 */
+	private async createItemFromFile(
+		filePath: string,
+		config: ItemConfig
+	): Promise<PaletteItem | null> {
+		const content = await this.app.vault.adapter.read(filePath);
+		const metadata = this.parseFrontmatter(content);
+		const fileName = this.getFileName(filePath);
+
+		const description =
+			metadata.description ||
+			(config.descriptionField ? metadata[config.descriptionField] : undefined);
+
+		return {
+			type: config.type,
+			id: `${config.prefix}${fileName}`,
+			name: metadata.name || fileName,
+			description,
+			path: filePath,
+		};
+	}
+
+	/**
+	 * Check if folder exists
+	 */
+	private async folderExists(path: string): Promise<boolean> {
+		return this.app.vault.adapter.exists(path);
+	}
+
+	/**
+	 * Get all markdown files in a folder
+	 */
+	private async getMarkdownFiles(folderPath: string): Promise<string[]> {
+		const listing = await this.app.vault.adapter.list(folderPath);
+		return listing.files.filter(path => path.endsWith('.md'));
+	}
+
+	/**
+	 * Extract file name without extension from path
+	 */
+	private getFileName(filePath: string): string {
+		return filePath.split('/').pop()?.replace('.md', '') || '';
 	}
 
 	/**
@@ -151,20 +182,17 @@ export class ItemLoader {
 	}
 
 	/**
-	 * Parse frontmatter from markdown content
+	 * Parse YAML frontmatter from markdown content
 	 */
 	private parseFrontmatter(content: string): Record<string, string> {
-		const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
-		const match = content.match(frontmatterRegex);
-
+		const match = content.match(/^---\n([\s\S]*?)\n---/);
 		if (!match) {
 			return {};
 		}
 
-		const frontmatter = match[1];
 		const metadata: Record<string, string> = {};
+		const lines = match[1].split('\n');
 
-		const lines = frontmatter.split('\n');
 		for (const line of lines) {
 			const colonIndex = line.indexOf(':');
 			if (colonIndex > 0) {

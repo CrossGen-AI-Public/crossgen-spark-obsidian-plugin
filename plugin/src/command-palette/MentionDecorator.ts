@@ -206,7 +206,6 @@ function buildMentionDecorations(
 ): DecorationSet {
 	const builder = new RangeSetBuilder<Decoration>();
 	const doc = view.state.doc;
-	const cursor = view.state.selection.main.head;
 
 	for (let i = 0; i < doc.length; ) {
 		const line = doc.lineAt(i);
@@ -220,11 +219,6 @@ function buildMentionDecorations(
 			const mention = match[0];
 			const from = line.from + match.index;
 			const to = from + mention.length;
-
-			// Skip decoration if cursor is inside or at the end (user is editing)
-			if (cursor >= from && cursor <= to) {
-				continue;
-			}
 
 			// Validate and determine mention type
 			const isFolder = mention.endsWith('/');
@@ -345,5 +339,4 @@ export function handleMentionClick(app: App, event: MouseEvent) {
 	}
 
 	event.preventDefault();
-	event.stopPropagation();
 }
