@@ -11,11 +11,14 @@
         "dev": "tsx watch src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
-        "test": "jest",
-        "test:watch": "jest --watch",
+        "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+        "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
         "lint": "eslint src --ext .ts",
+        "lint:fix": "eslint src --ext .ts --fix",
         "format": "prettier --write \"src/**/*.ts\"",
-        "type-check": "tsc --noEmit"
+        "format:check": "prettier --check \"src/**/*.ts\"",
+        "type-check": "tsc --noEmit",
+        "check": "npm run format:check && npm run lint && npm run type-check && npm test"
     },
     "keywords": [
         "obsidian",

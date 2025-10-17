@@ -11,7 +11,14 @@ export * from './notification.js';
 export * from './result.js';
 
 // Export from watcher (without FrontmatterChange to avoid duplication)
-export type { FileChange, FileChangeType, FileWatcherConfig, IFileWatcher, IChangeDebouncer, IPathMatcher } from './watcher.js';
+export type {
+  FileChange,
+  FileChangeType,
+  FileWatcherConfig,
+  IFileWatcher,
+  IChangeDebouncer,
+  IPathMatcher,
+} from './watcher.js';
 
 // Export from parser (includes FrontmatterChange)
 export * from './parser.js';
@@ -24,20 +31,20 @@ export * from './trigger.js';
  * Main Spark Daemon interface
  */
 export interface ISparkDaemon {
-    start(): Promise<void>;
-    stop(): Promise<void>;
-    isRunning(): boolean;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  isRunning(): boolean;
 }
 
 /**
  * Status emojis for file indicators
  */
 export interface StatusEmojis {
-    pending: string;
-    processing: string;
-    completed: string;
-    error: string;
-    warning: string;
+  pending: string;
+  processing: string;
+  completed: string;
+  error: string;
+  warning: string;
 }
 
 /**
@@ -49,13 +56,12 @@ export type DaemonState = 'stopped' | 'starting' | 'running' | 'stopping' | 'err
  * Generic error class for Spark daemon
  */
 export class SparkError extends Error {
-    constructor(
-        message: string,
-        public readonly code: string,
-        public readonly context?: Record<string, unknown>
-    ) {
-        super(message);
-        this.name = 'SparkError';
-    }
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly context?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = 'SparkError';
+  }
 }
-
