@@ -3,6 +3,7 @@ export default {
     preset: 'ts-jest/presets/default-esm',
     testEnvironment: 'node',
     extensionsToTreatAsEsm: ['.ts'],
+    injectGlobals: true,
     moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
     },
@@ -29,10 +30,10 @@ export default {
     coverageReporters: ['text', 'lcov', 'html'],
     coverageThreshold: {
         global: {
-            branches: 60,
-            functions: 60,
-            lines: 60,
-            statements: 60,
+            branches: 75,
+            functions: 75,
+            lines: 78,
+            statements: 78,
         },
     },
     testTimeout: 10000,

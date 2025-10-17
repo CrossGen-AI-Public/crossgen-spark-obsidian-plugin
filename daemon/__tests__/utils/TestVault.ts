@@ -7,20 +7,43 @@ import os from 'os';
  * 
  * @example
  * ```typescript
- * const vault = await TestVault.create();
+ * const vault = new TestVault();
+ * await vault.create();
  * await vault.writeFile('test.md', '# Content');
  * const content = await vault.readFile('test.md');
  * await vault.cleanup();
  * ```
  */
 export class TestVault {
-    private constructor(public readonly path: string) { }
+    private _path: string | null = null;
 
     /**
-     * Create a new temporary test vault with default config
+     * Get the vault root path (alias for path)
      */
-    static async create(config?: Partial<TestVaultConfig>): Promise<TestVault> {
+    get root(): string {
+        if (!this._path) {
+            throw new Error('Vault not created. Call create() first.');
+        }
+        return this._path;
+    }
+
+    /**
+     * Get the vault path
+     */
+    get path(): string {
+        if (!this._path) {
+            throw new Error('Vault not created. Call create() first.');
+        }
+        return this._path;
+    }
+
+    /**
+     * Create a new temporary test vault
+     */
+    async create(config?: Partial<TestVaultConfig>): Promise<void> {
         const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'spark-test-'));
+        this._path = tempDir;
+
         const sparkDir = path.join(tempDir, '.spark');
 
         // Create .spark directory
@@ -31,12 +54,13 @@ export class TestVault {
         await fs.mkdir(path.join(sparkDir, 'agents'), { recursive: true });
         await fs.mkdir(path.join(sparkDir, 'sops'), { recursive: true });
         await fs.mkdir(path.join(sparkDir, 'triggers'), { recursive: true });
+        await fs.mkdir(path.join(sparkDir, 'integrations'), { recursive: true });
 
-        // Write default config
-        const configContent = TestVault.generateConfig(config);
-        await fs.writeFile(path.join(sparkDir, 'config.yaml'), configContent);
-
-        return new TestVault(tempDir);
+        // Write default config if provided
+        if (config) {
+            const configContent = TestVault.generateConfig(config);
+            await fs.writeFile(path.join(sparkDir, 'config.yaml'), configContent);
+        }
     }
 
     /**
@@ -46,6 +70,15 @@ export class TestVault {
         const fullPath = path.join(this.path, relativePath);
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, content, 'utf-8');
+    }
+
+    /**
+     * Write config object as YAML to .spark/config.yaml
+     */
+    async writeConfig(config: unknown): Promise<void> {
+        const yaml = await import('yaml');
+        const configYaml = yaml.stringify(config);
+        await this.writeFile('.spark/config.yaml', configYaml);
     }
 
     /**
@@ -113,10 +146,13 @@ export class TestVault {
      * Clean up the test vault
      */
     async cleanup(): Promise<void> {
+        if (!this._path) {
+            return;
+        }
         try {
-            await fs.rm(this.path, { recursive: true, force: true });
+            await fs.rm(this._path, { recursive: true, force: true });
         } catch (error) {
-            console.error(`Failed to cleanup test vault at ${this.path}:`, error);
+            console.error(`Failed to cleanup test vault at ${this._path}:`, error);
         }
     }
 

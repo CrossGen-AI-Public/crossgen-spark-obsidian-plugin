@@ -67,7 +67,7 @@ export interface IMentionParser {
  * Interface for command detectors
  */
 export interface ICommandDetector {
-  detectInFile(content: string, filePath: string): ParsedCommand[];
+  detectInFile(content: string): ParsedCommand[];
 }
 
 /**

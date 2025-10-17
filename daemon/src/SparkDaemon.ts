@@ -5,7 +5,8 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import type { ISparkDaemon, DaemonState, SparkConfig } from './types/index.js';
+import type { ISparkDaemon, DaemonState } from './types/index.js';
+import type { SparkConfig } from './types/config.js';
 import type { FileChange } from './types/watcher.js';
 import { ConfigLoader } from './config/ConfigLoader.js';
 import { FileWatcher } from './watcher/FileWatcher.js';

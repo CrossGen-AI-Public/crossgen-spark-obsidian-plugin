@@ -362,40 +362,137 @@ triggers:
 
 ## 🔧 Development
 
+### Setup
+
+**Prerequisites:**
+- Node.js 18+
+- npm or pnpm
+- Git
+
+**Clone and install:**
+```bash
+git clone https://github.com/yourorg/spark.git
+cd spark
+
+# Install dependencies for both projects
+cd plugin && npm install
+cd ../daemon && npm install
+```
+
 ### Plugin Development
 
 ```bash
-cd obsidian-spark
+cd plugin
 npm install
-npm run dev  # Hot reload
+npm run dev         # Hot reload with esbuild
+
+# Quality checks
+npm run check       # Run all checks (format, lint, types)
+npm run format      # Auto-format code
+npm run lint:fix    # Auto-fix linting issues
 
 # In Obsidian: Enable "Developer Mode" in settings
-# Reload plugin after changes
+# Reload plugin after changes (Cmd+R or Ctrl+R)
 ```
 
 ### Daemon Development
 
 ```bash
-cd spark-daemon
+cd daemon
 npm install
-npm run dev  # Watch mode
+npm run dev         # Watch mode with hot reload
+
+# Test with example vault
+npm start -- ../example-vault
+
+# Quality checks
+npm run check       # Run all checks (format, lint, types, tests)
+npm run format      # Auto-format code
+npm run lint:fix    # Auto-fix linting issues
+npm test            # Run all tests (81 tests)
+npm run test:watch  # Watch mode for tests
+```
+
+### Quality Standards
+
+The repository enforces strict quality standards through **automated pre-commit hooks**:
+
+#### Pre-Commit Checks
+✅ **Auto-fix** formatting and linting issues
+✅ **Validate** types, tests, and code quality
+❌ **Block commit** if any check fails
+
+#### Running Checks Manually
+
+```bash
+# Check everything before committing (auto-fixes formatting & linting)
+cd plugin && npm run check    # Plugin: format, lint, types
+cd daemon && npm run check    # Daemon: format, lint, types, tests
+
+# Individual fixes
+npm run format                # Prettier formatting
+npm run lint:fix              # ESLint auto-fixes
+```
+
+**Note:** `npm run check` in both projects automatically fixes formatting and linting issues before running validation checks.
+
+#### What Gets Checked
+
+| Check | Plugin | Daemon |
+|-------|--------|--------|
+| **Format** | ✅ Prettier | ✅ Prettier |
+| **Lint** | ✅ ESLint (strict) | ✅ ESLint (strict, no `any`) |
+| **Types** | ✅ TypeScript | ✅ TypeScript (strict mode) |
+| **Tests** | _(coming soon)_ | ✅ Jest (81 tests, must pass) |
+
+### Testing
+
+#### Daemon Tests
+```bash
+cd daemon
+
+# Run all tests (221 tests)
+npm test
+
+# Watch mode (re-run on file changes)
+npm run test:watch
+
+# With coverage report
+npm run test:coverage
+
+# Run specific test file
+npm test MentionParser.test.ts
+```
+
+**Coverage:** 79% (threshold: 78% ✅) - see `coverage/index.html` after running `npm run test:coverage`
+- 100% covered: Logger, ConfigDefaults, ChangeDebouncer
+- 90%+ tested: Config (95%), CommandDetector (94%)
+- 70%+ tested: Parser (83%), Watcher (82%), FileParser (82%), FileWatcher (74%)
+
+See [DEVELOPER_EXPERIENCE.md](DEVELOPER_EXPERIENCE.md) for detailed test coverage and status.
+
+#### Plugin Tests
+🚧 Coming soon - test infrastructure planned for Phase 4
+
+### Debugging
+
+#### Daemon Debugging
+```bash
+# View daemon logs
+tail -f ~/.spark/logs/daemon.log
+
+# Debug mode (verbose logging)
+LOG_LEVEL=debug npm run dev
 
 # Test with example vault
 npm start -- ../example-vault
 ```
 
-### Testing
-
-```bash
-# Unit tests
-npm test
-
-# Integration tests
-npm run test:integration
-
-# Watch mode
-npm run test:watch
-```
+#### Plugin Debugging
+1. Open Obsidian Developer Tools: `Cmd+Option+I` (Mac) or `Ctrl+Shift+I` (Windows)
+2. Console shows plugin logs
+3. Sources tab for breakpoints
+4. Reload plugin: `Cmd+R` or Settings → Reload Plugins
 
 ---
 
@@ -473,26 +570,67 @@ npm run test:watch
 
 ### Development Setup
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Write tests
-5. Submit pull request
+1. **Fork the repository**
+   ```bash
+   git clone https://github.com/your-username/spark.git
+   cd spark
+   ```
 
-### Code Style
+2. **Install dependencies**
+   ```bash
+   cd plugin && npm install
+   cd ../daemon && npm install
+   ```
 
-- TypeScript for all code
-- ESLint + Prettier for formatting
-- Conventional commits for messages
-- Tests required for new features
+3. **Create a feature branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+4. **Make your changes**
+   - Write code following style guidelines
+   - Add tests for new features
+   - Run checks frequently: `npm run check`
+
+5. **Commit your changes**
+   ```bash
+   git add .
+   git commit -m "feat: your feature description"
+   # Pre-commit hooks run automatically
+   # Commit is blocked if any check fails
+   ```
+
+6. **Push and create a pull request**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+### Code Standards
+
+**Enforced via pre-commit hooks:**
+- ✅ **TypeScript** - All code in strict mode
+- ✅ **No `any` types** - Daemon enforces explicit typing
+- ✅ **ESLint** - Strict rules, no unused vars (use `_prefix` for intentionally unused)
+- ✅ **Prettier** - Consistent formatting
+- ✅ **Tests** - Required for daemon, all tests must pass
+- ✅ **Conventional commits** - `feat:`, `fix:`, `docs:`, etc.
+
+**Pre-commit checks will:**
+1. Auto-fix formatting and linting issues
+2. Run type checking
+3. Run all tests (daemon)
+4. Block commit if any check fails
+
+**Pro tip:** Run `npm run check` before committing to catch issues early!
 
 ### Areas to Contribute
 
 - **Plugin UI/UX** - Improve command palette, chat widget
 - **Daemon Performance** - Optimize file watching, parsing
 - **Documentation** - Examples, tutorials, guides
-- **Testing** - Unit tests, integration tests
+- **Testing** - Unit tests, integration tests (daemon: 81 tests currently)
 - **Commands/Agents** - New default commands and personas
+- **Bug Fixes** - Check GitHub issues for open bugs
 
 ---
 
@@ -571,25 +709,41 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## ⚡ Status
 
-**Current Phase:** Plugin Phase 2 Complete, Chat Widget Next
+**Current Phase:** Plugin Phase 2 Complete, Daemon Phase 3 In Progress
 
 **Latest Updates:**
-- ✅ All architecture decisions finalized
-- ✅ Complete specifications written
-- ✅ Implementation plans created
-- ✅ Example vault with working configs
+
+**Plugin:**
 - ✅ Command palette complete with fuzzy search ✨
   - Slash commands (`/`) trigger detection
   - Mentions (`@`) for agents/files/folders
   - Keyboard navigation and auto-insertion
   - Smart fuzzy matching algorithm
 - 🚧 Chat widget development next
-- 🚧 Daemon development starting soon
+
+**Daemon:**
+- ✅ Phase 1: Project setup & file watching (complete)
+  - Configuration system with YAML validation
+  - File watcher with debouncing
+  - Logger with structured output
+- ✅ Phase 2: Syntax parsing (complete)
+  - MentionParser - 32 tests passing
+  - CommandDetector - 47 tests passing
+  - FrontmatterParser - 32 tests passing
+- ✅ Phase 3: Context loading (complete)
+  - PathResolver for mention resolution
+  - ProximityCalculator for file ranking
+  - ContextLoader orchestration
+- ✅ Testing infrastructure (complete)
+  - Jest with ES modules support
+  - 81 tests across 3 test suites
+  - Pre-commit hooks enforcing quality
+- 🚧 Phase 4: Claude integration (next)
 
 **Next Milestones:**
-- Week 4: Chat widget functional
-- Week 6: Daemon with file watching & parsing
-- Week 8: Full daemon with triggers
+- Week 4: Daemon Claude API integration
+- Week 6: Trigger system implementation
+- Week 8: Result writing & notifications
 - Week 10: System service installation
 - Week 12: Production-ready for dogfooding
 

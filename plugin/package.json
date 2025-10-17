@@ -11,7 +11,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
     "format:check": "prettier --check src/**/*.ts",
-    "check": "npm run format:check && npm run lint && tsc -noEmit -skipLibCheck"
+    "check": "npm run format && npm run lint:fix && tsc -noEmit -skipLibCheck"
   },
   "keywords": [
     "obsidian",

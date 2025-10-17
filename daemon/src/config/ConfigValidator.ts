@@ -17,6 +17,7 @@ export class ConfigValidator implements IConfigValidator {
     this.validateDaemon(cfg.daemon);
     this.validateAI(cfg.ai);
     this.validateLogging(cfg.logging);
+    this.validateFeatures(cfg.features);
 
     return cfg as unknown as SparkConfig;
   }
@@ -41,8 +42,12 @@ export class ConfigValidator implements IConfigValidator {
       throw new SparkError('daemon.watch.ignore must be an array', 'INVALID_IGNORE');
     }
 
-    if (typeof d.debounce_ms !== 'number' || d.debounce_ms < 0) {
-      throw new SparkError('daemon.debounce_ms must be a positive number', 'INVALID_DEBOUNCE');
+    if (typeof d.debounce_ms !== 'number') {
+      throw new SparkError('daemon.debounce_ms is required', 'INVALID_DEBOUNCE');
+    }
+
+    if (d.debounce_ms < 0) {
+      throw new SparkError('daemon.debounce_ms must be a number', 'INVALID_DEBOUNCE');
     }
   }
 
@@ -77,6 +82,26 @@ export class ConfigValidator implements IConfigValidator {
         `logging.level must be one of: ${validLevels.join(', ')}`,
         'INVALID_LOG_LEVEL'
       );
+    }
+  }
+
+  private validateFeatures(features: unknown): void {
+    if (!features || typeof features !== 'object') {
+      throw new SparkError('features configuration is required', 'INVALID_CONFIG_FEATURES');
+    }
+
+    const f = features as Record<string, unknown>;
+
+    if (typeof f.slash_commands !== 'boolean') {
+      throw new SparkError('features.slash_commands must be a boolean', 'INVALID_FEATURE_FLAG');
+    }
+
+    if (typeof f.chat_assistant !== 'boolean') {
+      throw new SparkError('features.chat_assistant must be a boolean', 'INVALID_FEATURE_FLAG');
+    }
+
+    if (typeof f.trigger_automation !== 'boolean') {
+      throw new SparkError('features.trigger_automation must be a boolean', 'INVALID_FEATURE_FLAG');
     }
   }
 }

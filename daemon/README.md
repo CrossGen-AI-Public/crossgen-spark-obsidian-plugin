@@ -35,6 +35,8 @@ daemon/
 
 ## Development
 
+### Setup
+
 ```bash
 # Install dependencies
 npm install
@@ -47,19 +49,60 @@ npm run build
 
 # Start daemon
 npm start -- /path/to/vault
+```
 
-# Run tests
+### Quality Checks
+
+```bash
+# Run all checks (auto-fixes formatting & linting, then checks types & tests)
+npm run check
+
+# Individual checks
+npm run format:check    # Check formatting only
+npm run lint            # Check linting only
+npm run type-check      # Check TypeScript types
+npm test                # Run all tests (221 tests)
+
+# Auto-fix issues
+npm run format          # Auto-format code
+npm run lint:fix        # Auto-fix linting issues
+```
+
+**Note:** `npm run check` automatically fixes formatting and linting issues, then validates types and tests. This is the command used by pre-commit hooks.
+
+### Pre-Commit Hooks
+
+The repository has automatic pre-commit hooks that:
+1. **Auto-fix** formatting and linting issues
+2. **Validate** all checks pass (format, lint, types, tests)
+3. **Block commit** if any check fails
+
+This ensures all committed code meets quality standards.
+
+### Testing
+
+```bash
+# Run all tests
 npm test
 
-# Type check
-npm run type-check
+# Watch mode (re-run on file changes)
+npm run test:watch
 
-# Lint
-npm run lint
+# With coverage report
+npm run test:coverage
 
-# Format
-npm run format
+# Run specific test file
+npm test MentionParser.test.ts
 ```
+
+**Coverage Report:**
+- Run `npm run test:coverage` to generate HTML report at `coverage/index.html`
+- Current coverage: **79%** (threshold: 78%, passing ✅)
+- **100% covered:** Logger, ConfigDefaults, ChangeDebouncer
+- **Well-tested (>90%):** Config (95%), CommandDetector (94%)
+- **Good coverage (>70%):** Parser (83%), Context (68%), FileParser (82%), FileWatcher (74%), Watcher (82%)
+
+See [DEVELOPER_EXPERIENCE.md](../DEVELOPER_EXPERIENCE.md) for detailed test coverage and status.
 
 ## Installation
 
@@ -70,19 +113,6 @@ npm link
 
 # Start daemon
 spark start ~/Documents/Obsidian
-```
-
-## Testing
-
-```bash
-# Run all tests
-npm test
-
-# Watch mode
-npm run test:watch
-
-# With coverage
-npm test -- --coverage
 ```
 
 ## Implementation Progress

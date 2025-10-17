@@ -11,6 +11,7 @@ export interface SparkConfig {
   ai: AIConfig;
   mcp?: MCPConfig;
   logging: LoggingConfig;
+  features: FeaturesConfig;
 }
 
 /**
@@ -123,10 +124,19 @@ export interface RetryConfig {
  */
 export interface LoggingConfig {
   level: 'debug' | 'info' | 'warn' | 'error';
-  file?: string;
+  file?: string | null;
   console: boolean;
   max_size?: string;
   max_files?: number;
+}
+
+/**
+ * Feature flags configuration
+ */
+export interface FeaturesConfig {
+  slash_commands: boolean;
+  chat_assistant: boolean;
+  trigger_automation: boolean;
 }
 
 /**

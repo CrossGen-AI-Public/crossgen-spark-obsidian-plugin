@@ -21,15 +21,25 @@ export class ConfigLoader implements IConfigLoader {
   public async load(vaultPath: string): Promise<SparkConfig> {
     const configPath = join(vaultPath, '.spark', 'config.yaml');
 
+    // If no config file, return defaults
     if (!existsSync(configPath)) {
-      throw new SparkError(`Configuration file not found at ${configPath}`, 'CONFIG_NOT_FOUND', {
-        configPath,
-      });
+      return ConfigDefaults.getDefaults();
     }
 
     try {
       const content = readFileSync(configPath, 'utf-8');
+
+      // Handle empty file or only comments
+      if (!content.trim() || !content.trim().replace(/#.*/g, '').trim()) {
+        return ConfigDefaults.getDefaults();
+      }
+
       const userConfig = parseYAML(content);
+
+      // Handle empty YAML
+      if (!userConfig || Object.keys(userConfig).length === 0) {
+        return ConfigDefaults.getDefaults();
+      }
 
       // Merge with defaults
       const config = ConfigDefaults.merge(userConfig as Partial<SparkConfig>);
@@ -49,5 +59,9 @@ export class ConfigLoader implements IConfigLoader {
         { originalError: error }
       );
     }
+  }
+
+  public getConfigPath(vaultPath: string): string {
+    return join(vaultPath, '.spark', 'config.yaml');
   }
 }

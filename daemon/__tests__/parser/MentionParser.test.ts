@@ -147,7 +147,7 @@ describe('MentionParser', () => {
             const content = '@folder/';
             const mentions = parser.parse(content);
 
-            expect(mentions[0].type).toBe('folder');
+            expect(mentions[0]!.type).toBe('folder');
         });
     });
 
@@ -322,7 +322,7 @@ describe('MentionParser', () => {
             const content = '@docs/';
             const mentions = parser.parse(content);
 
-            expect(mentions[0].type).toBe('folder');
+            expect(mentions[0]!.type).toBe('folder');
         });
 
         it('should prioritize command over all other types', () => {
