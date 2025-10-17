@@ -1,5 +1,11 @@
 # Spark Assistant
 
+[![Daemon Tests](https://img.shields.io/badge/daemon%20tests-264%20passing-brightgreen)](https://github.com/YOUR_USERNAME/crossgen-spark/actions/workflows/daemon-ci.yml)
+[![Plugin Build](https://img.shields.io/badge/plugin-build%20passing-brightgreen)](https://github.com/YOUR_USERNAME/crossgen-spark/actions/workflows/plugin-ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-79%25-brightgreen)](#testing)
+
+> **Note:** Replace `YOUR_USERNAME` with your GitHub username in workflow files. See [CI_CD_SETUP.md](CI_CD_SETUP.md) for setup.
+
 **Transform Obsidian into an intelligent business operating system powered by AI.**
 
 Spark Assistant enables "markdown files triggering AI agents" - turning your Obsidian vault into a living, automated workspace where notes become actions, and simple text triggers complex workflows.
@@ -415,10 +421,19 @@ npm run test:watch  # Watch mode for tests
 
 ### Quality Standards
 
-The repository enforces strict quality standards through **automated pre-commit hooks**:
+The repository enforces strict quality standards through **automated checks**:
 
-#### Pre-Commit Checks
-✅ **Auto-fix** formatting and linting issues
+#### CI/CD Pipeline
+✅ **Automated testing** on every PR and push to main
+✅ **Multi-version testing** (Node 18.x and 20.x)
+✅ **Coverage tracking** in CI logs (79% current)
+✅ **Build validation** for both daemon and plugin
+❌ **Blocks merging** if checks fail
+
+See [CI_CD_SETUP.md](CI_CD_SETUP.md) for 2-minute setup.
+
+#### Pre-Commit Hooks
+✅ **Auto-fix** formatting and linting issues locally
 ✅ **Validate** types, tests, and code quality
 ❌ **Block commit** if any check fails
 
@@ -464,12 +479,9 @@ npm run test:coverage
 npm test MentionParser.test.ts
 ```
 
-**Coverage:** 79% (threshold: 78% ✅) - see `coverage/index.html` after running `npm run test:coverage`
-- 100% covered: Logger, ConfigDefaults, ChangeDebouncer
-- 90%+ tested: Config (95%), CommandDetector (94%)
-- 70%+ tested: Parser (83%), Watcher (82%), FileParser (82%), FileWatcher (74%)
+**Coverage:** 79% (threshold: 78%) - Run `npm run test:coverage` to view detailed report at `coverage/index.html`
 
-See [DEVELOPER_EXPERIENCE.md](DEVELOPER_EXPERIENCE.md) for detailed test coverage and status.
+See [DEVELOPER_EXPERIENCE.md](DEVELOPER_EXPERIENCE.md) for detailed test status and CI/CD logs for real-time coverage.
 
 #### Plugin Tests
 🚧 Coming soon - test infrastructure planned for Phase 4

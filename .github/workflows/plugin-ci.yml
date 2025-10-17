@@ -1,0 +1,62 @@
+name: Plugin CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'plugin/**'
+      - '.github/workflows/plugin-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'plugin/**'
+      - '.github/workflows/plugin-ci.yml'
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: plugin
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: plugin/package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run format check
+      run: npm run format:check
+    
+    - name: Run linter
+      run: npm run lint
+    
+    - name: Run type check
+      run: npm run check
+    
+    - name: Build plugin
+      run: npm run build
+    
+    - name: Check build artifacts
+      run: |
+        if [ ! -f "dist/main.js" ]; then
+          echo "Build failed: dist/main.js not found"
+          exit 1
+        fi
+        if [ ! -f "dist/manifest.json" ]; then
+          echo "Build failed: dist/manifest.json not found"
+          exit 1
+        fi
+

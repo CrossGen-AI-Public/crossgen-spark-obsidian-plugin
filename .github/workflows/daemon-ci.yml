@@ -1,0 +1,117 @@
+name: Daemon CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'daemon/**'
+      - '.github/workflows/daemon-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'daemon/**'
+      - '.github/workflows/daemon-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: daemon
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: daemon/package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run format check
+      run: npm run format:check
+    
+    - name: Run linter
+      run: npm run lint
+    
+    - name: Run type check
+      run: npm run type-check
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Generate coverage report
+      run: npm run test:coverage
+    
+    - name: Coverage Summary
+      run: |
+        echo "📊 Test Coverage Summary"
+        cat coverage/coverage-summary.json | grep -A 3 "total"
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Check build output
+      run: |
+        if [ ! -f "dist/index.js" ]; then
+          echo "Build failed: dist/index.js not found"
+          exit 1
+        fi
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    defaults:
+      run:
+        working-directory: daemon
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        cache-dependency-path: daemon/package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build daemon
+      run: npm run build
+    
+    - name: Create test vault
+      run: |
+        mkdir -p /tmp/test-vault/.spark
+        cat > /tmp/test-vault/.spark/config.yaml << EOF
+        version: "1.0"
+        daemon:
+          watch:
+            patterns:
+              - "**/*.md"
+            ignore:
+              - ".git/**"
+          debounce_ms: 100
+        ai:
+          provider: "claude"
+        logging:
+          level: "error"
+          console: false
+        EOF
+    
+    - name: Test daemon start/stop
+      run: |
+        timeout 10s node dist/index.js /tmp/test-vault || [ $? -eq 124 ]
+        echo "Daemon start/stop test completed"
+

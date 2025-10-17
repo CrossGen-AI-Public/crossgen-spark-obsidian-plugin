@@ -97,10 +97,8 @@ npm test MentionParser.test.ts
 
 **Coverage Report:**
 - Run `npm run test:coverage` to generate HTML report at `coverage/index.html`
-- Current coverage: **79%** (threshold: 78%, passing ✅)
-- **100% covered:** Logger, ConfigDefaults, ChangeDebouncer
-- **Well-tested (>90%):** Config (95%), CommandDetector (94%)
-- **Good coverage (>70%):** Parser (83%), Context (68%), FileParser (82%), FileWatcher (74%), Watcher (82%)
+- Current coverage: 79% (threshold: 78%, enforced by CI/CD)
+- Coverage details visible in GitHub Actions workflow logs
 
 See [DEVELOPER_EXPERIENCE.md](../DEVELOPER_EXPERIENCE.md) for detailed test coverage and status.
 
