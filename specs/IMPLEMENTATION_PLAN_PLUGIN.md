@@ -34,7 +34,7 @@ npm install --save-dev @types/node typescript obsidian
 
 **1.2 Create Plugin Structure**
 ```
-obsidian-spark/
+spark/
 ├── src/
 │   ├── main.ts              # Plugin entry point
 │   ├── command-palette/     # Slash command UI
@@ -645,8 +645,8 @@ try {
 ```bash
 # Clone into vault plugins directory
 cd /path/to/vault/.obsidian/plugins
-git clone https://github.com/yourorg/obsidian-spark.git
-cd obsidian-spark
+git clone https://github.com/yourorg/spark.git
+cd spark
 npm install
 npm run build
 

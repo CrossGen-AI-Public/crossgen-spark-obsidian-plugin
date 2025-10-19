@@ -236,7 +236,7 @@ spark/
 │   ├── tasks/                          ✅ Example content
 │   └── README.md                       ✅ Complete
 │
-├── obsidian-spark/                     ⏳ Not started
+├── spark/                     ⏳ Not started
 │   └── (plugin code will go here)
 │
 └── spark-daemon/                       ⏳ Not started
@@ -294,8 +294,8 @@ spark/
    # Choose your component:
    
    # For Plugin:
-   mkdir obsidian-spark
-   cd obsidian-spark
+   mkdir spark
+   cd spark
    # Follow Phase 1 of IMPLEMENTATION_PLAN_PLUGIN.md
    
    # For Daemon:

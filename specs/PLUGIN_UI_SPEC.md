@@ -549,7 +549,7 @@ obsidian-claude-code/
 │   └── context-loader.ts     # Context loading
 
 Our Fork:
-obsidian-spark/
+spark/
 ├── src/
 │   ├── chat-widget.ts        # NEW: Intercom-style UI
 │   ├── command-palette.ts    # NEW: Notion-style palette

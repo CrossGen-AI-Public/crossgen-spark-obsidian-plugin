@@ -14,7 +14,7 @@ const prod = process.argv[2] === "production";
 // In prod mode, output to dist/ directory
 const outfile = prod
     ? "dist/main.js"
-    : "../example-vault/.obsidian/plugins/obsidian-spark/main.js";
+    : "../example-vault/.obsidian/plugins/spark/main.js";
 
 const context = await esbuild.context({
     banner: {
@@ -54,8 +54,8 @@ if (prod) {
     process.exit(0);
 } else {
     // Copy static files to vault in dev mode
-    copyFileSync("styles.css", "../example-vault/.obsidian/plugins/obsidian-spark/styles.css");
-    copyFileSync("manifest.json", "../example-vault/.obsidian/plugins/obsidian-spark/manifest.json");
+    copyFileSync("styles.css", "../example-vault/.obsidian/plugins/spark/styles.css");
+    copyFileSync("manifest.json", "../example-vault/.obsidian/plugins/spark/manifest.json");
     console.log("🔥 Dev mode active - watching for changes...");
     await context.watch();
 }

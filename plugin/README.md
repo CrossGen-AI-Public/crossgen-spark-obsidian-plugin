@@ -33,7 +33,7 @@ npm install
 
 **2. Set up Hot Reload for instant development:**
 
-The plugin uses [Hot Reload](https://github.com/pjeby/hot-reload) for automatic reloading during development. In dev mode, the build outputs directly to `example-vault/.obsidian/plugins/obsidian-spark/` instead of using symlinks (which Hot Reload doesn't support).
+The plugin uses [Hot Reload](https://github.com/pjeby/hot-reload) for automatic reloading during development. In dev mode, the build outputs directly to `example-vault/.obsidian/plugins/spark/` instead of using symlinks (which Hot Reload doesn't support).
 
 ```bash
 # Clone Hot Reload plugin into example-vault
@@ -94,13 +94,13 @@ npm run format:check
 5. **Test changes** immediately!
 
 **Build Output:**
-- **Dev mode:** `example-vault/.obsidian/plugins/obsidian-spark/` (main.js, manifest.json, styles.css)
+- **Dev mode:** `example-vault/.obsidian/plugins/spark/` (main.js, manifest.json, styles.css)
 - **Production:** `plugin/dist/` (main.js, manifest.json, styles.css) - ready for distribution
 
 **Alternative Reload Methods (if not using Hot Reload):**
 - Command Palette → "Reload app without saving"
 - Toggle plugin off/on in settings
-- Developer console: `app.plugins.disablePlugin('obsidian-spark').then(() => app.plugins.enablePlugin('obsidian-spark'))`
+- Developer console: `app.plugins.disablePlugin('spark').then(() => app.plugins.enablePlugin('spark'))`
 
 ### Project Structure
 
