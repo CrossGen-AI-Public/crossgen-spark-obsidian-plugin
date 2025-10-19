@@ -83,13 +83,6 @@ spark status ~/vault                  # Check specific vault
 spark stop ~/vault                    # Stop daemon gracefully
 spark stop ~/vault --force            # Force stop (SIGKILL)
 
-# Development mode (hot reload) 🔥
-spark dev [vault-path]                # Start with hot reload
-spark dev ~/vault --debug             # Debug mode with hot reload
-spark dev ~/vault --no-restart        # Disable auto-restart on changes
-spark dev ~/vault --run-tests         # Run tests on every change
-spark dev ~/vault --no-config-reload  # Disable auto config reload
-
 # Configuration
 spark config [vault-path]             # Validate configuration
 spark inspect [vault-path]            # Show vault info and config
@@ -148,100 +141,69 @@ spark parse "/summarize @report.md"
 
 ## Development Mode 🔥
 
-The `spark dev` command provides hot reload for rapid development iteration:
+For rapid development iteration, use **tsx watch** which automatically restarts the daemon when source files change:
 
 ```bash
-# Start with default settings (auto-restart enabled, config reload enabled)
-spark dev ~/vault
+# Start dev mode from daemon directory (watches all TypeScript files)
+cd daemon
+npm run dev
 
 # With debug logging
-spark dev ~/vault --debug
+npm run dev:debug
 
-# Disable auto-restart (manual restart required after rebuild)
-spark dev ~/vault --no-restart
-
-# Run tests on every source change
-spark dev ~/vault --run-tests
-
-# Disable config auto-reload
-spark dev ~/vault --no-config-reload
+# The daemon will automatically:
+# ✓ Reload TypeScript source files on change
+# ✓ Restart daemon process with new code
+# ✓ Reload config when .spark/config.yaml changes (no restart needed!)
 ```
 
 ### Features
 
-**Auto-rebuild on source changes:**
-- Watches `src/**/*.ts` (excluding tests)
-- Debounced (300ms) to avoid rebuild storms
-- Shows rebuild time and success/failure
+**Built-in with tsx watch:**
+- Zero configuration required
+- Watches all TypeScript source files
+- Instant restart on changes (~1 second)
+- Works directly with TypeScript (no build step!)
+- Industry-standard tool
 
-**Auto-restart daemon (optional):**
-- Enabled by default
-- Restarts daemon after successful rebuild
-- Preserves daemon state and configuration
-- Use `--no-restart` to disable
-
-**Auto-reload config (optional):**
-- Watches `.spark/config.yaml` in vault
-- Reloads config without full restart
-- Restarts file watcher if watch patterns changed
-- Enabled by default, use `--no-config-reload` to disable
-
-**Run tests on changes (optional):**
-- Watches test files
-- Runs full test suite on changes
-- Shows pass/fail status
-- Use `--run-tests` to enable
+**Automatic config reload:**
+- Daemon watches `.spark/config.yaml` in your vault
+- Reloads config automatically when file changes
+- No daemon restart needed for config changes
+- Updates logger, watcher patterns, and all settings dynamically
 
 ### Dev Workflow
 
 ```bash
 # Terminal 1: Start dev mode
 cd daemon
-spark dev ~/example-vault --debug
+npm run dev
 
 # Terminal 2: Make changes
 vim src/parser/MentionParser.ts
+# → Daemon automatically restarts with new code
 
-# Watch Terminal 1:
-# 📝 Source changed: src/parser/MentionParser.ts
-# 🔨 Rebuilding...
-# ✓ Rebuild complete (1234ms)
-# 🔄 Restarting daemon...
-# ✓ Daemon restarted
-
-# Edit config
-vim ~/example-vault/.spark/config.yaml
-
-# Watch Terminal 1:
-# ⚙️  Config changed, reloading...
-# ✓ Config reloaded
+# Edit config while running
+vim ~/vault/.spark/config.yaml
+# → Config automatically reloads (no restart!)
 
 # Press Ctrl+C to stop
-# 🛑 Shutting down...
-# 📊 Hot Reload Stats:
-#    Rebuilds: 5
-#    Restarts: 5
-#    Config Reloads: 2
-# ✓ Development mode stopped
 ```
 
 ### NPM Scripts
 
 ```bash
-# Quick dev mode (using tsx watch)
-npm run dev
+# Dev mode (tsx watch)
+npm run dev          # Standard dev mode
+npm run dev:debug    # With debug logging
 
-# Full dev mode with daemon
-npm run dev:daemon
+# Testing
+npm run test         # Run tests once
+npm run test:watch   # Watch tests
 
-# Debug mode
-npm run dev:debug
-
-# With test execution
-npm run dev:full
-
-# Build and watch (no daemon)
-npm run build:watch
+# Build (production)
+npm run build        # Build once
+npm run build:watch  # Continuous build
 ```
 
 ## Global Registry
@@ -259,11 +221,12 @@ The daemon maintains a global registry at `~/.spark/registry.json` that tracks a
 # Install dependencies
 npm install
 
-# Run in dev mode (hot reload)
+# Run in dev mode (auto-restart on changes)
 npm run dev
 
-# Start daemon
-npm start -- /path/to/vault
+# Start daemon in production mode
+npm run build
+spark start /path/to/vault
 ```
 
 ### Quality Checks

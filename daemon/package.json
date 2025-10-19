@@ -8,10 +8,8 @@
         "spark": "./dist/cli.js"
     },
     "scripts": {
-        "dev": "tsx watch src/index.ts",
-        "dev:daemon": "npm run build && node dist/cli.js dev",
-        "dev:debug": "npm run build && node dist/cli.js dev --debug",
-        "dev:full": "npm run build && node dist/cli.js dev --run-tests",
+        "dev": "tsx watch --clear-screen=false src/cli.ts start",
+        "dev:debug": "tsx watch --clear-screen=false src/cli.ts start --debug",
         "build": "tsc --project tsconfig.build.json",
         "build:watch": "tsc --project tsconfig.build.json --watch",
         "start": "node dist/index.js",

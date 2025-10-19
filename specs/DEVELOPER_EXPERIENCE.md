@@ -267,7 +267,7 @@
 - 264 tests, 79% coverage
 
 ### ✅ Priority 2: Debugging Tools - COMPLETE
-- CLI: `spark start|status|stop|config|inspect|parse|version|dev`
+- CLI: `spark start|status|stop|config|inspect|parse|version|reload`
 - Global daemon registry (`~/.spark/registry.json`)
 - DevLogger with namespaces and timing
 - DaemonInspector for state inspection  
@@ -275,12 +275,10 @@
 - Enhanced debug logging throughout
 
 ### ✅ Priority 4: Development Workflow - COMPLETE
-- HotReloadManager for automatic rebuild on changes
-- Dev mode CLI command: `spark dev`
-- Auto-restart daemon on source changes (optional)
-- Auto-reload config on config changes
-- Run tests on changes (optional)
-- Enhanced dev scripts in package.json
+- Development mode using `tsx watch` (industry standard)
+- Automatic config reload on config file changes (built into daemon)
+- Enhanced dev scripts in package.json (`npm run dev`, `npm run dev:debug`)
+- Production config reload via `spark reload` command
 
 ---
 
@@ -604,42 +602,19 @@ triggers:
 
 ### Priority 4: Development Workflow ✅ COMPLETE
 
-#### Hot Reload with Context
-```typescript
-// daemon/src/dev/HotReloadManager.ts ✅
-export class HotReloadManager {
-  constructor(daemon: SparkDaemon | null, options: HotReloadOptions = {}) {
-    this.options = {
-      autoRestart: false,
-      autoReloadConfig: true,
-      runTests: false,
-      debounceDelay: 300,
-      debug: true,
-      ...options,
-    };
-  }
-  
-  public async start(): Promise<void> {
-    // Watch source files
-    this.watchSourceFiles();
-    
-    // Watch config files
-    if (this.options.autoReloadConfig && this.daemon) {
-      this.watchConfigFiles();
-    }
-    
-    // Watch test files
-    if (this.options.runTests) {
-      this.watchTestFiles();
-    }
-  }
-  
-  // Auto-rebuild on source changes
-  // Auto-reload config without restart
-  // Optional: auto-restart daemon
-  // Optional: run tests on changes
-}
+#### Development Mode with tsx watch
+```bash
+# Development mode - auto-restarts on any TypeScript file change
+cd daemon
+npm run dev          # Standard dev mode
+npm run dev:debug    # With debug logging
 ```
+
+Uses **tsx watch** - industry-standard, zero-config hot reload:
+- Watches all TypeScript files in `src/`
+- Automatically restarts daemon on changes (~1 second)
+- No build step needed (runs TypeScript directly)
+- Fast, reliable, battle-tested
 
 #### Development Scripts
 ```json
@@ -647,9 +622,7 @@ export class HotReloadManager {
 {
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "dev:daemon": "npm run build && node dist/cli.js dev",
-    "dev:debug": "npm run build && node dist/cli.js dev --debug",
-    "dev:full": "npm run build && node dist/cli.js dev --run-tests",
+    "dev:debug": "tsx watch src/index.ts --debug",
     "build": "tsc --project tsconfig.build.json",
     "build:watch": "tsc --project tsconfig.build.json --watch",
     "clean": "rm -rf dist coverage",
@@ -658,25 +631,33 @@ export class HotReloadManager {
 }
 ```
 
-#### CLI Dev Command ✅
+#### Automatic Config Reload (Built-in) ✅
+The daemon watches `.spark/config.yaml` and automatically reloads when it changes:
+
+```typescript
+// SparkDaemon.startConfigWatcher() - called during daemon.start()
+private startConfigWatcher(): void {
+  const configPath = join(this.vaultPath, '.spark', 'config.yaml');
+  
+  this.configWatcher = chokidar.watch(configPath, {
+    persistent: true,
+    ignoreInitial: true,
+    awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 }
+  });
+  
+  this.configWatcher.on('change', () => {
+    this.logger.info('Config file changed, reloading...');
+    void this.reloadConfig();
+  });
+}
+```
+
+**Works in both development AND production!** No special dev mode needed.
+
+#### Production Config Reload ✅
 ```bash
-# Start daemon with hot reload
-spark dev ~/vault
-
-# With debug logging
-spark dev ~/vault --debug
-
-# With auto-restart on changes
-spark dev ~/vault  # auto-restart is enabled by default
-
-# Disable auto-restart (manual restart required)
-spark dev ~/vault --no-restart
-
-# Run tests on changes
-spark dev ~/vault --run-tests
-
-# Disable config auto-reload
-spark dev ~/vault --no-config-reload
+# Reload config in production without restarting daemon
+spark reload ~/vault
 ```
 
 #### SparkDaemon.reloadConfig() ✅
@@ -689,13 +670,19 @@ public async reloadConfig(): Promise<void> {
   // Update config
   this.config = newConfig;
   
-  // Reinitialize logger
-  this.logger = Logger.getInstance(newConfig.logging);
+  // Update logger with new settings (singleton)
+  this.logger.updateConfig(newConfig.logging);
   
   // Restart watcher with new configuration
   if (this.watcher) {
     await this.watcher.stop();
-    this.watcher = new FileWatcher({ /* new config */ });
+    this.watcher = new FileWatcher({
+      vaultPath: this.vaultPath,
+      patterns: newConfig.daemon.watch.patterns,
+      ignore: newConfig.daemon.watch.ignore,
+      debounceMs: newConfig.daemon.debounce_ms,
+    });
+    this.watcher.on('change', (change) => void this.handleFileChange(change));
     await this.watcher.start();
   }
 }
@@ -910,7 +897,7 @@ private myFeature: MyFeatureClass;
 1. ✅ Testing infrastructure (264 tests, 79% coverage)
 2. ✅ CLI and debugging tools
 3. ✅ JSDoc comments
-4. ✅ Hot reload (HotReloadManager + dev CLI)
+4. ✅ Development workflow (tsx watch + automatic config reload)
 
 ### 🔜 Week 3: Remaining
 5. ⏳ Examples and templates

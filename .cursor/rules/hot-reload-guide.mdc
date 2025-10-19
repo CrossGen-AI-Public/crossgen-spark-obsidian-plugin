@@ -2,89 +2,66 @@
 description: hot reload
 alwaysApply: false
 ---
-# Hot Reload Development Guide
+# Development Hot Reload Guide
 
 ## Overview
 
-The `spark dev` command provides hot reload functionality for rapid development iteration. It automatically detects file changes, rebuilds the project, and restarts the daemon.
+Spark uses **tsx watch** for development hot reload - a zero-config, industry-standard tool that automatically restarts the daemon when TypeScript files change.
+
+## Quick Start
+
+```bash
+cd daemon
+npm run dev          # Standard dev mode
+npm run dev:debug    # With debug logging
+```
+
+That's it! The daemon will automatically restart on any TypeScript file change.
 
 ## How It Works
 
-### File Watching
-- Watches **all `.ts` files** in `src/` directory (excluding test files)
-- Uses **chokidar** with callback-based `ignored` function
-- Includes `awaitWriteFinish` option to wait for file writes to complete
-- Follows the same pattern as `FileWatcher` for vault files
+### tsx watch (Built-in Node.js hot reload)
 
-**Important:** Do NOT use glob patterns like `src/**/*.ts` with `cwd` option - they don't work reliably on macOS. Instead, watch the directory directly and filter in the callback.
+- **Zero configuration** - works out of the box
+- Watches all TypeScript files in `src/`
+- Runs TypeScript directly (no build step!)
+- Instant restart on changes (~1 second)
+- Industry standard, battle-tested tool
 
-### Auto-Rebuild
-- Detects any `.ts` file change in `src/`
-- Runs `npm run build` automatically (~1 second)
-- Debounced with 300ms delay to batch rapid changes
+### Automatic Config Reload
 
-### Auto-Restart
-- Stops the daemon gracefully
-- Resets singletons (Logger.resetInstance())
-- Starts the daemon with rebuilt code
-- Takes 1-2 seconds total
+The daemon itself watches `.spark/config.yaml` and reloads config changes automatically:
 
-## Limitations
+- **No daemon restart** needed for config changes
+- Updates logger settings dynamically
+- Restarts file watcher if patterns change
+- Works in both development and production
 
-Due to Node.js ES module caching, some changes may not reload:
+## Coding Best Practices
 
-**Works Well:**
-- Changes to `SparkDaemon.ts`
-- Changes to top-level files
-- Direct imports in SparkDaemon
+### For New Features (like AI integration)
 
-**May Need Manual Restart:**
-- Deeply nested module changes
-- Complex singleton patterns
-- Long import chains (A → B → C → D)
-
-**Solution:** Press `Ctrl+C` and run `spark dev` again (~1 second)
-
-## Coding Best Practices for Hot Reload
-
-### 1. Keep Import Chains Short
-
-**Good:**
+**✅ Good - Import directly in SparkDaemon:**
 ```typescript
 // In SparkDaemon.ts
 import { ClaudeClient } from './ai/ClaudeClient.js';
 
-private async processCommand() {
+private async processCommand(command: ParsedCommand) {
   const client = new ClaudeClient(this.config.ai);
-  // ...
+  const result = await client.chat(messages);
+  // Hot reload works perfectly!
 }
 ```
 
-**Avoid:**
+**⚠️ Avoid - Deep nesting:**
 ```typescript
 // SparkDaemon → CommandProcessor → AIOrchestrator → ClaudeClient
-// Long chain = less likely to reload
+// Long chains may require manual restart for deep changes
 ```
 
-### 2. Top-Level Imports
+### Singleton Pattern
 
-Import new modules at the top level of SparkDaemon or other main entry points:
-
-```typescript
-// At the top of SparkDaemon.ts
-import { AIProcessor } from './ai/AIProcessor.js';
-import { ContextBuilder } from './context/ContextBuilder.js';
-
-// Use in methods
-private async handleAIRequest() {
-  const processor = new AIProcessor();
-  // ...
-}
-```
-
-### 3. Singleton Pattern
-
-If you need singletons, implement a `resetInstance()` method:
+If you need singletons, implement `resetInstance()`:
 
 ```typescript
 export class MyService {
@@ -103,13 +80,13 @@ export class MyService {
 }
 ```
 
-Then reset it in `HotReloadManager.restartDaemon()` if needed.
+Then reset in daemon lifecycle if needed.
 
-### 4. Avoid Module-Level State
+### Avoid Module-Level State
 
-**Avoid:**
+**❌ Avoid:**
 ```typescript
-// Module-level cache that won't reset
+// Module-level cache persists across restarts
 const cache = new Map();
 
 export function getData() {
@@ -117,9 +94,9 @@ export function getData() {
 }
 ```
 
-**Better:**
+**✅ Better:**
 ```typescript
-// Instance-level state that resets with new instance
+// Instance-level state resets with new instance
 export class DataService {
   private cache = new Map();
   
@@ -129,230 +106,86 @@ export class DataService {
 }
 ```
 
-### 5. Feature Integration
+## What Gets Reloaded
 
-When adding new features (AI, triggers, etc.):
-- Import directly in SparkDaemon
-- Create new instances in methods (don't cache at module level)
-- Keep the dependency tree shallow
+### Automatic (no restart needed)
+- ✅ Config file changes (`.spark/config.yaml`)
+- ✅ Logging settings
+- ✅ Watch patterns
+- ✅ All config values
 
-## Usage
+### Automatic (with restart ~1s)
+- ✅ TypeScript source changes
+- ✅ New files added
+- ✅ Files deleted
+- ✅ Import structure changes
+
+### May need manual restart
+- ⚠️ Complex singleton patterns with cached state
+- ⚠️ Deep dependency changes (rare)
+
+**If something doesn't reload:** Press `Ctrl+C` and run `npm run dev` again (~1 second)
+
+## NPM Scripts
 
 ```bash
-# Start dev mode with hot reload
-cd example-vault
-spark dev
+# Development
+npm run dev          # Start with tsx watch
+npm run dev:debug    # With debug logging
 
-# With options
-spark dev --debug                # Enable debug logging
-spark dev --no-restart          # Disable auto-restart
-spark dev --no-config-reload    # Disable config reload
-spark dev --run-tests           # Run tests on changes
+# Testing
+npm run test         # Run once
+npm run test:watch   # Continuous testing
 
-# Stop
-Ctrl+C
+# Production
+npm run build        # Build for production
+spark start /vault   # Run production build
 ```
 
-## Troubleshooting
+## Why tsx watch?
 
-### Changes Not Reloading?
-1. Check if file is in `src/` (not test files)
-2. Check terminal for rebuild/restart messages
-3. Try manual restart: `Ctrl+C` then `spark dev`
+We simplified from a custom 450-line `HotReloadManager` to using `tsx watch` because:
 
-### Process Not Restarting?
-- Check for errors in terminal
-- Ensure daemon stops cleanly (no hanging processes)
-- Use `spark status` to check for stuck daemons
+1. ✅ **Zero maintenance** - industry standard tool
+2. ✅ **Works with TypeScript directly** - no build step
+3. ✅ **Faster iteration** - instant reload
+4. ✅ **Simpler** - 0 lines of custom code
+5. ✅ **More reliable** - battle-tested by thousands of projects
 
-### Build Failures?
-- Fix TypeScript errors
-- Hot reload will retry on next change
-- Use `npm run build` to see full error output
+## Config Auto-Reload
 
-## Performance
-
-Hot reload saves significant development time:
-
-- **Without hot reload:** Edit → `npm run build` → `spark stop` → `spark start` → test (10-15 seconds)
-- **With hot reload:** Edit → wait 1-2 seconds → test (90% faster!)
-
-Even with occasional manual restarts, hot reload is much faster than the manual workflow.
-
-# Hot Reload Development Guide
-
-## Overview
-
-The `spark dev` command provides hot reload functionality for rapid development iteration. It automatically detects file changes, rebuilds the project, and restarts the daemon.
-
-## How It Works
-
-### File Watching
-- Watches **all `.ts` files** in `src/` directory (excluding test files)
-- Uses **chokidar** with callback-based `ignored` function
-- Includes `awaitWriteFinish` option to wait for file writes to complete
-- Follows the same pattern as `FileWatcher` for vault files
-
-**Important:** Do NOT use glob patterns like `src/**/*.ts` with `cwd` option - they don't work reliably on macOS. Instead, watch the directory directly and filter in the callback.
-
-### Auto-Rebuild
-- Detects any `.ts` file change in `src/`
-- Runs `npm run build` automatically (~1 second)
-- Debounced with 300ms delay to batch rapid changes
-
-### Auto-Restart
-- Stops the daemon gracefully
-- Resets singletons (Logger.resetInstance())
-- Starts the daemon with rebuilt code
-- Takes 1-2 seconds total
-
-## Limitations
-
-Due to Node.js ES module caching, some changes may not reload:
-
-**Works Well:**
-- Changes to `SparkDaemon.ts`
-- Changes to top-level files
-- Direct imports in SparkDaemon
-
-**May Need Manual Restart:**
-- Deeply nested module changes
-- Complex singleton patterns
-- Long import chains (A → B → C → D)
-
-**Solution:** Press `Ctrl+C` and run `spark dev` again (~1 second)
-
-## Coding Best Practices for Hot Reload
-
-### 1. Keep Import Chains Short
-
-**Good:**
-```typescript
-// In SparkDaemon.ts
-import { ClaudeClient } from './ai/ClaudeClient.js';
-
-private async processCommand() {
-  const client = new ClaudeClient(this.config.ai);
-  // ...
-}
-```
-
-**Avoid:**
-```typescript
-// SparkDaemon → CommandProcessor → AIOrchestrator → ClaudeClient
-// Long chain = less likely to reload
-```
-
-### 2. Top-Level Imports
-
-Import new modules at the top level of SparkDaemon or other main entry points:
+The daemon watches config files independently of tsx:
 
 ```typescript
-// At the top of SparkDaemon.ts
-import { AIProcessor } from './ai/AIProcessor.js';
-import { ContextBuilder } from './context/ContextBuilder.js';
-
-// Use in methods
-private async handleAIRequest() {
-  const processor = new AIProcessor();
-  // ...
-}
-```
-
-### 3. Singleton Pattern
-
-If you need singletons, implement a `resetInstance()` method:
-
-```typescript
-export class MyService {
-  private static instance: MyService;
-
-  public static getInstance(): MyService {
-    if (!MyService.instance) {
-      MyService.instance = new MyService();
-    }
-    return MyService.instance;
-  }
-
-  public static resetInstance(): void {
-    MyService.instance = undefined as unknown as MyService;
-  }
-}
-```
-
-Then reset it in `HotReloadManager.restartDaemon()` if needed.
-
-### 4. Avoid Module-Level State
-
-**Avoid:**
-```typescript
-// Module-level cache that won't reset
-const cache = new Map();
-
-export function getData() {
-  return cache.get('key');
-}
-```
-
-**Better:**
-```typescript
-// Instance-level state that resets with new instance
-export class DataService {
-  private cache = new Map();
+// In SparkDaemon.ts - automatically watches config
+private startConfigWatcher(): void {
+  const configPath = join(this.vaultPath, '.spark', 'config.yaml');
   
-  getData() {
-    return this.cache.get('key');
-  }
+  this.configWatcher = chokidar.watch(configPath, {
+    persistent: true,
+    ignoreInitial: true,
+    awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 },
+  });
+  
+  this.configWatcher.on('change', () => {
+    void this.reloadConfig(); // No restart needed!
+  });
 }
 ```
 
-### 5. Feature Integration
-
-When adding new features (AI, triggers, etc.):
-- Import directly in SparkDaemon
-- Create new instances in methods (don't cache at module level)
-- Keep the dependency tree shallow
-
-## Usage
-
-```bash
-# Start dev mode with hot reload
-cd example-vault
-spark dev
-
-# With options
-spark dev --debug                # Enable debug logging
-spark dev --no-restart          # Disable auto-restart
-spark dev --no-config-reload    # Disable config reload
-spark dev --run-tests           # Run tests on changes
-
-# Stop
-Ctrl+C
-```
+This works in **both development and production** - users can change config without restarting their daemon.
 
 ## Troubleshooting
 
-### Changes Not Reloading?
-1. Check if file is in `src/` (not test files)
-2. Check terminal for rebuild/restart messages
-3. Try manual restart: `Ctrl+C` then `spark dev`
+### Changes not reloading?
+1. Check if file is in `src/` (tsx watches all files there)
+2. Check terminal for error messages
+3. Try manual restart: `Ctrl+C` then `npm run dev`
 
-### Process Not Restarting?
-- Check for errors in terminal
-- Ensure daemon stops cleanly (no hanging processes)
-- Use `spark status` to check for stuck daemons
+### "Cannot find module" errors?
+- You may need to restart tsx for new files
+- Press `Ctrl+C` and run `npm run dev` again
 
-### Build Failures?
-- Fix TypeScript errors
-- Hot reload will retry on next change
-- Use `npm run build` to see full error output
-
-## Performance
-
-Hot reload saves significant development time:
-
-- **Without hot reload:** Edit → `npm run build` → `spark stop` → `spark start` → test (10-15 seconds)
-- **With hot reload:** Edit → wait 1-2 seconds → test (90% faster!)
-
-Even with occasional manual restarts, hot reload is much faster than the manual workflow.
-
+### Performance issues?
+- tsx is very fast (~1s restart)
+- If slow, check for very large files or circular imports

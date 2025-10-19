@@ -5,6 +5,8 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import chokidar from 'chokidar';
+import type { FSWatcher } from 'chokidar';
 import type { ISparkDaemon, DaemonState } from './types/index.js';
 import type { SparkConfig } from './types/config.js';
 import type { FileChange } from './types/watcher.js';
@@ -20,6 +22,7 @@ export class SparkDaemon implements ISparkDaemon {
   private vaultPath: string;
   private config: SparkConfig | null;
   private watcher: FileWatcher | null;
+  private configWatcher: FSWatcher | null;
   private logger: Logger | null;
   private fileParser: FileParser | null;
   private inspector: DaemonInspector | null;
@@ -29,6 +32,7 @@ export class SparkDaemon implements ISparkDaemon {
     this.vaultPath = vaultPath;
     this.config = null;
     this.watcher = null;
+    this.configWatcher = null;
     this.logger = null;
     this.fileParser = null;
     this.inspector = null;
@@ -89,6 +93,9 @@ export class SparkDaemon implements ISparkDaemon {
       this.watcher.start();
       this.logger.debug('File watcher started');
 
+      // Watch config file for changes
+      this.startConfigWatcher();
+
       // Initialize inspector
       this.inspector = new DaemonInspector(this);
       this.inspector.recordStart();
@@ -118,6 +125,12 @@ export class SparkDaemon implements ISparkDaemon {
     // Record stop in inspector
     if (this.inspector) {
       this.inspector.recordStop();
+    }
+
+    // Stop config watcher
+    if (this.configWatcher) {
+      await this.configWatcher.close();
+      this.configWatcher = null;
     }
 
     // Stop file watcher
@@ -210,6 +223,39 @@ export class SparkDaemon implements ISparkDaemon {
       writeFileSync(statusFile, JSON.stringify(statusData, null, 2));
     } catch {
       // Ignore write errors - reload still works, just no CLI feedback
+    }
+  }
+
+  /**
+   * Start watching config file for automatic reloads
+   */
+  private startConfigWatcher(): void {
+    const configPath = join(this.vaultPath, '.spark', 'config.yaml');
+
+    this.configWatcher = chokidar.watch(configPath, {
+      persistent: true,
+      ignoreInitial: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 100,
+        pollInterval: 50,
+      },
+    });
+
+    this.configWatcher.on('change', () => {
+      if (this.logger) {
+        this.logger.info('Config file changed, reloading...');
+      }
+      void this.reloadConfig();
+    });
+
+    this.configWatcher.on('error', (error) => {
+      if (this.logger) {
+        this.logger.error('Config watcher error:', { error });
+      }
+    });
+
+    if (this.logger) {
+      this.logger.debug('Watching config file for changes', { configPath });
     }
   }
 

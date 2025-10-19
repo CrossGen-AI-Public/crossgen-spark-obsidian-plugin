@@ -26,7 +26,6 @@ export default {
         '!src/index.ts',
         '!src/cli.ts',
         '!src/types/**',
-        '!src/cli/HotReloadManager.ts', // Development tooling only
     ],
     coverageDirectory: 'coverage',
     coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
