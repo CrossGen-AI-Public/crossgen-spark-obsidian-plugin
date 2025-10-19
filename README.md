@@ -25,29 +25,38 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 
 ### Prerequisites
 
-- **Obsidian** vault
 - **Node.js** 18+ 
 - **Claude API key** (from Anthropic)
+- **Obsidian** (optional - comes with example vault)
 
 ### Installation
 
-**Quick Install (Recommended):**
+**Development Setup (Recommended):**
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourorg/spark.git
-cd spark
+git clone https://github.com/automazeio/crossgen-spark.git
+cd crossgen-spark
 
-# 2. Run installer with your vault path
-./install.sh ~/Documents/MyVault
+# 2. Run installer (sets up example-vault with hot reload)
+./install.sh
 
 # 3. Set your API key
 export ANTHROPIC_API_KEY=your_key_here
 
-# 4. Enable plugin in Obsidian
-# Settings → Community plugins → Enable "Spark"
+# 4. Open example-vault in Obsidian
+# - Plugins are auto-enabled (Spark + Hot Reload)
+# - Ready for development!
 
 # 5. Start daemon
+spark start example-vault
+```
+
+**Install to Your Vault:**
+
+```bash
+# Same steps, but specify your vault path
+./install.sh ~/Documents/MyVault
 spark start ~/Documents/MyVault
 ```
 
@@ -90,11 +99,11 @@ spark start ~/Documents/MyVault
 
 ### First Steps
 
-1. Open Obsidian
-2. Type `/summarize` in any note
-3. Watch as AI creates a summary
-4. Press `Cmd+K` to open chat
-5. Ask: `@betty what's in @finance/Q4/`
+1. Open `example-vault` in Obsidian
+2. Type `/` in any note to see available commands
+3. Try `/summarize` or mention `@betty`
+4. Press `Cmd+K` to open chat (coming soon)
+5. For development: `cd plugin && npm run dev` for hot reload
 
 ---
 

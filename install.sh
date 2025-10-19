@@ -80,63 +80,106 @@ if [ -d "$SCRIPT_DIR/.githooks" ]; then
     echo ""
 fi
 
-# Check if vault path is provided
+# Check if vault path is provided, default to example-vault
 if [ -n "$1" ]; then
     VAULT_PATH="$1"
-    
     # Expand ~ to home directory
     VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
-    
-    if [ ! -d "$VAULT_PATH" ]; then
-        echo -e "${RED}✗ Vault path does not exist: $VAULT_PATH${NC}"
-        exit 1
-    fi
-    
-    echo -e "${YELLOW}→ Installing plugin to vault...${NC}"
-    PLUGIN_DIR="$VAULT_PATH/.obsidian/plugins/spark"
-    mkdir -p "$PLUGIN_DIR"
-    cp -r "$SCRIPT_DIR/plugin/dist/"* "$PLUGIN_DIR/"
-    echo -e "${GREEN}✓ Plugin installed to: $PLUGIN_DIR${NC}"
-    echo ""
-    
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}✓ Installation complete!${NC}"
-    echo ""
-    echo -e "${YELLOW}Next steps:${NC}"
-    echo "  1. Set your API key:"
-    echo "     export ANTHROPIC_API_KEY=your_key_here"
-    echo ""
-    echo "  2. Enable plugin in Obsidian:"
-    echo "     Settings → Community plugins → Enable 'Spark'"
-    echo ""
-    echo "  3. Start the daemon:"
-    echo "     spark start $VAULT_PATH              # Foreground"
-    echo "     spark start $VAULT_PATH &            # Background"
-    echo ""
-    echo "  4. Test with debug mode:"
-    echo "     spark start $VAULT_PATH --debug &"
 else
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}✓ Build complete!${NC}"
+    # Default to example-vault for development
+    VAULT_PATH="$SCRIPT_DIR/example-vault"
+    echo -e "${BLUE}ℹ  No vault path specified, using example-vault for development${NC}"
     echo ""
-    echo -e "${YELLOW}Next steps:${NC}"
-    echo "  1. Set your API key:"
-    echo "     export ANTHROPIC_API_KEY=your_key_here"
-    echo ""
-    echo "  2. Install plugin to your vault:"
-    echo "     mkdir -p ~/Documents/YourVault/.obsidian/plugins/spark"
-    echo "     cp -r $SCRIPT_DIR/plugin/dist/* ~/Documents/YourVault/.obsidian/plugins/spark/"
-    echo ""
-    echo "  3. Enable plugin in Obsidian:"
-    echo "     Settings → Community plugins → Enable 'Spark'"
-    echo ""
-    echo "  4. Start the daemon:"
-    echo "     spark start ~/Documents/YourVault              # Foreground"
-    echo "     spark start ~/Documents/YourVault &            # Background"
-    echo ""
-    echo -e "${BLUE}Tip:${NC} Run this script with your vault path to auto-install:"
-    echo "     ./install.sh ~/Documents/YourVault"
 fi
+
+if [ ! -d "$VAULT_PATH" ]; then
+    echo -e "${RED}✗ Vault path does not exist: $VAULT_PATH${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}→ Installing plugin to vault...${NC}"
+PLUGIN_DIR="$VAULT_PATH/.obsidian/plugins/spark"
+mkdir -p "$PLUGIN_DIR"
+cp -r "$SCRIPT_DIR/plugin/dist/"* "$PLUGIN_DIR/"
+
+# Create .hotreload file for Hot Reload plugin
+touch "$PLUGIN_DIR/.hotreload"
+
+echo -e "${GREEN}✓ Plugin installed to: $PLUGIN_DIR${NC}"
+
+# Install Hot Reload plugin for development
+echo -e "${YELLOW}→ Installing Hot Reload plugin for development...${NC}"
+HOT_RELOAD_DIR="$VAULT_PATH/.obsidian/plugins/hot-reload"
+if [ -d "$HOT_RELOAD_DIR" ]; then
+    echo -e "${BLUE}  ℹ Hot Reload already installed, updating...${NC}"
+    cd "$HOT_RELOAD_DIR"
+    git pull --quiet
+    cd "$SCRIPT_DIR"
+else
+    git clone --quiet https://github.com/pjeby/hot-reload.git "$HOT_RELOAD_DIR"
+fi
+echo -e "${GREEN}✓ Hot Reload plugin installed${NC}"
+
+# Enable plugins in community-plugins.json
+echo -e "${YELLOW}→ Enabling plugins in Obsidian config...${NC}"
+COMMUNITY_PLUGINS_FILE="$VAULT_PATH/.obsidian/community-plugins.json"
+
+# Read existing plugins or start with empty list
+EXISTING_PLUGINS=""
+if [ -f "$COMMUNITY_PLUGINS_FILE" ]; then
+    # Extract plugin names from JSON array (simple grep approach)
+    EXISTING_PLUGINS=$(grep -o '"[^"]*"' "$COMMUNITY_PLUGINS_FILE" | tr -d '"' | grep -v '^\[' | grep -v '^\]')
+fi
+
+# Build new plugin list (hot-reload first, then existing, then spark if not present)
+PLUGINS=()
+PLUGINS+=("hot-reload")
+
+# Add existing plugins (excluding hot-reload and spark to avoid duplicates)
+while IFS= read -r plugin; do
+    if [ -n "$plugin" ] && [ "$plugin" != "hot-reload" ] && [ "$plugin" != "spark" ]; then
+        PLUGINS+=("$plugin")
+    fi
+done <<< "$EXISTING_PLUGINS"
+
+PLUGINS+=("spark")
+
+# Write JSON file
+echo "[" > "$COMMUNITY_PLUGINS_FILE"
+for i in "${!PLUGINS[@]}"; do
+    if [ $i -eq $((${#PLUGINS[@]} - 1)) ]; then
+        echo "  \"${PLUGINS[$i]}\"" >> "$COMMUNITY_PLUGINS_FILE"
+    else
+        echo "  \"${PLUGINS[$i]}\"," >> "$COMMUNITY_PLUGINS_FILE"
+    fi
+done
+echo "]" >> "$COMMUNITY_PLUGINS_FILE"
+
+echo -e "${GREEN}✓ Plugins enabled in config${NC}"
+echo ""
+
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}✓ Installation complete!${NC}"
+echo ""
+echo -e "${GREEN}Hot Reload is configured and ready to use! 🔥${NC}"
+echo ""
+echo -e "${YELLOW}Next steps:${NC}"
+echo "  1. Restart Obsidian to load both plugins"
+echo ""
+echo "  2. Set your API key:"
+echo "     export ANTHROPIC_API_KEY=your_key_here"
+echo ""
+echo "  3. Start the daemon:"
+echo "     spark start $VAULT_PATH              # Foreground"
+echo "     spark start $VAULT_PATH &            # Background"
+echo ""
+echo -e "${YELLOW}For development:${NC}"
+echo "  • Run 'cd plugin && npm run dev' for live plugin editing"
+echo "  • Changes will auto-reload in Obsidian (Hot Reload enabled)"
+echo "  • Use 'spark start $VAULT_PATH --debug &' for daemon debug mode"
+echo ""
+echo -e "${BLUE}Tip:${NC} To install to a different vault, run:"
+echo "     ./install.sh ~/Documents/YourVault"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 

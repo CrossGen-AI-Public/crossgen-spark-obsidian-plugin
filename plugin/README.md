@@ -31,18 +31,17 @@ AI-powered automation for Obsidian with slash commands, chat widget, and intelli
 npm install
 ```
 
-**2. Set up Hot Reload for instant development:**
+**2. Hot Reload is pre-configured:**
 
-The plugin uses [Hot Reload](https://github.com/pjeby/hot-reload) for automatic reloading during development. In dev mode, the build outputs directly to `example-vault/.obsidian/plugins/spark/` instead of using symlinks (which Hot Reload doesn't support).
+The plugin uses [Hot Reload](https://github.com/pjeby/hot-reload) for automatic reloading during development. If you ran `./install.sh` from the root, Hot Reload is already set up. Otherwise:
 
 ```bash
-# Clone Hot Reload plugin into example-vault
+# Clone Hot Reload plugin into example-vault (if not already done)
 cd ../example-vault/.obsidian/plugins
 git clone https://github.com/pjeby/hot-reload.git
 cd -
 
-# Open example-vault in Obsidian
-# Then in Obsidian:
+# Open example-vault in Obsidian and enable both plugins
 # Settings → Community Plugins → Enable "Hot Reload"
 # Settings → Community Plugins → Enable "Spark Assistant"
 ```
