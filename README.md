@@ -3,7 +3,6 @@
 [![Daemon CI](https://github.com/automazeio/crossgen-spark/actions/workflows/daemon-ci.yml/badge.svg)](https://github.com/automazeio/crossgen-spark/actions/workflows/daemon-ci.yml)
 [![Plugin CI](https://github.com/automazeio/crossgen-spark/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/automazeio/crossgen-spark/actions/workflows/plugin-ci.yml)
 
-
 **Transform Obsidian into an intelligent business operating system powered by AI.**
 
 Spark Assistant enables "markdown files triggering AI agents" - turning your Obsidian vault into a living, automated workspace where notes become actions, and simple text triggers complex workflows.
@@ -16,7 +15,7 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 
 1. **Command Palette** - Notion-style autocomplete for instant, atomic actions (`/summarize`, `@betty`)
 2. **Chat Widget** - Persistent conversational AI with full vault context (Cmd+K)
-3. **Automation Engine** - File changes trigger automated workflows (Kanban → Email)
+3. **Automation Engine** - File changes trigger automated workflows
 
 **Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a daemon watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files.
 
@@ -32,31 +31,62 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 
 ### Installation
 
+**Quick Install (Recommended):**
+
 ```bash
 # 1. Clone repository
 git clone https://github.com/yourorg/spark.git
 cd spark
 
-# 2. Set up environment
+# 2. Run installer with your vault path
+./install.sh ~/Documents/MyVault
+
+# 3. Set your API key
 export ANTHROPIC_API_KEY=your_key_here
 
-# 3. Install daemon
-cd spark-daemon
+# 4. Enable plugin in Obsidian
+# Settings → Community plugins → Enable "Spark"
+
+# 5. Start daemon
+spark start ~/Documents/MyVault
+```
+
+**Manual Installation:**
+
+<details>
+<summary>Click to expand manual installation steps</summary>
+
+```bash
+# 1. Clone repository
+git clone https://github.com/automazeio/crossgen-spark.git
+cd spark
+
+# 2. Install and build daemon
+cd daemon
 npm install
 npm run build
 npm link
 
-# 4. Start daemon (points to your vault)
-spark start ~/Documents/MyVault
-
-# 5. Install Obsidian plugin
-cd ../obsidian-spark
+# 3. Install and build plugin
+cd ../plugin
 npm install
 npm run build
-# Copy to vault/.obsidian/plugins/spark/
 
-# 6. Enable plugin in Obsidian settings
+# 4. Copy plugin to your vault
+mkdir -p ~/Documents/MyVault/.obsidian/plugins/spark
+cp -r dist/* ~/Documents/MyVault/.obsidian/plugins/spark/
+
+# 5. Set API key
+export ANTHROPIC_API_KEY=your_key_here
+
+# 6. Enable plugin in Obsidian
+# Settings → Community plugins → Enable "Spark"
+
+# 7. Start daemon
+spark start ~/Documents/MyVault
 ```
+
+</details>
 
 ### First Steps
 
@@ -65,6 +95,96 @@ npm run build
 3. Watch as AI creates a summary
 4. Press `Cmd+K` to open chat
 5. Ask: `@betty what's in @finance/Q4/`
+
+---
+
+## 🔧 CLI Commands
+
+The `spark` CLI provides debugging and inspection tools:
+
+```bash
+# Daemon control
+spark start [vault-path]              # Start watching vault (foreground)
+spark start ~/vault &                 # Run in background
+spark start ~/vault --debug &         # Background with debug logging
+nohup spark start ~/vault > ~/.spark/daemon.log 2>&1 &  # Persistent background
+
+spark status                          # Show all running daemons
+spark status ~/vault                  # Check specific vault
+spark stop ~/vault                    # Stop daemon gracefully
+spark stop ~/vault --force            # Force stop (SIGKILL)
+
+# Configuration
+spark config [vault-path]             # Validate configuration
+spark inspect [vault-path]            # Show vault info and config
+
+# Debugging & History
+spark history [vault-path]            # Show processing history and stats
+spark history ~/vault --limit 20      # Show last 20 events
+spark history ~/vault --stats         # Show statistics only
+spark history ~/vault --clear         # Clear history
+
+# Testing
+spark parse <content>                 # Test parser on text
+spark parse "@betty review @file.md"
+spark parse tasks/todo.md --file      # Parse a file
+
+# Info
+spark version                         # Show version
+spark --help                          # Show all commands
+```
+
+**Global Registry:** The daemon maintains a registry at `~/.spark/registry.json` to track all running daemons across different vaults.
+
+### Running as a Background Service
+
+**Simple background process:**
+```bash
+# Run in background
+spark start ~/Documents/Vault &
+
+# Check status
+spark status
+
+# Stop daemon
+spark stop ~/Documents/Vault
+```
+
+**Persistent background with logs:**
+```bash
+# Create logs directory
+mkdir -p ~/.spark/logs
+
+# Start with logging
+nohup spark start ~/Documents/Vault > ~/.spark/logs/daemon.log 2>&1 &
+
+# View logs
+tail -f ~/.spark/logs/daemon.log
+
+# Or with debug mode
+nohup spark start ~/Documents/Vault --debug > ~/.spark/logs/daemon.log 2>&1 &
+```
+
+**Using a process manager (recommended for production):**
+```bash
+# Install pm2
+npm install -g pm2
+
+# Start daemon with pm2
+pm2 start spark -- start ~/Documents/Vault
+pm2 start spark --name "spark-vault" -- start ~/Documents/Vault --debug
+
+# Manage with pm2
+pm2 list                 # Show all processes
+pm2 logs spark-vault     # View logs
+pm2 restart spark-vault  # Restart
+pm2 stop spark-vault     # Stop
+pm2 delete spark-vault   # Remove
+
+# Auto-start on system boot
+pm2 startup
+pm2 save
+```
 
 ---
 
@@ -88,9 +208,7 @@ spark/
 │   ├── FILE_FORMATS.md                # Command/agent/trigger formats
 │   ├── PLUGIN_UI_SPEC.md              # Plugin interface design
 │   ├── RESULT_AND_ERROR_HANDLING.md   # Result/error handling
-│   └── TRIGGER_SYSTEM_CLARIFIED.md    # Trigger automation
-│
-├── implementation-plans/              # Build guides
+│   ├── TRIGGER_SYSTEM_CLARIFIED.md    # Trigger automation
 │   ├── IMPLEMENTATION_PLAN_PLUGIN.md  # Plugin implementation (4-6 weeks)
 │   └── IMPLEMENTATION_PLAN_DAEMON.md  # Daemon implementation (6-8 weeks)
 │
@@ -114,12 +232,18 @@ spark/
 │   ├── dist/                          # Build output
 │   └── package.json
 │
-└── spark-daemon/                      # Node.js daemon (intelligence layer)
+└── daemon/                            # Node.js daemon (intelligence layer)
     ├── src/
-    │   ├── watcher/
-    │   ├── parser/
-    │   ├── context/
-    │   └── ai/
+    │   ├── cli.ts                     # CLI entry point
+    │   ├── SparkDaemon.ts             # Main orchestrator
+    │   ├── cli/                       # CLI utilities (registry, inspector)
+    │   ├── config/                    # Configuration management
+    │   ├── watcher/                   # File system watching
+    │   ├── parser/                    # Syntax parsing
+    │   ├── context/                   # Context loading
+    │   ├── logger/                    # Logging (Logger, DevLogger)
+    │   └── types/                     # TypeScript types
+    ├── __tests__/                     # Test suite (264 tests, 79% coverage)
     └── package.json
 ```
 
@@ -376,13 +500,22 @@ triggers:
 - npm or pnpm
 - Git
 
-**Clone and install:**
+**Quick setup for development:**
 ```bash
-git clone https://github.com/yourorg/spark.git
+git clone https://github.com/automazeio/crossgen-spark.git
 cd spark
 
-# Install dependencies for both projects
-cd plugin && npm install
+# Install everything (daemon + plugin)
+./install.sh
+
+# Or install to a specific vault
+./install.sh ~/Documents/MyVault
+```
+
+**Manual setup:**
+```bash
+# Install dependencies separately
+cd plugin && npm install --legacy-peer-deps
 cd ../daemon && npm install
 ```
 
@@ -398,8 +531,6 @@ npm run check       # Run all checks (format, lint, types)
 npm run format      # Auto-format code
 npm run lint:fix    # Auto-fix linting issues
 
-# In Obsidian: Enable "Developer Mode" in settings
-# Reload plugin after changes (Cmd+R or Ctrl+R)
 ```
 
 ### Daemon Development
@@ -407,17 +538,9 @@ npm run lint:fix    # Auto-fix linting issues
 ```bash
 cd daemon
 npm install
-npm run dev         # Watch mode with hot reload
-
-# Test with example vault
-npm start -- ../example-vault
-
-# Quality checks
-npm run check       # Run all checks (format, lint, types, tests)
-npm run format      # Auto-format code
-npm run lint:fix    # Auto-fix linting issues
-npm test            # Run all tests (81 tests)
-npm run test:watch  # Watch mode for tests
+npm run dev         # Watch mode
+npm run check       # Format, lint, types, tests
+npm test            # Run tests
 ```
 
 ### Quality Standards
@@ -450,55 +573,30 @@ npm run format                # Prettier formatting
 npm run lint:fix              # ESLint auto-fixes
 ```
 
-**Note:** `npm run check` in both projects automatically fixes formatting and linting issues before running validation checks.
+Run `npm run check` before committing to ensure all checks pass.
 
-#### What Gets Checked
+---
 
-| Check | Plugin | Daemon |
-|-------|--------|--------|
-| **Format** | ✅ Prettier | ✅ Prettier |
-| **Lint** | ✅ ESLint (strict) | ✅ ESLint (strict, no `any`) |
-| **Types** | ✅ TypeScript | ✅ TypeScript (strict mode) |
-| **Tests** | _(coming soon)_ | ✅ Jest (81 tests, must pass) |
+## 🐛 Troubleshooting
 
-### Testing
+### Daemon not processing files
 
-#### Daemon Tests
 ```bash
-cd daemon
-
-# Run all tests (221 tests)
-npm test
-
-# Watch mode (re-run on file changes)
-npm run test:watch
-
-# With coverage report
-npm run test:coverage
-
-# Run specific test file
-npm test MentionParser.test.ts
+spark status                          # Check daemon status
+spark start ~/vault --debug           # Restart with debug logging
 ```
 
-**Coverage:** 79% (threshold: 78%) - Run `npm run test:coverage` to view detailed report at `coverage/index.html`
+### Commands not appearing
 
-See [DEVELOPER_EXPERIENCE.md](specs/DEVELOPER_EXPERIENCE.md) for detailed test status and CI/CD logs for real-time coverage.
+1. Check `.spark/commands/` exists
+2. Verify frontmatter format
+3. Reload Obsidian plugin
 
-#### Plugin Tests
-🚧 Coming soon - test infrastructure planned for Phase 4
+### Claude API errors
 
-### Debugging
-
-#### Daemon Debugging
 ```bash
-# View daemon logs
-tail -f ~/.spark/logs/daemon.log
-
-# Debug mode (verbose logging)
-LOG_LEVEL=debug npm run dev
-
-# Test with example vault
-npm start -- ../example-vault
+echo $ANTHROPIC_API_KEY               # Verify API key
+spark config ~/vault                  # Check configuration
 ```
 
 #### Plugin Debugging
@@ -511,112 +609,29 @@ npm start -- ../example-vault
 
 ## 📚 Documentation
 
-### Specifications
-
-- **[Product Architecture](PRODUCT_ARCHITECTURE.md)** - System design and components
-- **[Mention Parser](MENTION_PARSER.md)** - How mentions are parsed and resolved
-- **[Configuration](CONFIGURATION.md)** - Config files and options
-- **[File Formats](FILE_FORMATS.md)** - Command/agent/trigger format reference
-- **[Plugin UI](PLUGIN_UI_SPEC.md)** - Plugin interface design
-- **[Triggers](TRIGGER_SYSTEM_CLARIFIED.md)** - Automation system
-- **[Error Handling](RESULT_AND_ERROR_HANDLING.md)** - Result and error handling
-
-### Implementation
-
-- **[Plugin Plan](specs/IMPLEMENTATION_PLAN_PLUGIN.md)** - 6 phases, 4-6 weeks
-- **[Daemon Plan](specs/IMPLEMENTATION_PLAN_DAEMON.md)** - 7 phases, 6-8 weeks
-- **[Plugin Progress](specs/PLUGIN_PROGRESS.md)** - Detailed task tracking (Phase 2 ✅)
-- **[Fuzzy Matching Analysis](specs/FUZZY_MATCHING_IMPROVEMENTS.md)** - Algorithm review and improvements
-
-### Examples
-
-- **[Example Vault](example-vault/)** - Working example with all features
-- Commands: `/summarize`, `/extract-tasks`, `/email-draft`
-- Agents: `@betty` (accountant), `@analyst` (data analyst)
-- Triggers: Email automation, task processing
-
----
-
-## 🎯 Roadmap
-
-### Phase 1: Foundation ✅
-- [x] Architecture design
-- [x] Specifications written
-- [x] Implementation plans created
-- [x] Example vault created
-
-### Phase 2: Core Implementation (Current)
-- [x] Plugin: Command palette ✅
-- [ ] Plugin: Chat widget
-- [ ] Daemon: File watching
-- [ ] Daemon: Mention parser
-- [ ] Daemon: Context loader
-- [ ] Daemon: Claude integration
-
-### Phase 3: Automation
-- [ ] Trigger system
-- [ ] SOP execution
-- [ ] MCP service integration
-- [ ] Error recovery
-
-### Phase 4: Polish
-- [ ] Performance optimization
-- [ ] Comprehensive testing
-- [ ] Documentation
-- [ ] Installation automation
-
-### Phase 5: Dogfooding
-- [ ] Real-world usage testing
-- [ ] Feedback iteration
-- [ ] Bug fixes
-- [ ] UX improvements
-
-### Future Vision (Out of Scope)
-- Bundle marketplace
-- Security/sandboxing
-- Multi-user support
-- Enterprise features
+- **[Product Architecture](specs/PRODUCT_ARCHITECTURE.md)** - System design
+- **[Mention Parser](specs/MENTION_PARSER.md)** - Parsing syntax
+- **[Configuration](specs/CONFIGURATION.md)** - Config reference
+- **[File Formats](specs/FILE_FORMATS.md)** - Command/agent/trigger formats
+- **[Developer Experience](specs/DEVELOPER_EXPERIENCE.md)** - Testing & DX
+- **[Daemon README](daemon/README.md)** - Daemon-specific docs
 
 ---
 
 ## 🤝 Contributing
 
-### Development Setup
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/name`
+3. Make changes, add tests
+4. Run `npm run check` in both plugin/ and daemon/
+5. Commit: `git commit -m "feat: description"`
+6. Push and create PR
 
-1. **Fork the repository**
-   ```bash
-   git clone https://github.com/your-username/spark.git
-   cd spark
-   ```
-
-2. **Install dependencies**
-   ```bash
-   cd plugin && npm install
-   cd ../daemon && npm install
-   ```
-
-3. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-4. **Make your changes**
-   - Write code following style guidelines
-   - Add tests for new features
-   - Run checks frequently: `npm run check`
-
-5. **Commit your changes**
-   ```bash
-   git add .
-   git commit -m "feat: your feature description"
-   # Pre-commit hooks run automatically
-   # Commit is blocked if any check fails
-   ```
-
-6. **Push and create a pull request**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
+**Code Standards:**
+- TypeScript strict mode
+- No `any` types (daemon)
+- ESLint + Prettier
+- Tests required (daemon)
 
 ### Code Standards
 
@@ -716,49 +731,6 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 - **Issues**: GitHub Issues
 - **Discussions**: GitHub Discussions
-- **Email**: support@spark-assistant.dev (not active yet)
-
----
-
-## ⚡ Status
-
-**Current Phase:** Plugin Phase 2 Complete, Daemon Phase 3 In Progress
-
-**Latest Updates:**
-
-**Plugin:**
-- ✅ Command palette complete with fuzzy search ✨
-  - Slash commands (`/`) trigger detection
-  - Mentions (`@`) for agents/files/folders
-  - Keyboard navigation and auto-insertion
-  - Smart fuzzy matching algorithm
-- 🚧 Chat widget development next
-
-**Daemon:**
-- ✅ Phase 1: Project setup & file watching (complete)
-  - Configuration system with YAML validation
-  - File watcher with debouncing
-  - Logger with structured output
-- ✅ Phase 2: Syntax parsing (complete)
-  - MentionParser - 32 tests passing
-  - CommandDetector - 47 tests passing
-  - FrontmatterParser - 32 tests passing
-- ✅ Phase 3: Context loading (complete)
-  - PathResolver for mention resolution
-  - ProximityCalculator for file ranking
-  - ContextLoader orchestration
-- ✅ Testing infrastructure (complete)
-  - Jest with ES modules support
-  - 81 tests across 3 test suites
-  - Pre-commit hooks enforcing quality
-- 🚧 Phase 4: Claude integration (next)
-
-**Next Milestones:**
-- Week 4: Daemon Claude API integration
-- Week 6: Trigger system implementation
-- Week 8: Result writing & notifications
-- Week 10: System service installation
-- Week 12: Production-ready for dogfooding
 
 ---
 

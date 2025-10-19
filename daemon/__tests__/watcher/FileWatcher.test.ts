@@ -1,4 +1,5 @@
 import { FileWatcher } from '../../src/watcher/FileWatcher.js';
+import type { FileChange } from '../../src/types/watcher.js';
 import { Logger } from '../../src/logger/Logger.js';
 import { TestVault } from '../utils/TestVault.js';
 import { jest } from '@jest/globals';
@@ -42,9 +43,9 @@ describe('FileWatcher', () => {
             expect(watcher.isWatching()).toBe(true);
         });
 
-        it('should stop watching', () => {
+        it('should stop watching', async () => {
             watcher.start();
-            watcher.stop();
+            await watcher.stop();
             expect(watcher.isWatching()).toBe(false);
         });
 
@@ -59,22 +60,22 @@ describe('FileWatcher', () => {
             expect(secondState).toBe(true);
         });
 
-        it('should handle stop when not watching', () => {
-            expect(() => watcher.stop()).not.toThrow();
+        it('should handle stop when not watching', async () => {
+            await expect(watcher.stop()).resolves.not.toThrow();
             expect(watcher.isWatching()).toBe(false);
         });
 
-        it('should support start-stop-start cycle', () => {
+        it('should support start-stop-start cycle', async () => {
             watcher.start();
             expect(watcher.isWatching()).toBe(true);
 
-            watcher.stop();
+            await watcher.stop();
             expect(watcher.isWatching()).toBe(false);
 
             watcher.start();
             expect(watcher.isWatching()).toBe(true);
 
-            watcher.stop();
+            await watcher.stop();
         });
     });
 
@@ -88,9 +89,9 @@ describe('FileWatcher', () => {
             expect(watcher.isWatching()).toBe(true);
         });
 
-        it('should return false after stop', () => {
+        it('should return false after stop', async () => {
             watcher.start();
-            watcher.stop();
+            await watcher.stop();
             expect(watcher.isWatching()).toBe(false);
         });
     });
@@ -107,6 +108,121 @@ describe('FileWatcher', () => {
             expect(() => {
                 watcher.on('change', listener);
             }).not.toThrow();
+        });
+    });
+
+    describe('file detection integration', () => {
+        it('should actually detect file changes', async () => {
+            const changeListener = jest.fn();
+            watcher.on('change', changeListener);
+
+            // Wait for the ready event before creating files
+            const readyPromise = new Promise<void>((resolve) => {
+                watcher.once('ready', () => resolve());
+            });
+
+            watcher.start();
+            await readyPromise;
+
+            // Add a small delay after ready to ensure watcher is fully initialized
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Create a file
+            await vault.writeFile('test.md', '# Test file');
+
+            // Wait for debounce + processing
+            await new Promise((resolve) => setTimeout(resolve, 400));
+
+            // Verify the change was detected
+            expect(changeListener).toHaveBeenCalled();
+            const firstCall = changeListener.mock.calls[0]?.[0];
+            expect(firstCall).toBeDefined();
+            expect(firstCall).toMatchObject({
+                path: 'test.md',
+                type: 'add',
+            });
+
+            await watcher.stop();
+        });
+
+        it('should detect file modifications', async () => {
+            const changeListener = jest.fn();
+            watcher.on('change', changeListener);
+
+            // Wait for the ready event before creating files
+            const readyPromise = new Promise<void>((resolve) => {
+                watcher.once('ready', () => resolve());
+            });
+
+            watcher.start();
+            await readyPromise;
+
+            // Add a small delay after ready to ensure watcher is fully initialized
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Create initial file
+            await vault.writeFile('test.md', '# Initial');
+
+            // Wait longer for file to be fully added and stabilized
+            await new Promise((resolve) => setTimeout(resolve, 400));
+
+            // Clear previous calls (from the add event)
+            changeListener.mockClear();
+
+            // Modify the file with different content
+            await vault.writeFile('test.md', '# Modified content that is definitely different');
+
+            // Wait for debounce + processing
+            await new Promise((resolve) => setTimeout(resolve, 400));
+
+            // Verify the change was detected
+            expect(changeListener).toHaveBeenCalled();
+            const modifyCall = changeListener.mock.calls[0]?.[0];
+            expect(modifyCall).toBeDefined();
+            expect(modifyCall).toMatchObject({
+                path: 'test.md',
+                type: 'change',
+            });
+
+            await watcher.stop();
+        });
+
+        it('should only detect files matching patterns', async () => {
+            const changeListener = jest.fn<(change: FileChange) => void>();
+            watcher.on('change', changeListener);
+
+            // Wait for the ready event before creating files
+            const readyPromise = new Promise<void>((resolve) => {
+                watcher.once('ready', () => resolve());
+            });
+
+            watcher.start();
+            await readyPromise;
+
+            // Add a small delay after ready to ensure watcher is fully initialized
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Create a .md file (should be detected)
+            await vault.writeFile('test.md', '# Test');
+
+            // Wait a bit before creating the second file
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Create a .txt file (should NOT be detected)
+            await vault.writeFile('test.txt', 'Plain text');
+
+            // Wait for debounce + processing
+            await new Promise((resolve) => setTimeout(resolve, 400));
+
+            // Should only have detected the .md file
+            expect(changeListener).toHaveBeenCalledTimes(1);
+            const patternCall = changeListener.mock.calls[0]?.[0];
+            expect(patternCall).toBeDefined();
+            if (patternCall) {
+                expect(patternCall.path).toBe('test.md');
+            }
+
+            await watcher.stop();
         });
     });
 });

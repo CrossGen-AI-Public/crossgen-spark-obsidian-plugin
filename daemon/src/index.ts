@@ -1,53 +1,39 @@
 /**
- * Spark Daemon Entry Point
- * Starts the daemon and handles graceful shutdown
+ * Spark Daemon Main Export
+ * Export all public APIs for external use
  */
 
-import { SparkDaemon } from './SparkDaemon.js';
+// Export core daemon
+export { SparkDaemon } from './SparkDaemon.js';
 
-async function main(): Promise<void> {
-  // Get vault path from command line or use current directory
-  const vaultPath = process.argv[2] || process.cwd();
+// Export all types
+export * from './types/index.js';
 
-  console.log(`Starting Spark daemon for vault: ${vaultPath}`);
+// Export parsers
+export { MentionParser } from './parser/MentionParser.js';
+export { CommandDetector } from './parser/CommandDetector.js';
+export { FrontmatterParser } from './parser/FrontmatterParser.js';
+export { FileParser } from './parser/FileParser.js';
 
-  // Create and start daemon
-  const daemon = new SparkDaemon(vaultPath);
+// Export config
+export { ConfigLoader } from './config/ConfigLoader.js';
+export { ConfigValidator } from './config/ConfigValidator.js';
+export { ConfigDefaults, DEFAULT_SPARK_CONFIG, deepMerge } from './config/ConfigDefaults.js';
 
-  try {
-    await daemon.start();
-  } catch (error) {
-    console.error('Failed to start daemon:', error);
-    process.exit(1);
-  }
+// Export logger
+export { Logger } from './logger/Logger.js';
+export { DevLogger } from './logger/DevLogger.js';
 
-  // Graceful shutdown handlers
-  const shutdown = async (signal: string): Promise<void> => {
-    console.log(`\nReceived ${signal}, shutting down gracefully...`);
-    try {
-      await daemon.stop();
-      console.log('Daemon stopped successfully');
-      process.exit(0);
-    } catch (error) {
-      console.error('Error during shutdown:', error);
-      process.exit(1);
-    }
-  };
+// Export watcher
+export { FileWatcher } from './watcher/FileWatcher.js';
+export { PathMatcher } from './watcher/PathMatcher.js';
+export { ChangeDebouncer } from './watcher/ChangeDebouncer.js';
 
-  process.on('SIGINT', () => void shutdown('SIGINT'));
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+// Export context
+export { ContextLoader } from './context/ContextLoader.js';
+export { PathResolver } from './context/PathResolver.js';
+export { ProximityCalculator } from './context/ProximityCalculator.js';
 
-  // Handle uncaught errors
-  process.on('uncaughtException', (error) => {
-    console.error('Uncaught exception:', error);
-    void shutdown('UNCAUGHT_EXCEPTION');
-  });
-
-  process.on('unhandledRejection', (reason) => {
-    console.error('Unhandled rejection:', reason);
-    void shutdown('UNHANDLED_REJECTION');
-  });
-}
-
-// Run the daemon
-void main();
+// Export CLI tools
+export { DaemonInspector } from './cli/DaemonInspector.js';
+export type { InspectorState, ProcessingEvent } from './cli/DaemonInspector.js';

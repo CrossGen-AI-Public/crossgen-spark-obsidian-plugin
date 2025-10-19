@@ -12,6 +12,13 @@ export class Logger {
   private config: LoggingConfig;
 
   private constructor(config: LoggingConfig) {
+    // Override config level with environment variable if set
+    if (process.env.SPARK_LOG_LEVEL) {
+      const envLevel = process.env.SPARK_LOG_LEVEL as LogLevel;
+      if (['debug', 'info', 'warn', 'error'].includes(envLevel)) {
+        config = { ...config, level: envLevel };
+      }
+    }
     this.config = config;
   }
 
@@ -20,6 +27,13 @@ export class Logger {
       Logger.instance = new Logger(config);
     }
     return Logger.instance;
+  }
+
+  /**
+   * Reset the singleton instance (useful for testing or reinitializing with new config)
+   */
+  public static resetInstance(): void {
+    Logger.instance = undefined as unknown as Logger;
   }
 
   public debug(message: string, ...args: unknown[]): void {

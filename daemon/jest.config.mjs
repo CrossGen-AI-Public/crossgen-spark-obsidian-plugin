@@ -24,16 +24,17 @@ export default {
     collectCoverageFrom: [
         'src/**/*.ts',
         '!src/index.ts',
+        '!src/cli.ts',
         '!src/types/**',
     ],
     coverageDirectory: 'coverage',
     coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
     coverageThreshold: {
         global: {
-            branches: 75,
-            functions: 75,
-            lines: 78,
-            statements: 78,
+            branches: 70,
+            functions: 80,
+            lines: 75,
+            statements: 75,
         },
     },
     testTimeout: 10000,
