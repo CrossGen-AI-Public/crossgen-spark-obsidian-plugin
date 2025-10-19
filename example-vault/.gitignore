@@ -1,0 +1,3 @@
+.spark/reload-status.json
+.spark/history.json
+.spark/daemon.pid

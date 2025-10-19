@@ -135,4 +135,40 @@ describe('Logger', () => {
             expect(consoleLogSpy).toHaveBeenCalled();
         });
     });
+
+    describe('updateConfig', () => {
+        it('should update log level dynamically', () => {
+            const config: LoggingConfig = { level: 'info', console: true };
+            const logger = Logger.getInstance(config);
+
+            // Debug should not log with info level
+            logger.debug('Debug message');
+            expect(consoleLogSpy).not.toHaveBeenCalled();
+
+            // Update to debug level
+            logger.updateConfig({ level: 'debug', console: true });
+
+            // Now debug should log
+            logger.debug('Debug message after update');
+            expect(consoleLogSpy).toHaveBeenCalledWith(
+                expect.stringContaining('[DEBUG] Debug message after update')
+            );
+        });
+
+        it('should update console setting dynamically', () => {
+            const config: LoggingConfig = { level: 'info', console: true };
+            const logger = Logger.getInstance(config);
+
+            logger.info('Message 1');
+            expect(consoleLogSpy).toHaveBeenCalled();
+
+            consoleLogSpy.mockClear();
+
+            // Disable console logging
+            logger.updateConfig({ level: 'info', console: false });
+
+            logger.info('Message 2');
+            expect(consoleLogSpy).not.toHaveBeenCalled();
+        });
+    });
 });

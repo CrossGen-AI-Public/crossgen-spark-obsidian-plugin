@@ -9,7 +9,11 @@
     },
     "scripts": {
         "dev": "tsx watch src/index.ts",
+        "dev:daemon": "npm run build && node dist/cli.js dev",
+        "dev:debug": "npm run build && node dist/cli.js dev --debug",
+        "dev:full": "npm run build && node dist/cli.js dev --run-tests",
         "build": "tsc --project tsconfig.build.json",
+        "build:watch": "tsc --project tsconfig.build.json --watch",
         "start": "node dist/index.js",
         "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
         "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
@@ -20,7 +24,9 @@
         "format": "prettier --write \"src/**/*.ts\"",
         "format:check": "prettier --check \"src/**/*.ts\"",
         "type-check": "tsc --noEmit",
-        "check": "npm run format && npm run lint:fix && npm run type-check && npm run test:coverage"
+        "check": "npm run format && npm run lint:fix && npm run type-check && npm run test:coverage",
+        "clean": "rm -rf dist coverage",
+        "reset": "npm run clean && npm install && npm run build"
     },
     "keywords": [
         "obsidian",

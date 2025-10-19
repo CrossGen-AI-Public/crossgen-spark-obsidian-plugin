@@ -83,9 +83,17 @@ spark status ~/vault                  # Check specific vault
 spark stop ~/vault                    # Stop daemon gracefully
 spark stop ~/vault --force            # Force stop (SIGKILL)
 
+# Development mode (hot reload) 🔥
+spark dev [vault-path]                # Start with hot reload
+spark dev ~/vault --debug             # Debug mode with hot reload
+spark dev ~/vault --no-restart        # Disable auto-restart on changes
+spark dev ~/vault --run-tests         # Run tests on every change
+spark dev ~/vault --no-config-reload  # Disable auto config reload
+
 # Configuration
 spark config [vault-path]             # Validate configuration
 spark inspect [vault-path]            # Show vault info and config
+spark reload [vault-path]             # Reload config without restarting 🔄
 
 # Debugging & History
 spark history [vault-path]            # Show processing history and stats
@@ -129,8 +137,111 @@ tail -f ~/.spark/daemon.log
 # Stop the daemon
 spark stop ~/Documents/Obsidian
 
+# Reload config without restarting (useful for production!)
+# The daemon validates the new config before applying it
+# If validation fails, it keeps running with the old config
+spark reload ~/Documents/Obsidian
+
 # Test the parser
 spark parse "/summarize @report.md"
+```
+
+## Development Mode 🔥
+
+The `spark dev` command provides hot reload for rapid development iteration:
+
+```bash
+# Start with default settings (auto-restart enabled, config reload enabled)
+spark dev ~/vault
+
+# With debug logging
+spark dev ~/vault --debug
+
+# Disable auto-restart (manual restart required after rebuild)
+spark dev ~/vault --no-restart
+
+# Run tests on every source change
+spark dev ~/vault --run-tests
+
+# Disable config auto-reload
+spark dev ~/vault --no-config-reload
+```
+
+### Features
+
+**Auto-rebuild on source changes:**
+- Watches `src/**/*.ts` (excluding tests)
+- Debounced (300ms) to avoid rebuild storms
+- Shows rebuild time and success/failure
+
+**Auto-restart daemon (optional):**
+- Enabled by default
+- Restarts daemon after successful rebuild
+- Preserves daemon state and configuration
+- Use `--no-restart` to disable
+
+**Auto-reload config (optional):**
+- Watches `.spark/config.yaml` in vault
+- Reloads config without full restart
+- Restarts file watcher if watch patterns changed
+- Enabled by default, use `--no-config-reload` to disable
+
+**Run tests on changes (optional):**
+- Watches test files
+- Runs full test suite on changes
+- Shows pass/fail status
+- Use `--run-tests` to enable
+
+### Dev Workflow
+
+```bash
+# Terminal 1: Start dev mode
+cd daemon
+spark dev ~/example-vault --debug
+
+# Terminal 2: Make changes
+vim src/parser/MentionParser.ts
+
+# Watch Terminal 1:
+# 📝 Source changed: src/parser/MentionParser.ts
+# 🔨 Rebuilding...
+# ✓ Rebuild complete (1234ms)
+# 🔄 Restarting daemon...
+# ✓ Daemon restarted
+
+# Edit config
+vim ~/example-vault/.spark/config.yaml
+
+# Watch Terminal 1:
+# ⚙️  Config changed, reloading...
+# ✓ Config reloaded
+
+# Press Ctrl+C to stop
+# 🛑 Shutting down...
+# 📊 Hot Reload Stats:
+#    Rebuilds: 5
+#    Restarts: 5
+#    Config Reloads: 2
+# ✓ Development mode stopped
+```
+
+### NPM Scripts
+
+```bash
+# Quick dev mode (using tsx watch)
+npm run dev
+
+# Full dev mode with daemon
+npm run dev:daemon
+
+# Debug mode
+npm run dev:debug
+
+# With test execution
+npm run dev:full
+
+# Build and watch (no daemon)
+npm run build:watch
 ```
 
 ## Global Registry

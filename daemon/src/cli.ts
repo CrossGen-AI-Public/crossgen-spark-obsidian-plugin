@@ -26,6 +26,49 @@ program
   .version(packageJson.version);
 
 /**
+ * Helper to validate that a path is an Obsidian vault
+ */
+function validateVault(absolutePath: string, context: 'start' | 'dev' = 'start'): void {
+  const obsidianDir = path.join(absolutePath, '.obsidian');
+  if (!existsSync(obsidianDir)) {
+    console.error('❌ Not an Obsidian vault: .obsidian directory not found');
+    console.error('   Path: ' + absolutePath);
+    console.error('');
+    if (context === 'dev') {
+      console.error('   Dev mode must be run from an Obsidian vault directory.');
+    } else {
+      console.error('   An Obsidian vault must contain a .obsidian directory.');
+    }
+    console.error('   Please provide the path to your Obsidian vault.');
+    console.error('');
+    console.error(`   Example: spark ${context} ~/Documents/MyVault`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Helper to clean up PID file
+ */
+function cleanupPidFile(vaultPath: string): void {
+  try {
+    const pidFile = path.join(vaultPath, '.spark', 'daemon.pid');
+    if (existsSync(pidFile)) {
+      unlinkSync(pidFile);
+    }
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+/**
+ * Helper to clean up daemon (PID file + registry)
+ */
+function cleanupDaemon(vaultPath: string): void {
+  cleanupPidFile(vaultPath);
+  unregisterDaemon(vaultPath);
+}
+
+/**
  * Start command - Start the daemon
  */
 program
@@ -35,7 +78,6 @@ program
   .option('-d, --debug', 'Enable debug logging', false)
   .action(async (vaultPath: string, options: { debug: boolean }) => {
     const absolutePath = path.resolve(vaultPath);
-    const pidFile = path.join(absolutePath, '.spark', 'daemon.pid');
 
     // Check if daemon is already running for this vault
     const existingDaemon = findDaemon(absolutePath);
@@ -47,26 +89,10 @@ program
     }
 
     // Clean up stale PID file if it exists
-    try {
-      if (existsSync(pidFile)) {
-        unlinkSync(pidFile);
-      }
-    } catch {
-      // Ignore cleanup errors
-    }
+    cleanupPidFile(absolutePath);
 
     // Validate that this is an Obsidian vault
-    const obsidianDir = path.join(absolutePath, '.obsidian');
-    if (!existsSync(obsidianDir)) {
-      console.error('❌ Not an Obsidian vault: .obsidian directory not found');
-      console.error('   Path: ' + absolutePath);
-      console.error('');
-      console.error('   An Obsidian vault must contain a .obsidian directory.');
-      console.error('   Please provide the path to your Obsidian vault.');
-      console.error('');
-      console.error('   Example: spark start ~/Documents/MyVault');
-      process.exit(1);
-    }
+    validateVault(absolutePath, 'start');
 
     console.log(`Starting Spark daemon for vault: ${absolutePath}`);
     if (options.debug) {
@@ -80,6 +106,7 @@ program
     try {
       const sparkDir = path.join(absolutePath, '.spark');
       mkdirSync(sparkDir, { recursive: true });
+      const pidFile = path.join(sparkDir, 'daemon.pid');
       writeFileSync(pidFile, process.pid.toString());
       registerDaemon(process.pid, absolutePath);
     } catch (error) {
@@ -103,17 +130,7 @@ program
       console.log(`\nReceived ${signal}, shutting down gracefully...`);
       try {
         await daemon.stop();
-
-        // Clean up PID file and registry
-        try {
-          if (existsSync(pidFile)) {
-            unlinkSync(pidFile);
-          }
-          unregisterDaemon(absolutePath);
-        } catch {
-          // Ignore cleanup errors
-        }
-
+        cleanupDaemon(absolutePath);
         console.log('Daemon stopped successfully');
         process.exit(0);
       } catch (error) {
@@ -124,6 +141,29 @@ program
 
     process.on('SIGINT', () => void shutdown('SIGINT'));
     process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+    // Handle config reload signal
+    process.on('SIGUSR1', async () => {
+      console.log('\nReceived reload signal, reloading configuration...');
+      try {
+        await daemon.reloadConfig();
+        console.log('✓ Configuration reloaded successfully');
+        console.log('  All settings have been updated');
+      } catch (error) {
+        console.error('❌ Failed to reload configuration');
+        if (error instanceof Error) {
+          console.error(`   Error: ${error.message}`);
+          if ('code' in error) {
+            console.error(`   Code: ${error.code}`);
+          }
+        } else {
+          console.error(`   Error: ${String(error)}`);
+        }
+        console.error('');
+        console.error('   The daemon is still running with the previous configuration.');
+        console.error('   Fix the config file and try again: spark reload');
+      }
+    });
 
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
@@ -221,11 +261,7 @@ function stopSingleDaemonFromRegistry(
     }
 
     // Clean up
-    const pidFile = path.join(daemon.vaultPath, '.spark', 'daemon.pid');
-    if (existsSync(pidFile)) {
-      unlinkSync(pidFile);
-    }
-    unregisterDaemon(daemon.vaultPath);
+    cleanupDaemon(daemon.vaultPath);
     console.log(`  ✅ Stopped ${daemon.vaultPath}`);
     return true;
   } catch (error) {
@@ -271,16 +307,13 @@ program
 
     // Single daemon stop
     const absolutePath = path.resolve(vaultPath);
-    const pidFile = path.join(absolutePath, '.spark', 'daemon.pid');
 
     // Check registry first
     const daemon = findDaemon(absolutePath);
     if (!daemon) {
       console.log('Daemon is not running for this vault');
       // Clean up stale PID file if it exists
-      if (existsSync(pidFile)) {
-        unlinkSync(pidFile);
-      }
+      cleanupPidFile(absolutePath);
       process.exit(0);
     }
 
@@ -307,19 +340,13 @@ program
             }
           } catch {
             clearInterval(checkInterval);
-            if (existsSync(pidFile)) {
-              unlinkSync(pidFile);
-            }
-            unregisterDaemon(absolutePath);
+            cleanupDaemon(absolutePath);
             console.log('✅ Daemon stopped successfully');
             process.exit(0);
           }
         }, 100);
       } else {
-        if (existsSync(pidFile)) {
-          unlinkSync(pidFile);
-        }
-        unregisterDaemon(absolutePath);
+        cleanupDaemon(absolutePath);
         console.log('✅ Daemon force stopped');
       }
     } catch (error) {
@@ -596,6 +623,172 @@ program
         }
         console.log('');
       });
+    }
+  });
+
+/**
+ * Dev command - Hot reload development mode
+ */
+program
+  .command('dev')
+  .description('Start daemon with hot reload for development')
+  .argument('[vault-path]', 'Path to Obsidian vault', process.cwd())
+  .option('-d, --debug', 'Enable debug logging', false)
+  .option('--no-restart', 'Disable auto-restart on changes')
+  .option('--no-config-reload', 'Disable auto config reload')
+  .option('--run-tests', 'Run tests on changes')
+  .action(
+    async (
+      vaultPath: string,
+      options: { debug: boolean; restart: boolean; configReload: boolean; runTests: boolean }
+    ) => {
+      const absolutePath = path.resolve(vaultPath);
+
+      // Validate that this is an Obsidian vault
+      validateVault(absolutePath, 'dev');
+
+      console.log('🔥 Starting Spark in development mode...');
+      console.log('');
+
+      try {
+        // Dynamically import HotReloadManager to avoid circular dependencies
+        const { HotReloadManager } = await import('./cli/HotReloadManager.js');
+
+        // Start daemon
+        const daemon = new SparkDaemon(absolutePath);
+        await daemon.start();
+
+        console.log('✓ Daemon started');
+        console.log('');
+
+        // Start hot reload
+        const hotReload = new HotReloadManager(daemon, {
+          autoRestart: options.restart,
+          autoReloadConfig: options.configReload,
+          runTests: options.runTests,
+          debug: options.debug,
+        });
+
+        await hotReload.start();
+
+        // Register daemon
+        registerDaemon(process.pid, absolutePath);
+
+        // Handle shutdown
+        const shutdown = async () => {
+          console.log('');
+          console.log('🛑 Shutting down...');
+
+          // Show stats
+          hotReload.logStats();
+          console.log('');
+
+          await hotReload.stop();
+          await daemon.stop();
+          cleanupDaemon(absolutePath);
+
+          console.log('✓ Development mode stopped');
+          process.exit(0);
+        };
+
+        process.on('SIGINT', shutdown);
+        process.on('SIGTERM', shutdown);
+
+        // Keep process alive
+        await new Promise(() => {
+          // Never resolves - process runs until interrupted
+        });
+      } catch (error) {
+        console.error('❌ Failed to start development mode:', error);
+        process.exit(1);
+      }
+    }
+  );
+
+/**
+ * Reload command - Reload configuration without restarting
+ */
+program
+  .command('reload')
+  .description('Reload configuration without restarting daemon')
+  .argument('[vault-path]', 'Path to Obsidian vault', process.cwd())
+  .action(async (vaultPath: string) => {
+    const absolutePath = path.resolve(vaultPath);
+
+    // Find the running daemon
+    const daemon = findDaemon(absolutePath);
+    if (!daemon) {
+      console.error('❌ No daemon running for this vault');
+      console.error(`   Run: spark start ${absolutePath}`);
+      process.exit(1);
+    }
+
+    try {
+      // Clear any old status file
+      const statusFile = path.join(absolutePath, '.spark', 'reload-status.json');
+      try {
+        if (existsSync(statusFile)) {
+          unlinkSync(statusFile);
+        }
+      } catch {
+        // Ignore - status file might not exist
+      }
+
+      // Send SIGUSR1 signal to trigger config reload
+      process.kill(daemon.pid, 'SIGUSR1');
+
+      console.log('Reloading configuration...');
+
+      // Wait for daemon to process reload and write status
+      const maxWaitMs = 2000; // 2 seconds timeout
+      const checkIntervalMs = 100;
+      let waited = 0;
+      let status = null;
+
+      while (waited < maxWaitMs) {
+        await new Promise((resolve) => setTimeout(resolve, checkIntervalMs));
+        waited += checkIntervalMs;
+
+        if (existsSync(statusFile)) {
+          try {
+            const content = readFileSync(statusFile, 'utf-8');
+            status = JSON.parse(content);
+            break;
+          } catch {
+            // File might be mid-write, try again
+          }
+        }
+      }
+
+      console.log('');
+
+      if (status) {
+        if (status.status === 'success') {
+          console.log('✅ Configuration reloaded successfully');
+          console.log('   All settings have been updated');
+        } else {
+          console.log('❌ Configuration reload failed');
+          console.log(`   Error: ${status.message}`);
+          console.log('');
+          console.log('   The daemon is still running with the previous configuration.');
+          console.log('   Fix the config file and try again: spark reload');
+          process.exit(1);
+        }
+      } else {
+        console.log('⚠️  Reload signal sent, but status unclear');
+        console.log(`   PID: ${daemon.pid}`);
+        console.log('');
+        console.log('   The daemon may still be processing the reload.');
+        console.log('   Check daemon logs to confirm:');
+        console.log('   - Foreground: check console output');
+        console.log('   - Background: tail -f ~/.spark/daemon.log');
+      }
+    } catch (error) {
+      console.error('❌ Failed to send reload signal:', error);
+      console.error('   The daemon process may have terminated');
+      console.error('');
+      console.error('   Check daemon status: spark status');
+      process.exit(1);
     }
   });
 

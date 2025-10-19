@@ -267,12 +267,20 @@
 - 264 tests, 79% coverage
 
 ### ✅ Priority 2: Debugging Tools - COMPLETE
-- CLI: `spark start|status|stop|config|inspect|parse|version`
+- CLI: `spark start|status|stop|config|inspect|parse|version|dev`
 - Global daemon registry (`~/.spark/registry.json`)
 - DevLogger with namespaces and timing
 - DaemonInspector for state inspection  
 - `--debug` flag support
 - Enhanced debug logging throughout
+
+### ✅ Priority 4: Development Workflow - COMPLETE
+- HotReloadManager for automatic rebuild on changes
+- Dev mode CLI command: `spark dev`
+- Auto-restart daemon on source changes (optional)
+- Auto-reload config on config changes
+- Run tests on changes (optional)
+- Enhanced dev scripts in package.json
 
 ---
 
@@ -594,54 +602,101 @@ triggers:
 
 ---
 
-### Priority 4: Development Workflow
+### Priority 4: Development Workflow ✅ COMPLETE
 
 #### Hot Reload with Context
 ```typescript
-// daemon/src/utils/HotReload.ts (TODO)
+// daemon/src/dev/HotReloadManager.ts ✅
 export class HotReloadManager {
-  private watchers: Map<string, FSWatcher> = new Map();
-  
-  watchForChanges(daemon: SparkDaemon): void {
-    // Watch source files
-    const sourceWatcher = chokidar.watch('src/**/*.ts', {
-      ignored: ['**/*.test.ts']
-    });
-    
-    sourceWatcher.on('change', async (path) => {
-      console.log(chalk.yellow(`Source changed: ${path}`));
-      console.log(chalk.yellow('Rebuilding...'));
-      
-      // Rebuild
-      execSync('npm run build', { stdio: 'inherit' });
-      
-      console.log(chalk.green('✓ Rebuild complete'));
-      console.log(chalk.yellow('Restart daemon to apply changes'));
-    });
-    
-    // Watch config
-    const configWatcher = chokidar.watch('.spark/config.yaml');
-    configWatcher.on('change', async () => {
-      console.log(chalk.yellow('Config changed, reloading...'));
-      await daemon.reloadConfig();
-      console.log(chalk.green('✓ Config reloaded'));
-    });
+  constructor(daemon: SparkDaemon | null, options: HotReloadOptions = {}) {
+    this.options = {
+      autoRestart: false,
+      autoReloadConfig: true,
+      runTests: false,
+      debounceDelay: 300,
+      debug: true,
+      ...options,
+    };
   }
+  
+  public async start(): Promise<void> {
+    // Watch source files
+    this.watchSourceFiles();
+    
+    // Watch config files
+    if (this.options.autoReloadConfig && this.daemon) {
+      this.watchConfigFiles();
+    }
+    
+    // Watch test files
+    if (this.options.runTests) {
+      this.watchTestFiles();
+    }
+  }
+  
+  // Auto-rebuild on source changes
+  // Auto-reload config without restart
+  // Optional: auto-restart daemon
+  // Optional: run tests on changes
 }
 ```
 
 #### Development Scripts
 ```json
-// package.json
+// package.json ✅
 {
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "dev:debug": "tsx watch --inspect src/index.ts",
-    "dev:test": "nodemon --watch src --exec 'npm test'",
-    "dev:lint": "nodemon --watch src --exec 'npm run lint'",
-    "build:watch": "tsc --watch",
-    "clean": "rm -rf dist",
+    "dev:daemon": "npm run build && node dist/cli.js dev",
+    "dev:debug": "npm run build && node dist/cli.js dev --debug",
+    "dev:full": "npm run build && node dist/cli.js dev --run-tests",
+    "build": "tsc --project tsconfig.build.json",
+    "build:watch": "tsc --project tsconfig.build.json --watch",
+    "clean": "rm -rf dist coverage",
     "reset": "npm run clean && npm install && npm run build"
+  }
+}
+```
+
+#### CLI Dev Command ✅
+```bash
+# Start daemon with hot reload
+spark dev ~/vault
+
+# With debug logging
+spark dev ~/vault --debug
+
+# With auto-restart on changes
+spark dev ~/vault  # auto-restart is enabled by default
+
+# Disable auto-restart (manual restart required)
+spark dev ~/vault --no-restart
+
+# Run tests on changes
+spark dev ~/vault --run-tests
+
+# Disable config auto-reload
+spark dev ~/vault --no-config-reload
+```
+
+#### SparkDaemon.reloadConfig() ✅
+```typescript
+// Reload configuration without restarting daemon
+public async reloadConfig(): Promise<void> {
+  // Load new configuration
+  const newConfig = await configLoader.load(this.vaultPath);
+  
+  // Update config
+  this.config = newConfig;
+  
+  // Reinitialize logger
+  this.logger = Logger.getInstance(newConfig.logging);
+  
+  // Restart watcher with new configuration
+  if (this.watcher) {
+    await this.watcher.stop();
+    this.watcher = new FileWatcher({ /* new config */ });
+    await this.watcher.start();
   }
 }
 ```
@@ -855,11 +910,12 @@ private myFeature: MyFeatureClass;
 1. ✅ Testing infrastructure (264 tests, 79% coverage)
 2. ✅ CLI and debugging tools
 3. ✅ JSDoc comments
+4. ✅ Hot reload (HotReloadManager + dev CLI)
 
-### 🔜 Week 3: TODO
-4. ⏳ Hot reload
+### 🔜 Week 3: Remaining
 5. ⏳ Examples and templates
 6. ⏳ Contributing guide
+7. ⏳ Better error diagnostics
 
 ---
 

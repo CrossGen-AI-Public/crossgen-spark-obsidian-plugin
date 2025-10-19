@@ -36,6 +36,21 @@ export class Logger {
     Logger.instance = undefined as unknown as Logger;
   }
 
+  /**
+   * Update the configuration of the existing instance
+   * Useful for hot-reloading config without breaking existing references
+   */
+  public updateConfig(config: LoggingConfig): void {
+    // Override config level with environment variable if set
+    if (process.env.SPARK_LOG_LEVEL) {
+      const envLevel = process.env.SPARK_LOG_LEVEL as LogLevel;
+      if (['debug', 'info', 'warn', 'error'].includes(envLevel)) {
+        config = { ...config, level: envLevel };
+      }
+    }
+    this.config = config;
+  }
+
   public debug(message: string, ...args: unknown[]): void {
     this.log('debug', message, ...args);
   }

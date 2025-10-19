@@ -3,7 +3,7 @@
  * Orchestrates all daemon components
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import type { ISparkDaemon, DaemonState } from './types/index.js';
 import type { SparkConfig } from './types/config.js';
@@ -130,6 +130,86 @@ export class SparkDaemon implements ISparkDaemon {
 
     if (this.logger) {
       this.logger.info('Spark daemon stopped');
+    }
+  }
+
+  /**
+   * Reload configuration without restarting daemon
+   * Useful for development and config changes
+   */
+  public async reloadConfig(): Promise<void> {
+    if (this.state !== 'running') {
+      throw new SparkError('Cannot reload config: daemon is not running', 'NOT_RUNNING');
+    }
+
+    if (this.logger) {
+      this.logger.info('Reloading configuration...');
+    }
+
+    try {
+      // Load new configuration
+      const configLoader = new ConfigLoader();
+      const newConfig = await configLoader.load(this.vaultPath);
+
+      // Update config
+      this.config = newConfig;
+
+      // Update logger with new config (singleton pattern - don't recreate)
+      if (this.logger) {
+        this.logger.updateConfig(newConfig.logging);
+        this.logger.info('Configuration reloaded successfully', {
+          logLevel: newConfig.logging.level,
+        });
+      }
+
+      // Write success status for CLI feedback
+      this.writeReloadStatus('success', 'Configuration reloaded successfully');
+
+      // Restart watcher with new configuration
+      if (this.watcher && this.logger) {
+        this.logger.info('Restarting file watcher with new configuration...');
+        await this.watcher.stop();
+
+        this.watcher = new FileWatcher({
+          vaultPath: this.vaultPath,
+          patterns: newConfig.daemon.watch.patterns,
+          ignore: newConfig.daemon.watch.ignore,
+          debounceMs: newConfig.daemon.debounce_ms,
+        });
+
+        this.watcher.on('change', (change) => {
+          void this.handleFileChange(change);
+        });
+
+        await this.watcher.start();
+        this.logger.info('File watcher restarted successfully');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+
+      // Write error status for CLI feedback
+      this.writeReloadStatus('error', message);
+
+      throw new SparkError(`Failed to reload config: ${message}`, 'CONFIG_RELOAD_FAILED', {
+        originalError: error,
+      });
+    }
+  }
+
+  /**
+   * Write reload status to file for CLI feedback
+   */
+  private writeReloadStatus(status: 'success' | 'error', message: string): void {
+    try {
+      const statusFile = join(this.vaultPath, '.spark', 'reload-status.json');
+      const statusData = {
+        status,
+        message,
+        timestamp: Date.now(),
+      };
+      writeFileSync(statusFile, JSON.stringify(statusData, null, 2));
+    } catch {
+      // Ignore write errors - reload still works, just no CLI feedback
     }
   }
 
