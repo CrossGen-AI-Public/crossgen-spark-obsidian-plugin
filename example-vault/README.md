@@ -4,6 +4,8 @@ This is an example of an Obsidian vault configured with Spark Assistant.
 @tasks/
 @draft-client-proposal
 @review-q4-finances 
+/summarize 
+
 
 ## Current Status
 

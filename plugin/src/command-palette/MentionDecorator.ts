@@ -3,17 +3,31 @@ import { RangeSetBuilder } from '@codemirror/state';
 import { App, SuggestModal, TFile } from 'obsidian';
 
 /**
- * Decorator that makes @mentions clickable and visually distinct
+ * Token types that can be decorated
+ */
+type TokenType = 'agent' | 'file' | 'folder' | 'command';
+
+/**
+ * Decorator that makes @mentions and /commands clickable and visually distinct
  * Handles both CodeMirror (active table cells) and HTML (inactive table cells)
  */
 export class MentionDecorator {
 	private app: App;
 	private validAgents: Set<string> = new Set();
+	private validCommands: Set<string> = new Set();
 	private observer: MutationObserver | null = null;
 
 	constructor(app: App) {
 		this.app = app;
-		void this.loadValidAgents();
+	}
+
+	/**
+	 * Initialize the decorator by loading agents and commands
+	 * Must be called before createExtension()
+	 */
+	async initialize(): Promise<void> {
+		await this.loadValidAgents();
+		await this.loadValidCommands();
 	}
 
 	/**
@@ -22,15 +36,47 @@ export class MentionDecorator {
 	private async loadValidAgents() {
 		try {
 			const agentsFolderExists = await this.app.vault.adapter.exists('.spark/agents');
-			if (!agentsFolderExists) return;
+			if (!agentsFolderExists) {
+				console.log('Spark: .spark/agents folder does not exist');
+				return;
+			}
 
 			const agentsFolder = await this.app.vault.adapter.list('.spark/agents');
 			for (const file of agentsFolder.files) {
 				const basename = file.replace('.spark/agents/', '').replace('.md', '');
+				// Skip README files
+				if (basename.toLowerCase() === 'readme') {
+					continue;
+				}
 				this.validAgents.add(basename);
 			}
-		} catch {
-			// Silently fail if .spark/agents doesn't exist
+		} catch (error) {
+			console.error('Spark: Failed to load agents', error);
+		}
+	}
+
+	/**
+	 * Load list of valid commands for validation
+	 */
+	private async loadValidCommands() {
+		try {
+			const commandsFolderExists = await this.app.vault.adapter.exists('.spark/commands');
+			if (!commandsFolderExists) {
+				console.log('Spark: .spark/commands folder does not exist');
+				return;
+			}
+
+			const commandsFolder = await this.app.vault.adapter.list('.spark/commands');
+			for (const file of commandsFolder.files) {
+				const basename = file.replace('.spark/commands/', '').replace('.md', '');
+				// Skip README files
+				if (basename.toLowerCase() === 'readme') {
+					continue;
+				}
+				this.validCommands.add(basename);
+			}
+		} catch (error) {
+			console.error('Spark: Failed to load commands', error);
 		}
 	}
 
@@ -96,57 +142,30 @@ export class MentionDecorator {
 			return;
 		}
 
-		// Find mentions
-		const mentionRegex = /(@[\w-]+\/?)/g;
-		const matches = Array.from(text.matchAll(mentionRegex));
+		// Find all tokens (mentions and commands)
+		const tokens = this.findTokens(text);
 
-		if (matches.length === 0) {
+		if (tokens.length === 0) {
 			cell.removeAttribute('data-spark-processed');
 			cell.removeAttribute('data-spark-text');
 			return;
 		}
 
-		// Build HTML with styled mentions
+		// Build HTML with styled tokens
 		let html = '';
 		let lastIndex = 0;
 
-		for (const match of matches) {
-			const mention = match[0];
-			const index = match.index!;
+		for (const token of tokens) {
+			html += this.escapeHtml(text.substring(lastIndex, token.start));
 
-			html += this.escapeHtml(text.substring(lastIndex, index));
-
-			// Validate mention
-			const isFolder = mention.endsWith('/');
-			let mentionType: 'folder' | 'file' | 'agent' | null = null;
-
-			if (isFolder) {
-				const folderPath = mention.substring(1);
-				const folderExists = this.app.vault
-					.getMarkdownFiles()
-					.some(f => f.path.startsWith(folderPath));
-				if (folderExists) {
-					mentionType = 'folder';
-				}
+			// Add styled token or plain text
+			if (token.type) {
+				html += `<span class="spark-token spark-token-${token.type}" data-token="${this.escapeHtml(token.text)}" data-type="${token.type}">${this.escapeHtml(token.text)}</span>`;
 			} else {
-				const basename = mention.substring(1);
-				const fileExists = this.app.vault.getMarkdownFiles().some(f => f.basename === basename);
-
-				if (fileExists) {
-					mentionType = 'file';
-				} else if (this.validAgents.has(basename)) {
-					mentionType = 'agent';
-				}
+				html += this.escapeHtml(token.text);
 			}
 
-			// Add styled mention or plain text
-			if (mentionType) {
-				html += `<span class="spark-mention spark-mention-${mentionType}" data-mention="${this.escapeHtml(mention)}" data-type="${mentionType}">${this.escapeHtml(mention)}</span>`;
-			} else {
-				html += this.escapeHtml(mention);
-			}
-
-			lastIndex = index + mention.length;
+			lastIndex = token.end;
 		}
 
 		html += this.escapeHtml(text.substring(lastIndex));
@@ -154,6 +173,80 @@ export class MentionDecorator {
 		cell.innerHTML = html || '<br>';
 		cell.setAttribute('data-spark-processed', 'true');
 		cell.setAttribute('data-spark-text', text);
+	}
+
+	/**
+	 * Find all tokens (mentions and commands) in text
+	 */
+	private findTokens(
+		text: string
+	): Array<{ text: string; start: number; end: number; type: TokenType | null }> {
+		const tokens: Array<{ text: string; start: number; end: number; type: TokenType | null }> = [];
+
+		// Find @mentions
+		const mentionRegex = /(@[\w-]+\/?)/g;
+		let match;
+		while ((match = mentionRegex.exec(text)) !== null) {
+			const mention = match[0];
+			const type = this.validateMention(mention);
+			tokens.push({
+				text: mention,
+				start: match.index,
+				end: match.index + mention.length,
+				type,
+			});
+		}
+
+		// Find /commands
+		const commandRegex = /(?:^|\s)(\/[\w-]+)/g;
+		while ((match = commandRegex.exec(text)) !== null) {
+			const command = match[1]; // Group 1 is the command without leading space
+			const type = this.validateCommand(command);
+			tokens.push({
+				text: command,
+				start: match.index + (match[0].length - command.length), // Adjust for leading space
+				end: match.index + match[0].length,
+				type,
+			});
+		}
+
+		// Sort by start position
+		tokens.sort((a, b) => a.start - b.start);
+		return tokens;
+	}
+
+	/**
+	 * Validate and determine mention type
+	 */
+	private validateMention(mention: string): TokenType | null {
+		const isFolder = mention.endsWith('/');
+
+		if (isFolder) {
+			const folderPath = mention.substring(1);
+			const folderExists = this.app.vault
+				.getMarkdownFiles()
+				.some(f => f.path.startsWith(folderPath));
+			return folderExists ? 'folder' : null;
+		} else {
+			const basename = mention.substring(1);
+			const fileExists = this.app.vault.getMarkdownFiles().some(f => f.basename === basename);
+
+			if (fileExists) {
+				return 'file';
+			} else if (this.validAgents.has(basename)) {
+				return 'agent';
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Validate and determine if command exists
+	 */
+	private validateCommand(command: string): TokenType | null {
+		const commandName = command.substring(1); // Remove /
+		return this.validCommands.has(commandName) ? 'command' : null;
 	}
 
 	/**
@@ -174,18 +267,24 @@ export class MentionDecorator {
 	createExtension() {
 		const app = this.app;
 		const validAgents = this.validAgents;
+		const validCommands = this.validCommands;
 
 		return ViewPlugin.fromClass(
 			class {
 				decorations: DecorationSet;
 
 				constructor(view: EditorView) {
-					this.decorations = buildMentionDecorations(view, app, validAgents);
+					this.decorations = buildMentionDecorations(view, app, validAgents, validCommands);
 				}
 
 				update(update: ViewUpdate) {
 					if (update.docChanged || update.viewportChanged) {
-						this.decorations = buildMentionDecorations(update.view, app, validAgents);
+						this.decorations = buildMentionDecorations(
+							update.view,
+							app,
+							validAgents,
+							validCommands
+						);
 					}
 				}
 			},
@@ -197,63 +296,83 @@ export class MentionDecorator {
 }
 
 /**
- * Build decorations for all mentions in the document
+ * Build decorations for all tokens (mentions and commands) in the document
  */
 function buildMentionDecorations(
 	view: EditorView,
 	app: App,
-	validAgents: Set<string>
+	validAgents: Set<string>,
+	validCommands: Set<string>
 ): DecorationSet {
 	const builder = new RangeSetBuilder<Decoration>();
 	const doc = view.state.doc;
+
+	// Helper to validate mentions
+	const validateMention = (mention: string): TokenType | null => {
+		const isFolder = mention.endsWith('/');
+		if (isFolder) {
+			const folderPath = mention.substring(1);
+			const folderExists = app.vault.getMarkdownFiles().some(f => f.path.startsWith(folderPath));
+			return folderExists ? 'folder' : null;
+		} else {
+			const basename = mention.substring(1);
+			const fileExists = app.vault.getMarkdownFiles().some(f => f.basename === basename);
+			if (fileExists) {
+				return 'file';
+			} else if (validAgents.has(basename)) {
+				return 'agent';
+			}
+		}
+		return null;
+	};
+
+	// Helper to validate commands
+	const validateCommand = (command: string): TokenType | null => {
+		const commandName = command.substring(1); // Remove /
+		return validCommands.has(commandName) ? 'command' : null;
+	};
 
 	for (let i = 0; i < doc.length; ) {
 		const line = doc.lineAt(i);
 		const text = line.text;
 
-		// Find all mentions in the line (@agent, @file, @folder/)
+		// Find all @mentions
 		const mentionRegex = /(@[\w-]+\/?)/g;
 		let match;
-
 		while ((match = mentionRegex.exec(text)) !== null) {
 			const mention = match[0];
-			const from = line.from + match.index;
-			const to = from + mention.length;
+			const type = validateMention(mention);
 
-			// Validate and determine mention type
-			const isFolder = mention.endsWith('/');
-			let mentionType: 'folder' | 'file' | 'agent' | null = null;
-
-			if (isFolder) {
-				// Validate folder exists
-				const folderPath = mention.substring(1); // Remove @
-				const folderExists = app.vault.getMarkdownFiles().some(f => f.path.startsWith(folderPath));
-				if (folderExists) {
-					mentionType = 'folder';
-				}
-			} else {
-				// Check if it's a file by looking for a matching basename
-				const basename = mention.substring(1); // Remove @
-				const fileExists = app.vault.getMarkdownFiles().some(f => f.basename === basename);
-
-				if (fileExists) {
-					mentionType = 'file';
-				} else if (validAgents.has(basename)) {
-					// Check if it's a valid agent from our cache
-					mentionType = 'agent';
-				}
-			}
-
-			// Only decorate if it's a valid mention
-			if (mentionType) {
+			if (type) {
+				const from = line.from + match.index;
+				const to = from + mention.length;
 				const decoration = Decoration.mark({
-					class: `spark-mention spark-mention-${mentionType}`,
+					class: `spark-token spark-token-${type}`,
 					attributes: {
-						'data-mention': mention,
-						'data-type': mentionType,
+						'data-token': mention,
+						'data-type': type,
 					},
 				});
+				builder.add(from, to, decoration);
+			}
+		}
 
+		// Find all /commands (only at start of line or after whitespace)
+		const commandRegex = /(?:^|\s)(\/[\w-]+)/g;
+		while ((match = commandRegex.exec(text)) !== null) {
+			const command = match[1];
+			const type = validateCommand(command);
+
+			if (type) {
+				const from = line.from + match.index + (match[0].length - command.length);
+				const to = from + command.length;
+				const decoration = Decoration.mark({
+					class: `spark-token spark-token-command`,
+					attributes: {
+						'data-token': command,
+						'data-type': 'command',
+					},
+				});
 				builder.add(from, to, decoration);
 			}
 		}
@@ -303,20 +422,27 @@ class FolderFileSuggestModal extends SuggestModal<TFile> {
 export function handleMentionClick(app: App, event: MouseEvent) {
 	const target = event.target as HTMLElement;
 
-	if (!target.classList.contains('spark-mention')) {
+	if (!target.classList.contains('spark-token')) {
 		return;
 	}
 
-	const mention = target.getAttribute('data-mention');
+	const token = target.getAttribute('data-token');
 	const type = target.getAttribute('data-type');
 
-	if (!mention) return;
+	if (!token) return;
+
+	// Handle commands differently
+	if (type === 'command') {
+		console.log('Command clicked:', token);
+		// TODO: Show command documentation or execute command
+		return;
+	}
 
 	// Check if Cmd (Mac) or Ctrl (Windows/Linux) is pressed
 	const newTab = event.metaKey || event.ctrlKey;
 
-	// Remove the @ prefix
-	const path = mention.substring(1);
+	// Remove the @ prefix for mentions
+	const path = token.substring(1);
 
 	if (type === 'folder') {
 		// For folders, show a file picker

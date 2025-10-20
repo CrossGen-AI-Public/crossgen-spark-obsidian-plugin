@@ -65,8 +65,8 @@
     font-style: italic;
 }
 
-/* Mention Decorations */
-.spark-mention {
+/* Token Decorations (mentions and commands) */
+.spark-token {
     cursor: pointer;
     text-decoration: underline;
     text-decoration-style: dotted;
@@ -76,37 +76,47 @@
     transition: all 0.15s ease;
 }
 
-.spark-mention:hover {
+.spark-token:hover {
     background: var(--background-modifier-hover);
     text-decoration-style: solid;
 }
 
 /* Agent mentions - purple tint */
-.spark-mention-agent {
+.spark-token-agent {
     color: var(--text-accent);
     text-decoration-color: var(--text-accent);
 }
 
-.spark-mention-agent:hover {
+.spark-token-agent:hover {
     background: rgba(120, 82, 238, 0.15);
 }
 
 /* File mentions - blue tint */
-.spark-mention-file {
+.spark-token-file {
     color: var(--link-color);
     text-decoration-color: var(--link-color);
 }
 
-.spark-mention-file:hover {
+.spark-token-file:hover {
     background: rgba(82, 139, 255, 0.15);
 }
 
 /* Folder mentions - green tint */
-.spark-mention-folder {
+.spark-token-folder {
     color: var(--link-color);
     text-decoration-color: var(--link-color);
 }
 
-.spark-mention-folder:hover {
+.spark-token-folder:hover {
     background: rgba(82, 139, 255, 0.15);
+}
+
+/* Command mentions - orange tint */
+.spark-token-command {
+    color: var(--color-orange);
+    text-decoration-color: var(--color-orange);
+}
+
+.spark-token-command:hover {
+    background: rgba(255, 145, 0, 0.15);
 }

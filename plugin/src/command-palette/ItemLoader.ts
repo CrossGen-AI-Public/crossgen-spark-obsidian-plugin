@@ -155,7 +155,12 @@ export class ItemLoader {
 	 */
 	private async getMarkdownFiles(folderPath: string): Promise<string[]> {
 		const listing = await this.app.vault.adapter.list(folderPath);
-		return listing.files.filter(path => path.endsWith('.md'));
+		return listing.files.filter(path => {
+			if (!path.endsWith('.md')) return false;
+			// Skip README files
+			const fileName = path.split('/').pop()?.toLowerCase();
+			return fileName !== 'readme.md';
+		});
 	}
 
 	/**

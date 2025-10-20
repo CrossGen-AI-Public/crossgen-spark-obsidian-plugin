@@ -21,25 +21,26 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
         // Initialize mention decorator
         this.mentionDecorator = new MentionDecorator(this.app);
+        await this.mentionDecorator.initialize();
         this.registerEditorExtension(this.mentionDecorator.createExtension());
 
         // Start observing HTML table cells for mention styling
         this.mentionDecorator.startTableObserver();
 
-        // Register mousedown handler to prevent cursor movement when clicking mentions
+        // Register mousedown handler to prevent cursor movement when clicking tokens
         this.registerDomEvent(
             document,
             'mousedown',
             (event: MouseEvent) => {
                 const target = event.target as HTMLElement;
-                if (target.classList.contains('spark-mention')) {
+                if (target.classList.contains('spark-token')) {
                     event.preventDefault();
                 }
             },
             true
         );
 
-        // Register click handler for mentions
+        // Register click handler for tokens (mentions and commands)
         this.registerDomEvent(document, 'click', (event: MouseEvent) => {
             handleMentionClick(this.app, event);
         });
