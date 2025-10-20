@@ -66,13 +66,139 @@ export class ContextLoader implements IContextLoader {
 
   private async loadAgent(agentName: string, context: LoadedContext): Promise<void> {
     const agentPath = await this.resolver.resolveAgent(agentName);
-    if (agentPath) {
-      const content = this.safeReadFile(agentPath);
+    if (!agentPath) {
+      return;
+    }
+
+    const content = this.safeReadFile(agentPath);
+    if (!content || content.trim().length === 0) {
+      // Empty agent file - skip
+      return;
+    }
+
+    // Parse frontmatter and body
+    const frontmatterMatch = content.match(/^---\s*\n(.*?)\n---\s*\n([\s\S]*)$/s);
+
+    if (frontmatterMatch) {
+      const frontmatter = frontmatterMatch[1] || '';
+      const body = frontmatterMatch[2]?.trim() || '';
+
+      // Need at least a body for the persona
+      if (!body || body.length === 0) {
+        // Frontmatter only, no instructions - use a helpful default
+        const metadata = this.parseFrontmatterForAgent(frontmatter);
+        const defaultName = (metadata.name as string) || agentName;
+        const defaultRole = (metadata.role as string) || 'a helpful assistant';
+        const persona = this.formatAgentPersona(
+          metadata,
+          `You are ${defaultName}, ${defaultRole}.`
+        );
+
+        context.agent = {
+          path: agentPath,
+          persona,
+        };
+      } else {
+        // Normal case: frontmatter + body
+        const metadata = this.parseFrontmatterForAgent(frontmatter);
+        const persona = this.formatAgentPersona(metadata, body);
+
+        context.agent = {
+          path: agentPath,
+          persona,
+        };
+      }
+    } else {
+      // No frontmatter - use raw content as persona
+      // This allows simple agents without YAML
       context.agent = {
         path: agentPath,
-        persona: content,
+        persona: content.trim(),
       };
     }
+  }
+
+  private parseFrontmatterForAgent(frontmatter: string): Record<string, string | string[]> {
+    const metadata: Record<string, string | string[]> = {};
+
+    try {
+      const lines = frontmatter.split('\n');
+
+      let currentKey = '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        // Skip empty lines and comments
+        if (!trimmed || trimmed.startsWith('#')) {
+          continue;
+        }
+
+        // Key-value pairs (not indented, contains colon)
+        if (line.includes(':') && !line.startsWith(' ') && !line.startsWith('-')) {
+          const colonIndex = line.indexOf(':');
+          const key = line.substring(0, colonIndex).trim();
+          const value = line.substring(colonIndex + 1).trim();
+
+          currentKey = key;
+
+          if (value) {
+            // Inline value (e.g., "name: Betty")
+            metadata[currentKey] = value;
+          } else {
+            // Array or multi-line value (e.g., "expertise:")
+            metadata[currentKey] = [];
+          }
+        } else if (trimmed.startsWith('-') && currentKey) {
+          // Array item (e.g., "  - Financial reporting")
+          const item = trimmed.substring(1).trim();
+          const currentValue = metadata[currentKey];
+          if (item && currentValue && Array.isArray(currentValue)) {
+            currentValue.push(item);
+          }
+        }
+      }
+    } catch (error) {
+      // If parsing fails, return empty metadata
+      // Agent will still work with just the body
+      console.warn('Failed to parse agent frontmatter:', error);
+    }
+
+    return metadata;
+  }
+
+  private formatAgentPersona(metadata: Record<string, string | string[]>, body: string): string {
+    const parts: string[] = [];
+
+    if (metadata.name) {
+      parts.push(`Name: ${metadata.name}`);
+    }
+
+    if (metadata.role) {
+      parts.push(`Role: ${metadata.role}`);
+    }
+
+    if (metadata.expertise && Array.isArray(metadata.expertise) && metadata.expertise.length > 0) {
+      parts.push(`Expertise: ${metadata.expertise.join(', ')}`);
+    }
+
+    if (metadata.tools && Array.isArray(metadata.tools) && metadata.tools.length > 0) {
+      parts.push(`Available Tools: ${metadata.tools.join(', ')}`);
+    }
+
+    if (
+      metadata.context_folders &&
+      Array.isArray(metadata.context_folders) &&
+      metadata.context_folders.length > 0
+    ) {
+      parts.push(`Context Folders: ${metadata.context_folders.join(', ')}`);
+    }
+
+    // Combine metadata with body
+    if (parts.length > 0) {
+      return parts.join('\n') + '\n\n' + body;
+    }
+
+    return body;
   }
 
   private async loadFile(filename: string, context: LoadedContext): Promise<void> {

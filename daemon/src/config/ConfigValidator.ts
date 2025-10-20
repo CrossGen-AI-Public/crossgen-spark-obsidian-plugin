@@ -62,10 +62,86 @@ export class ConfigValidator implements IConfigValidator {
       throw new SparkError('ai.provider is required', 'INVALID_AI_PROVIDER');
     }
 
+    const validProviders = ['claude', 'openai', 'local'];
+    if (!validProviders.includes(a.provider as string)) {
+      throw new SparkError(
+        `ai.provider must be one of: ${validProviders.join(', ')}`,
+        'INVALID_AI_PROVIDER'
+      );
+    }
+
     if (a.provider === 'claude') {
       if (!a.claude || typeof a.claude !== 'object') {
-        throw new SparkError('ai.claude configuration is required', 'INVALID_CLAUDE_CONFIG');
+        throw new SparkError(
+          'ai.claude configuration is required when provider is "claude"',
+          'INVALID_CLAUDE_CONFIG'
+        );
       }
+      this.validateClaudeConfig(a.claude as Record<string, unknown>);
+    }
+  }
+
+  private validateClaudeConfig(claude: Record<string, unknown>): void {
+    // Validate model
+    if (!claude.model || typeof claude.model !== 'string') {
+      throw new SparkError('ai.claude.model is required', 'INVALID_CLAUDE_MODEL');
+    }
+
+    if (claude.model.trim().length === 0) {
+      throw new SparkError('ai.claude.model cannot be empty', 'INVALID_CLAUDE_MODEL');
+    }
+
+    // Validate known model patterns
+    const validModelPrefixes = ['claude-', 'gpt-']; // Allow gpt- for potential future compatibility
+    const hasValidPrefix = validModelPrefixes.some((prefix) =>
+      (claude.model as string).startsWith(prefix)
+    );
+
+    if (!hasValidPrefix) {
+      throw new SparkError(
+        `ai.claude.model should start with one of: ${validModelPrefixes.join(', ')}. Got: ${claude.model}`,
+        'INVALID_CLAUDE_MODEL'
+      );
+    }
+
+    // Validate api_key_env
+    if (!claude.api_key_env || typeof claude.api_key_env !== 'string') {
+      throw new SparkError('ai.claude.api_key_env is required', 'INVALID_CLAUDE_API_KEY_ENV');
+    }
+
+    if (claude.api_key_env.trim().length === 0) {
+      throw new SparkError('ai.claude.api_key_env cannot be empty', 'INVALID_CLAUDE_API_KEY_ENV');
+    }
+
+    // Validate max_tokens
+    if (typeof claude.max_tokens !== 'number') {
+      throw new SparkError('ai.claude.max_tokens must be a number', 'INVALID_CLAUDE_MAX_TOKENS');
+    }
+
+    if (claude.max_tokens <= 0) {
+      throw new SparkError(
+        'ai.claude.max_tokens must be greater than 0',
+        'INVALID_CLAUDE_MAX_TOKENS'
+      );
+    }
+
+    if (claude.max_tokens > 200000) {
+      throw new SparkError(
+        'ai.claude.max_tokens is too large (max 200,000)',
+        'INVALID_CLAUDE_MAX_TOKENS'
+      );
+    }
+
+    // Validate temperature
+    if (typeof claude.temperature !== 'number') {
+      throw new SparkError('ai.claude.temperature must be a number', 'INVALID_CLAUDE_TEMPERATURE');
+    }
+
+    if (claude.temperature < 0 || claude.temperature > 1) {
+      throw new SparkError(
+        'ai.claude.temperature must be between 0 and 1',
+        'INVALID_CLAUDE_TEMPERATURE'
+      );
     }
   }
 

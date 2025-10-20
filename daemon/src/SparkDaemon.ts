@@ -17,6 +17,9 @@ import { Logger } from './logger/Logger.js';
 import { SparkError } from './types/index.js';
 import { FileParser } from './parser/FileParser.js';
 import { DaemonInspector } from './cli/DaemonInspector.js';
+import { ClaudeClient } from './ai/ClaudeClient.js';
+import { PromptBuilder } from './ai/PromptBuilder.js';
+import { ContextLoader } from './context/ContextLoader.js';
 
 export class SparkDaemon implements ISparkDaemon {
   private vaultPath: string;
@@ -26,6 +29,9 @@ export class SparkDaemon implements ISparkDaemon {
   private logger: Logger | null;
   private fileParser: FileParser | null;
   private inspector: DaemonInspector | null;
+  private claudeClient: ClaudeClient | null;
+  private promptBuilder: PromptBuilder | null;
+  private contextLoader: ContextLoader | null;
   private state: DaemonState;
 
   constructor(vaultPath: string) {
@@ -36,6 +42,9 @@ export class SparkDaemon implements ISparkDaemon {
     this.logger = null;
     this.fileParser = null;
     this.inspector = null;
+    this.claudeClient = null;
+    this.promptBuilder = null;
+    this.contextLoader = null;
     this.state = 'stopped';
   }
 
@@ -63,6 +72,24 @@ export class SparkDaemon implements ISparkDaemon {
       // Initialize file parser
       this.fileParser = new FileParser();
       this.logger.debug('File parser initialized');
+
+      // Initialize AI components
+      if (!this.config.ai.claude) {
+        throw new SparkError('Claude configuration missing in config.yaml', 'CONFIG_ERROR');
+      }
+
+      const apiKey = process.env[this.config.ai.claude.api_key_env];
+      if (!apiKey) {
+        throw new SparkError(
+          `${this.config.ai.claude.api_key_env} environment variable not set`,
+          'CONFIG_ERROR'
+        );
+      }
+
+      this.claudeClient = new ClaudeClient(apiKey, this.config.ai.claude);
+      this.promptBuilder = new PromptBuilder();
+      this.contextLoader = new ContextLoader(this.vaultPath);
+      this.logger.debug('AI components initialized');
 
       // Create file watcher
       this.watcher = new FileWatcher({
@@ -384,7 +411,7 @@ export class SparkDaemon implements ISparkDaemon {
       commands: pendingCommands.map((c) => c.raw),
     });
 
-    // TODO: Execute commands (Phase 4 - Claude Integration)
+    // Execute commands (Phase 4 - Claude Integration)
     for (const command of pendingCommands) {
       this.logger!.debug('Command detected', {
         line: command.line,
@@ -400,6 +427,73 @@ export class SparkDaemon implements ISparkDaemon {
           mentions: command.mentions?.length || 0,
         });
       }
+
+      // Execute command with Claude
+      void this.executeCommand(command, join(this.vaultPath, filePath)).catch((error) => {
+        this.logger!.error('Command execution failed', {
+          error: error instanceof Error ? error.message : String(error),
+          command: command.raw,
+        });
+      });
+    }
+  }
+
+  /**
+   * Execute a command using Claude AI
+   * Phase 4 - Claude Integration
+   */
+  private async executeCommand(command: ParsedCommand, fullPath: string): Promise<void> {
+    if (!this.claudeClient || !this.promptBuilder || !this.contextLoader) {
+      throw new SparkError('AI components not initialized', 'NOT_INITIALIZED');
+    }
+
+    this.logger!.info('Executing command', {
+      command: command.raw.substring(0, 100),
+      file: fullPath,
+    });
+
+    try {
+      // 1. Load context (Phase 3 - already implemented!)
+      //    ContextLoader internally:
+      //    - Uses PathResolver to resolve mentions
+      //    - Uses ProximityCalculator.rankFilesByProximity() to find nearby files
+      //    - Returns top 10 nearest files with summaries
+      const context = await this.contextLoader.load(fullPath, command.mentions || []);
+
+      this.logger!.debug('Context loaded', {
+        mentionedFiles: context.mentionedFiles.length,
+        nearbyFiles: context.nearbyFiles.length, // Ranked by proximity!
+        hasAgent: !!context.agent,
+      });
+
+      // 2. Build prompt
+      const prompt = this.promptBuilder.build(command, context);
+
+      this.logger!.debug('Prompt built', {
+        length: prompt.length,
+        estimatedTokens: this.promptBuilder.estimateTokens(prompt),
+      });
+
+      // Log full prompt for debugging
+      console.log('\n=== FULL PROMPT TO CLAUDE ===');
+      console.log(prompt);
+      console.log('=== END PROMPT ===\n');
+
+      // 3. Call Claude
+      const result = await this.claudeClient.complete(prompt);
+
+      this.logger!.info('Command executed', {
+        outputTokens: result.usage.outputTokens,
+        inputTokens: result.usage.inputTokens,
+      });
+
+      // 4. Log response (Phase 4B will write to file)
+      console.log('\n=== CLAUDE RESPONSE ===');
+      console.log(result.content);
+      console.log('=======================\n');
+    } catch (error) {
+      this.logger!.error('Command execution failed', error);
+      throw error;
     }
   }
 

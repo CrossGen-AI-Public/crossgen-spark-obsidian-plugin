@@ -1,0 +1,101 @@
+---
+title: Development Workflow
+description: Development commands and workflow for Spark Assistant
+---
+
+# Development Workflow
+
+## Code Quality Check
+
+Run the comprehensive check command before committing:
+
+```bash
+cd daemon
+npm run check
+```
+
+This runs:
+1. **Formatting** (`prettier --write`) - Auto-formats all TypeScript files
+2. **Linting** (`eslint --fix`) - Fixes auto-fixable lint errors
+3. **Type Checking** (`tsc --noEmit`) - Verifies TypeScript types
+4. **Tests** (`jest --coverage`) - Runs all tests with coverage report
+
+If this passes, your code is ready to commit.
+
+## Individual Commands
+
+### Daemon
+
+```bash
+cd daemon
+
+# Development (hot reload)
+npm run dev              # Normal mode
+npm run dev:debug        # Debug logging
+
+# Type checking
+npm run type-check       # Check types only
+
+# Linting
+npm run lint             # Check for issues
+npm run lint:fix         # Auto-fix issues
+
+# Formatting
+npm run format           # Format all files
+
+# Testing
+npm test                 # Run all tests
+npm run test:watch       # Watch mode
+npm run test:coverage    # With coverage report
+
+# Building
+npm run build            # Compile TypeScript
+```
+
+### Plugin
+
+```bash
+cd plugin
+
+# Development (hot reload)
+npm run dev
+
+# Building
+npm run build            # Production build
+```
+
+## Hot Reload
+
+Both daemon and plugin support hot reload during development:
+
+- **Daemon**: Uses `tsx` - saves automatically reload
+- **Plugin**: Uses `esbuild` - watches for changes
+
+No need to rebuild manually during development!
+
+## Before Committing
+
+```bash
+# In daemon directory
+npm run check
+
+# If all pass:
+git add .
+git commit -m "Your commit message"
+```
+
+## Testing with Example Vault
+
+```bash
+# Set API key
+export ANTHROPIC_API_KEY="your-key"
+
+# Run daemon
+cd daemon
+npm run dev:debug
+
+# In another terminal, edit example-vault files
+code ../example-vault/test-betty.md
+```
+
+Watch the daemon console for debug output including full prompts sent to Claude.

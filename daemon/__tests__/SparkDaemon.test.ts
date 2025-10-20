@@ -1,14 +1,23 @@
+import { jest } from '@jest/globals';
 import { SparkDaemon } from '../src/SparkDaemon.js';
 import { TestVault } from './utils/TestVault.js';
 import { Logger } from '../src/logger/Logger.js';
 
+// Mock Anthropic SDK to prevent actual API calls
+jest.mock('@anthropic-ai/sdk');
+
 describe('SparkDaemon', () => {
     let vault: TestVault;
     let daemon: SparkDaemon;
+    let originalApiKey: string | undefined;
 
     beforeEach(async () => {
         // Reset logger singleton
         Logger.resetInstance();
+
+        // Set test API key
+        originalApiKey = process.env.ANTHROPIC_API_KEY;
+        process.env.ANTHROPIC_API_KEY = 'test-api-key-for-tests';
 
         vault = new TestVault();
         await vault.create();
@@ -42,6 +51,13 @@ logging:
             // Ignore cleanup errors
         }
         await vault.cleanup();
+
+        // Restore original API key
+        if (originalApiKey !== undefined) {
+            process.env.ANTHROPIC_API_KEY = originalApiKey;
+        } else {
+            delete process.env.ANTHROPIC_API_KEY;
+        }
     });
 
     describe('constructor', () => {

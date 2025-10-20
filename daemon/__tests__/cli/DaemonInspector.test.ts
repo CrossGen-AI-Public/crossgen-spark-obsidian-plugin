@@ -2,17 +2,25 @@
  * Tests for DaemonInspector
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { DaemonInspector } from '../../src/cli/DaemonInspector.js';
 import { SparkDaemon } from '../../src/SparkDaemon.js';
 import { TestVault } from '../utils/TestVault.js';
+
+// Mock Anthropic SDK to prevent actual API calls
+jest.mock('@anthropic-ai/sdk');
 
 describe('DaemonInspector', () => {
     let vault: TestVault;
     let daemon: SparkDaemon;
     let inspector: DaemonInspector;
+    let originalApiKey: string | undefined;
 
     beforeEach(async () => {
+        // Set test API key
+        originalApiKey = process.env.ANTHROPIC_API_KEY;
+        process.env.ANTHROPIC_API_KEY = 'test-api-key-for-tests';
+
         vault = new TestVault();
         await vault.create();
         await vault.writeFile('test.md', '# Test\n[[mentioned-file]]');
@@ -26,6 +34,13 @@ describe('DaemonInspector', () => {
     afterEach(async () => {
         await daemon.stop();
         await vault.cleanup();
+
+        // Restore original API key
+        if (originalApiKey !== undefined) {
+            process.env.ANTHROPIC_API_KEY = originalApiKey;
+        } else {
+            delete process.env.ANTHROPIC_API_KEY;
+        }
     });
 
     describe('getState', () => {
