@@ -11,6 +11,18 @@ export class PromptBuilder implements IPromptBuilder {
   build(command: ParsedCommand, context: LoadedContext): string {
     const sections: string[] = [];
 
+    // System prompt with Spark syntax rules
+    sections.push(
+      '<system>',
+      'When referencing files and folders in your response:',
+      '- Reference files by basename only (no extension): @filename (not @folder/filename, not @folder/filename.md)',
+      '- Reference folders with trailing slash: @folder/',
+      '- This ensures proper decoration and clickability in the UI',
+      'Examples: @review-q4-finances, @tasks/, @invoices/',
+      '</system>',
+      ''
+    );
+
     // Agent persona (if present)
     if (context.agent) {
       sections.push('<agent_persona>', context.agent.persona, '</agent_persona>', '');

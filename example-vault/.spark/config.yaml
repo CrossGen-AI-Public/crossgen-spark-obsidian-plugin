@@ -10,7 +10,7 @@ daemon:
       - ".git/**"
       - ".obsidian/**"
       - "node_modules/**"
-      - ".spark/logs/**"
+      - ".spark/**"  # Exclude all Spark system files
   
   debounce_ms: 300
   

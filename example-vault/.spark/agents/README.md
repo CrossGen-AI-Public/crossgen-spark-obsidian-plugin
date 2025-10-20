@@ -120,3 +120,25 @@ No frontmatter required! The daemon handles both formats.
 
 The agent's persona is automatically included in the AI prompt.
 
+---
+
+## Spark Syntax Conventions for Agents
+
+When your agent references files and folders in responses, use proper Spark syntax:
+
+**Files:** Use basename only (no path)
+```
+✅ Correct: @review-q4-finances
+❌ Wrong:   @tasks/review-q4-finances
+```
+
+**Folders:** Always include trailing slash
+```
+✅ Correct: @tasks/, @invoices/, @finance/
+❌ Wrong:   @tasks, @invoices, @finance
+```
+
+**Why?** This ensures references are properly decorated and clickable in Obsidian.
+
+The system automatically reminds agents of these conventions in every prompt.
+

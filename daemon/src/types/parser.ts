@@ -31,6 +31,7 @@ export interface ParsedCommand {
   finalCommand?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   statusEmoji?: string;
+  isComplete: boolean; // Whether command appears complete (ends with punctuation)
 }
 
 /**

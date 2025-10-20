@@ -3,7 +3,7 @@
  * Orchestrates all daemon components
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { join } from 'path';
 import chokidar from 'chokidar';
 import type { FSWatcher } from 'chokidar';
@@ -20,6 +20,8 @@ import { DaemonInspector } from './cli/DaemonInspector.js';
 import { ClaudeClient } from './ai/ClaudeClient.js';
 import { PromptBuilder } from './ai/PromptBuilder.js';
 import { ContextLoader } from './context/ContextLoader.js';
+import { ResultWriter } from './results/ResultWriter.js';
+import { CommandExecutor } from './execution/CommandExecutor.js';
 
 export class SparkDaemon implements ISparkDaemon {
   private vaultPath: string;
@@ -32,6 +34,8 @@ export class SparkDaemon implements ISparkDaemon {
   private claudeClient: ClaudeClient | null;
   private promptBuilder: PromptBuilder | null;
   private contextLoader: ContextLoader | null;
+  private resultWriter: ResultWriter | null;
+  private commandExecutor: CommandExecutor | null;
   private state: DaemonState;
 
   constructor(vaultPath: string) {
@@ -45,6 +49,8 @@ export class SparkDaemon implements ISparkDaemon {
     this.claudeClient = null;
     this.promptBuilder = null;
     this.contextLoader = null;
+    this.resultWriter = null;
+    this.commandExecutor = null;
     this.state = 'stopped';
   }
 
@@ -89,6 +95,14 @@ export class SparkDaemon implements ISparkDaemon {
       this.claudeClient = new ClaudeClient(apiKey, this.config.ai.claude);
       this.promptBuilder = new PromptBuilder();
       this.contextLoader = new ContextLoader(this.vaultPath);
+      this.resultWriter = new ResultWriter();
+      this.commandExecutor = new CommandExecutor(
+        this.claudeClient,
+        this.promptBuilder,
+        this.contextLoader,
+        this.resultWriter,
+        this.config
+      );
       this.logger.debug('AI components initialized');
 
       // Create file watcher
@@ -187,9 +201,9 @@ export class SparkDaemon implements ISparkDaemon {
     }
 
     try {
-      // Load new configuration
+      // Load new configuration with retry logic
       const configLoader = new ConfigLoader();
-      const newConfig = await configLoader.load(this.vaultPath);
+      const newConfig = await configLoader.loadWithRetry(this.vaultPath);
 
       // Update config
       this.config = newConfig;
@@ -230,9 +244,15 @@ export class SparkDaemon implements ISparkDaemon {
       // Write error status for CLI feedback
       this.writeReloadStatus('error', message);
 
-      throw new SparkError(`Failed to reload config: ${message}`, 'CONFIG_RELOAD_FAILED', {
-        originalError: error,
-      });
+      // Log warning but don't crash - keep using current config
+      if (this.logger) {
+        this.logger.warn('Config reload failed after retries, keeping current config', {
+          error: message,
+        });
+      }
+
+      // Don't throw - just keep current config
+      return;
     }
   }
 
@@ -263,7 +283,7 @@ export class SparkDaemon implements ISparkDaemon {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
-        stabilityThreshold: 100,
+        stabilityThreshold: 200, // Initial wait before first attempt
         pollInterval: 50,
       },
     });
@@ -355,13 +375,19 @@ export class SparkDaemon implements ISparkDaemon {
 
     try {
       const fullPath = join(this.vaultPath, change.path);
-      const { content, parsed } = this.readAndParseFile(fullPath, change.path);
+      const parsed = this.fileParser.parseFromFile(fullPath);
+
+      this.logger.debug('File parsed', {
+        path: change.path,
+        commands: parsed.commands.length,
+        frontmatter: parsed.frontmatter ? 'present' : 'none',
+      });
 
       // Process commands
-      this.processCommands(change.path, parsed.commands);
+      this.processCommands(change.path, fullPath, parsed.commands);
 
       // Process frontmatter changes
-      this.processFrontmatterChanges(fullPath, change.path, content);
+      this.processFrontmatterChanges(fullPath, change.path, parsed.content);
     } catch (error) {
       this.logger.error('Error processing file', {
         path: change.path,
@@ -375,31 +401,7 @@ export class SparkDaemon implements ISparkDaemon {
     }
   }
 
-  private readAndParseFile(
-    fullPath: string,
-    relativePath: string
-  ): {
-    content: string;
-    parsed: { commands: ParsedCommand[]; frontmatter: Record<string, unknown> | null };
-  } {
-    this.logger!.debug('Reading file', { fullPath });
-    const content = readFileSync(fullPath, 'utf-8');
-    this.logger!.debug('File read', {
-      size: content.length,
-      lines: content.split('\n').length,
-    });
-
-    this.logger!.debug('Parsing file', { path: relativePath });
-    const parsed = this.fileParser!.parseFile(fullPath, content);
-    this.logger!.debug('File parsed', {
-      commands: parsed.commands.length,
-      frontmatter: parsed.frontmatter ? 'present' : 'none',
-    });
-
-    return { content, parsed };
-  }
-
-  private processCommands(filePath: string, commands: ParsedCommand[]): void {
+  private processCommands(relativePath: string, fullPath: string, commands: ParsedCommand[]): void {
     const pendingCommands = commands.filter((cmd) => cmd.status === 'pending');
 
     if (pendingCommands.length === 0) {
@@ -407,12 +409,17 @@ export class SparkDaemon implements ISparkDaemon {
     }
 
     this.logger!.info(`Found ${pendingCommands.length} pending command(s)`, {
-      file: filePath,
+      file: relativePath,
       commands: pendingCommands.map((c) => c.raw),
     });
 
     // Execute commands
     for (const command of pendingCommands) {
+      // Check if command should be executed
+      if (!this.commandExecutor!.shouldExecute(command)) {
+        continue;
+      }
+
       this.logger!.debug('Command detected', {
         line: command.line,
         type: command.type,
@@ -421,67 +428,19 @@ export class SparkDaemon implements ISparkDaemon {
       });
 
       if (this.inspector) {
-        this.inspector.recordCommandDetected(filePath, command.command || 'mention-chain', {
+        this.inspector.recordCommandDetected(relativePath, command.command || 'mention-chain', {
           line: command.line,
           type: command.type,
           mentions: command.mentions?.length || 0,
         });
       }
 
-      void this.executeCommand(command, join(this.vaultPath, filePath)).catch((error) => {
+      void this.commandExecutor!.execute(command, fullPath).catch((error) => {
         this.logger!.error('Command execution failed', {
           error: error instanceof Error ? error.message : String(error),
           command: command.raw,
         });
       });
-    }
-  }
-
-  /**
-   * Execute a command using AI
-   */
-  private async executeCommand(command: ParsedCommand, fullPath: string): Promise<void> {
-    if (!this.claudeClient || !this.promptBuilder || !this.contextLoader) {
-      throw new SparkError('AI components not initialized', 'NOT_INITIALIZED');
-    }
-
-    this.logger!.info('Executing command', {
-      command: command.raw.substring(0, 100),
-      file: fullPath,
-    });
-
-    try {
-      // Load context including mentioned files and nearby files ranked by proximity
-      const context = await this.contextLoader.load(fullPath, command.mentions || []);
-
-      this.logger!.debug('Context loaded', {
-        mentionedFiles: context.mentionedFiles.length,
-        nearbyFiles: context.nearbyFiles.length, // Ranked by proximity!
-        hasAgent: !!context.agent,
-      });
-
-      // Build structured prompt with agent persona, instructions, and context
-      const prompt = this.promptBuilder.build(command, context);
-
-      this.logger!.debug('Prompt built', {
-        length: prompt.length,
-        estimatedTokens: this.promptBuilder.estimateTokens(prompt),
-      });
-
-      this.logger!.debug('Full prompt to AI', { prompt });
-
-      // Call AI provider
-      const result = await this.claudeClient.complete(prompt);
-
-      this.logger!.info('Command executed', {
-        outputTokens: result.usage.outputTokens,
-        inputTokens: result.usage.inputTokens,
-      });
-
-      this.logger!.debug('AI response', { response: result.content });
-    } catch (error) {
-      this.logger!.error('Command execution failed', error);
-      throw error;
     }
   }
 

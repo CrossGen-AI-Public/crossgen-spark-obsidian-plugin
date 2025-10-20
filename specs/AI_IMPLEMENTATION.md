@@ -122,6 +122,18 @@ export class PromptBuilder implements IPromptBuilder {
   build(command: ParsedCommand, context: LoadedContext): string {
     const sections: string[] = [];
     
+    // System prompt with Spark syntax rules
+    sections.push(
+      '<system>',
+      'When referencing files and folders in your response:',
+      '- Reference files by basename only: @filename (not @folder/filename)',
+      '- Reference folders with trailing slash: @folder/',
+      '- This ensures proper decoration and clickability in the UI',
+      'Examples: @review-q4-finances, @tasks/, @invoices/',
+      '</system>',
+      ''
+    );
+    
     // Agent persona (if present)
     if (context.agent) {
       sections.push(
@@ -194,6 +206,34 @@ export class PromptBuilder implements IPromptBuilder {
   }
 }
 ```
+
+### Prompt Structure
+
+The prompt is structured in sections to guide the AI model:
+
+1. **System Prompt** - Rules for AI response formatting
+   - Instructs AI to use proper Spark syntax when referencing files/folders
+   - Files: `@filename` (basename only, not full path)
+   - Folders: `@folder/` (with trailing slash)
+   - Ensures AI responses are properly decorated and clickable in the Obsidian UI
+   - Example: Use `@review-q4-finances` instead of `@tasks/review-q4-finances`
+
+2. **Agent Persona** (optional) - Extracted from `@agent.md` in `.spark/agents/`
+   - Contains structured natural language description (converted from YAML frontmatter)
+   - Provides role, expertise, available tools, and instructions
+
+3. **Instructions** - The actual command text from the markdown file
+   - Raw command line as typed by the user
+
+4. **Context (HIGH priority)** - Explicitly mentioned files
+   - Full content of files mentioned with `@filename` syntax
+
+5. **Context (MEDIUM priority)** - Current file where command was typed
+   - Full content with note "Command was typed here"
+
+6. **Context (LOW priority)** - Nearby files ranked by proximity
+   - Summaries only (first ~500 chars)
+   - Ranked by distance from current file using `ProximityCalculator`
 
 ---
 
@@ -378,13 +418,13 @@ and uses Claude AI to generate responses based on file proximity context.
 
 ---
 
-## Phase 4B: Result Writing (NEXT)
+## Phase 4B: Result Writing (IN PROGRESS)
 
 ### User Experience (from RESULT_AND_ERROR_HANDLING.md)
 
-**Before execution:**
+**During execution (⏳ indicator):**
 ```markdown
-/summarize What is the purpose of this vault?
+⏳ /summarize What is the purpose of this vault?
 ```
 
 **After execution:**
@@ -397,10 +437,45 @@ for AI-powered automation.
 ```
 
 **Key points:**
-1. Add ✅ emoji to the command line
-2. Write Claude's response below the command (separated by blank line)
-3. Use atomic file operations (read → modify → write)
-4. Respect config `results.mode` setting
+1. Show ⏳ during execution (progress indicator)
+2. Add ✅ emoji to the command line on success
+3. Write AI response below the command (separated by blank line)
+4. Use atomic file operations (read → modify → write)
+5. **Current implementation: inline mode only**
+
+### Future Enhancements (Post-MVP)
+
+**1. Auto Mode (inline vs separate file based on size)**
+```yaml
+results:
+  mode: auto
+  inline_max_chars: 500
+  separate_folder: reports/
+```
+- Small results (<500 chars): Write inline
+- Large results: Create separate file with link
+
+**2. Command-Specific Output Mode**
+```markdown
+---
+# .spark/commands/create-report.md
+id: create-report
+output: separate_file
+output_path: reports/
+---
+```
+- Commands can specify their preferred output mode
+- Override global config on per-command basis
+
+**3. Separate File Mode**
+```markdown
+✅ /create-report
+
+Report created: @reports/Q4-analysis.md
+```
+- For long-form outputs like reports
+- Just shows link to created file
+- Keeps command file clean
 
 ### Result Modes (from config.yaml)
 

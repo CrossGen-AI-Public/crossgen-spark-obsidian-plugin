@@ -12,7 +12,12 @@ export const DEFAULT_SPARK_CONFIG: SparkConfig = {
   daemon: {
     watch: {
       patterns: ['**/*.md'],
-      ignore: ['.git/**', '.obsidian/**', 'node_modules/**', '.spark/logs/**'],
+      ignore: [
+        '.git/**',
+        '.obsidian/**',
+        'node_modules/**',
+        '.spark/**', // Exclude all Spark system files (config, agents, commands, etc.)
+      ],
     },
     debounce_ms: 300,
     status_indicators: {

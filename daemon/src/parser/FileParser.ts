@@ -3,10 +3,12 @@
  * Combines all parsers to analyze a complete file
  */
 
+import { readFileSync } from 'fs';
 import type { ParsedFile } from '../types/parser.js';
 import { MentionParser } from './MentionParser.js';
 import { CommandDetector } from './CommandDetector.js';
 import { FrontmatterParser } from './FrontmatterParser.js';
+import { SparkError } from '../types/index.js';
 
 export class FileParser {
   private mentionParser: MentionParser;
@@ -20,7 +22,28 @@ export class FileParser {
   }
 
   /**
-   * Parse a complete file and return all relevant information
+   * Read and parse a file from disk
+   * @param filePath - Absolute path to file
+   * @returns Parsed file structure
+   */
+  public parseFromFile(filePath: string): ParsedFile {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return this.parseFile(filePath, content);
+    } catch (error) {
+      throw new SparkError(
+        `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
+        'FILE_READ_ERROR',
+        { originalError: error }
+      );
+    }
+  }
+
+  /**
+   * Parse file content (content already loaded)
+   * @param filePath - File path for reference
+   * @param content - File content
+   * @returns Parsed file structure
    */
   public parseFile(filePath: string, content: string): ParsedFile {
     // Extract frontmatter

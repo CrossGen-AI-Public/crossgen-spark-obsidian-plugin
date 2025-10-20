@@ -9,6 +9,31 @@
 
 Spark has a **two-layer configuration system** that separates UI concerns from intelligence behavior:
 
+### Configuration Hot Reload
+
+The daemon automatically watches `.spark/config.yaml` for changes and reloads configuration without restarting.
+
+**Behavior:**
+- File changes trigger after 200ms initial stabilization
+- Validation retries with exponential backoff (200ms, 400ms, 800ms) if config is temporarily invalid
+- Invalid configurations after 4 attempts are logged as warnings but don't crash the daemon
+- Daemon continues using the previous valid configuration until a valid one is saved
+- File watcher restarts automatically with new patterns/ignore rules
+
+**Example flow when editing:**
+1. User deletes `debounce_ms: 300` to change it
+2. Config watcher triggers after 200ms, validation fails (missing field)
+3. Daemon retries after 200ms, still invalid
+4. User finishes typing `debounce_ms: 500` and saves
+5. Daemon succeeds on attempt 2, logs: `Config reloaded successfully on attempt 2`
+
+**Retry Timeline:**
+- Attempt 1: 200ms after file stabilizes
+- Attempt 2: +200ms delay (400ms total)
+- Attempt 3: +400ms delay (800ms total)
+- Attempt 4: +800ms delay (1600ms total)
+- Total window: ~1.6 seconds for user to complete their edit
+
 ### 1. Plugin Settings (UI Layer)
 - **Location:** `.obsidian/plugins/spark/data.json`
 - **Managed by:** Obsidian Plugin API (automatic)
@@ -92,7 +117,7 @@ version: 1.0
 
 # Daemon settings
 daemon:
-  # What files to watch
+  # What files to watch for commands
   watch:
     patterns:
       - "**/*.md"
@@ -100,9 +125,10 @@ daemon:
       - ".git/**"
       - ".obsidian/**"
       - "node_modules/**"
-      - ".spark/logs/**"
+      - ".spark/**"  # Exclude all Spark system files (agents, commands, logs, etc.)
+    # NOTE: .spark/config.yaml is watched separately via dedicated config watcher for hot reload
   
-  # File change debouncing
+  # File change debouncing (milliseconds to wait after changes before processing)
   debounce_ms: 300
   
   # How to show status in files
@@ -532,7 +558,7 @@ version: 1.0
 daemon:
   watch:
     patterns: ["**/*.md"]
-    ignore: [".git/**", ".obsidian/**"]
+    ignore: [".git/**", ".obsidian/**", ".spark/**"]
   debounce_ms: 300
   status_indicators:
     enabled: true

@@ -84,6 +84,7 @@ export class CommandDetector implements ICommandDetector {
     statusEmoji?: string
   ): ParsedCommand {
     const commandMention = mentions.find((m) => m.type === 'command');
+    const isComplete = this.isCommandComplete(raw);
 
     if (commandMention) {
       // Slash command
@@ -97,6 +98,7 @@ export class CommandDetector implements ICommandDetector {
         mentions,
         status,
         statusEmoji,
+        isComplete,
       };
     } else {
       // Mention chain (contains agent and other mentions)
@@ -109,8 +111,32 @@ export class CommandDetector implements ICommandDetector {
         finalCommand: this.extractFinalCommand(mentions),
         status,
         statusEmoji,
+        isComplete,
       };
     }
+  }
+
+  /**
+   * Check if a command appears complete (ready to execute)
+   */
+  private isCommandComplete(commandText: string): boolean {
+    const trimmed = commandText.trim();
+
+    // Empty command is incomplete
+    if (!trimmed) {
+      return false;
+    }
+
+    // Ends with trailing spaces (user likely still typing)
+    if (commandText !== trimmed) {
+      return false;
+    }
+
+    // Must end with sentence-ending punctuation
+    const lastChar = trimmed.charAt(trimmed.length - 1);
+    const sentenceEnders = ['.', '?', '!'];
+
+    return sentenceEnders.includes(lastChar);
   }
 
   private extractArgs(line: string, commandText: string): string | undefined {
