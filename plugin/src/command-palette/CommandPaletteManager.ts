@@ -6,6 +6,7 @@ import { FuzzyMatcher } from './FuzzyMatcher';
 import { PaletteView } from './PaletteView';
 import { CoordinateDetector } from './CoordinateDetector';
 import { TriggerDetector } from './TriggerDetector';
+import { MentionDecorator } from './MentionDecorator';
 
 /**
  * Orchestrates the command palette functionality
@@ -16,6 +17,7 @@ export class CommandPaletteManager {
 	private activeTrigger: TriggerContext | null = null;
 	private cachedItems: PaletteItem[] | null = null;
 	private isInserting: boolean = false;
+	private mentionDecorator: MentionDecorator | null = null;
 
 	// Services
 	private itemLoader: ItemLoader;
@@ -26,8 +28,9 @@ export class CommandPaletteManager {
 	private paletteSelectHandler: EventListener;
 	private clickOutsideHandler: EventListener;
 
-	constructor(plugin: ISparkPlugin) {
+	constructor(plugin: ISparkPlugin, mentionDecorator?: MentionDecorator) {
 		this.plugin = plugin;
+		this.mentionDecorator = mentionDecorator || null;
 		this.itemLoader = new ItemLoader(plugin.app);
 		this.fuzzyMatcher = new FuzzyMatcher();
 		this.paletteView = new PaletteView(plugin.app);
@@ -114,6 +117,12 @@ export class CommandPaletteManager {
 			triggerChar: trigger.char,
 			query: '',
 		};
+
+		// Refresh decorator when palette opens to pick up new agents/commands
+		if (this.mentionDecorator) {
+			void this.mentionDecorator.refresh();
+		}
+
 		void this.showPalette();
 	}
 

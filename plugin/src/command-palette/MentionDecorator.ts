@@ -31,10 +31,39 @@ export class MentionDecorator {
 	}
 
 	/**
+	 * Refresh the decorator by reloading agents and commands
+	 * Called automatically when command palette opens
+	 */
+	async refresh(): Promise<void> {
+		await this.loadValidAgents();
+		await this.loadValidCommands();
+		// Trigger re-decoration of all elements
+		this.processAllElements();
+		// Force all open markdown editors to update their CodeMirror decorations
+		this.forceEditorUpdates();
+	}
+
+	/**
+	 * Force all open markdown editors to update their decorations
+	 */
+	private forceEditorUpdates(): void {
+		this.app.workspace.iterateAllLeaves(leaf => {
+			// @ts-expect-error - Accessing internal Obsidian API
+			if (leaf.view?.getViewType?.() === 'markdown' && leaf.view?.editor?.cm) {
+				// @ts-expect-error - Accessing CodeMirror internal API
+				leaf.view.editor.cm.dispatch({});
+			}
+		});
+	}
+
+	/**
 	 * Load list of valid agents for validation
 	 */
 	private async loadValidAgents() {
 		try {
+			// Clear existing agents to refresh the list
+			this.validAgents.clear();
+
 			const agentsFolderExists = await this.app.vault.adapter.exists('.spark/agents');
 			if (!agentsFolderExists) {
 				console.log('Spark: .spark/agents folder does not exist');
@@ -60,6 +89,9 @@ export class MentionDecorator {
 	 */
 	private async loadValidCommands() {
 		try {
+			// Clear existing commands to refresh the list
+			this.validCommands.clear();
+
 			const commandsFolderExists = await this.app.vault.adapter.exists('.spark/commands');
 			if (!commandsFolderExists) {
 				console.log('Spark: .spark/commands folder does not exist');

@@ -15,14 +15,14 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         // Load settings
         await this.loadSettings();
 
-        // Initialize command palette manager
-        this.commandPaletteManager = new CommandPaletteManager(this);
-        this.commandPaletteManager.register();
-
-        // Initialize mention decorator
+        // Initialize mention decorator first
         this.mentionDecorator = new MentionDecorator(this.app);
         await this.mentionDecorator.initialize();
         this.registerEditorExtension(this.mentionDecorator.createExtension());
+
+        // Initialize command palette manager with decorator reference
+        this.commandPaletteManager = new CommandPaletteManager(this, this.mentionDecorator);
+        this.commandPaletteManager.register();
 
         // Start observing HTML table cells for mention styling
         this.mentionDecorator.startTableObserver();
