@@ -64,7 +64,7 @@ export class ErrorWriter {
 
     try {
       writeFileSync(errorFilePath, errorContent, 'utf-8');
-      this.logger.info('Error log written', { path: errorLogRelative });
+      this.logger.debug('Error log written', { path: errorLogRelative });
     } catch (writeError) {
       this.logger.error('Failed to write error log file', { writeError, path: errorFilePath });
       // Continue to write notification even if file write fails
@@ -137,6 +137,14 @@ export class ErrorWriter {
       lines.push('```');
     }
 
+    // Add suggestions based on error code
+    const suggestions = this.getSuggestions(error);
+    if (suggestions) {
+      lines.push('');
+      lines.push('## Suggestions');
+      lines.push(suggestions);
+    }
+
     // Add command if available
     if (commandText) {
       lines.push('');
@@ -159,14 +167,6 @@ export class ErrorWriter {
       lines.push('```json');
       lines.push(JSON.stringify(context, null, 2));
       lines.push('```');
-    }
-
-    // Add suggestions based on error type
-    const suggestions = this.getSuggestions(error);
-    if (suggestions) {
-      lines.push('');
-      lines.push('## Suggestions');
-      lines.push(suggestions);
     }
 
     return lines.join('\n');
@@ -194,44 +194,62 @@ export class ErrorWriter {
     }
 
     switch (error.code) {
+      case 'API_KEY_NOT_SET': {
+        const envVar = error.context?.apiKeyEnv || 'ANTHROPIC_API_KEY';
+        return [
+          `1. Set your API key: \`export ${envVar}=your-key-here\``,
+          '2. Add to ~/.bashrc or ~/.zshrc to persist across sessions',
+          '3. Get your API key from your AI provider dashboard',
+          `4. Verify it's set: \`echo $${envVar}\``,
+        ].join('\n');
+      }
+
       case 'CONFIG_ERROR':
       case 'CONFIG_LOAD_FAILED':
+      case 'INVALID_CONFIG':
         return [
           '1. Check your `.spark/config.yaml` file for syntax errors',
-          '2. Validate configuration: `spark config validate`',
-          '3. View current config: `spark config inspect`',
-          '4. See example config in the documentation',
+          '2. Run: `spark inspect <vault>` to see current configuration',
+          '3. See example-vault/.spark/config.yaml for reference',
         ].join('\n');
 
       case 'AI_NETWORK_ERROR':
         return [
           '1. Check your internet connection',
-          '2. Verify you can reach api.anthropic.com (try: ping api.anthropic.com)',
+          '2. Verify you can reach the AI provider API endpoint',
           '3. Check if a firewall or VPN is blocking the connection',
           '4. The daemon will retry automatically once connection is restored',
         ].join('\n');
 
-      case 'AI_CLIENT_ERROR':
+      case 'AI_CLIENT_ERROR': {
+        const envVar = error.context?.apiKeyEnv || 'ANTHROPIC_API_KEY';
         return [
-          '1. Check your API key is set correctly',
-          '2. Verify the environment variable is exported',
-          '3. Check for typos in command syntax',
-          '4. Review the Claude API documentation',
+          '1. Check your API key is valid and not expired',
+          `2. Verify it's set: \`echo $${envVar}\``,
+          '3. Get a new key from your AI provider dashboard',
+          '4. Ensure the API key format is correct',
         ].join('\n');
+      }
 
       case 'AI_SERVER_ERROR':
         return [
           '1. This is a temporary server issue - the daemon will retry automatically',
-          '2. Check Claude API status: https://status.anthropic.com',
-          '3. If issue persists, try again in a few minutes',
+          '2. Check your AI provider status page for any outages',
+          '3. If persists for >5 minutes, try restarting the daemon',
         ].join('\n');
 
       case 'RESULT_WRITE_ERROR':
         return [
-          '1. Check file permissions',
-          '2. Ensure the file still exists',
+          '1. Check file permissions in your vault',
+          '2. Ensure the file still exists and is not deleted',
           '3. Check if file is open in another application',
-          '4. Verify disk space is available',
+          '4. Verify sufficient disk space is available',
+        ].join('\n');
+
+      case 'EMPTY_LINE':
+        return [
+          '1. The command line appears to be empty',
+          '2. Ensure your command includes the full instruction',
         ].join('\n');
 
       default:

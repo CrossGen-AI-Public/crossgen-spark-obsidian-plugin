@@ -42,3 +42,9 @@ ai:
 logging:
   level: info
   console: true
+
+# Feature flags
+features:
+  slash_commands: true      # Enable /command syntax (e.g., /summarize, /review)
+  chat_assistant: true      # Enable chat-style interactions (future)
+  trigger_automation: true  # Enable trigger-based automation (future)

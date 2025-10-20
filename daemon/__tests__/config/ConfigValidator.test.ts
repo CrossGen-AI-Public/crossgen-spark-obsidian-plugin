@@ -124,7 +124,7 @@ describe('ConfigValidator', () => {
 
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
-                    'daemon.debounce_ms is required'
+                    'daemon.debounce_ms must be a number'
                 );
             });
 
@@ -139,7 +139,7 @@ describe('ConfigValidator', () => {
 
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
-                    'daemon.debounce_ms is required'
+                    'daemon.debounce_ms must be a number'
                 );
             });
         });

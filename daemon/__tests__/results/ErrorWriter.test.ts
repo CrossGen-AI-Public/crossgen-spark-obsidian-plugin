@@ -101,7 +101,11 @@ describe('ErrorWriter', () => {
         });
 
         it('should include suggestions for known error codes', async () => {
-            const sparkError = new SparkError('Config failed', 'CONFIG_ERROR');
+            const sparkError = new SparkError(
+                'ANTHROPIC_API_KEY environment variable not set',
+                'API_KEY_NOT_SET',
+                { apiKeyEnv: 'ANTHROPIC_API_KEY' }
+            );
 
             const errorPath = await errorWriter.writeError({
                 error: sparkError,
@@ -110,8 +114,27 @@ describe('ErrorWriter', () => {
 
             const content = readFileSync(errorPath, 'utf-8');
             expect(content).toContain('## Suggestions');
-            expect(content).toContain('config.yaml');
-            expect(content).toContain('spark config validate');
+            expect(content).toContain('API key');
+            expect(content).toContain('ANTHROPIC_API_KEY');
+        });
+
+        it('should use custom env var name in API key error suggestions', async () => {
+            const sparkError = new SparkError(
+                'MY_CUSTOM_API_KEY environment variable not set',
+                'API_KEY_NOT_SET',
+                { apiKeyEnv: 'MY_CUSTOM_API_KEY' }
+            );
+
+            const errorPath = await errorWriter.writeError({
+                error: sparkError,
+                filePath: '/vault/test.md',
+            });
+
+            const content = readFileSync(errorPath, 'utf-8');
+            expect(content).toContain('## Suggestions');
+            expect(content).toContain('MY_CUSTOM_API_KEY');
+            expect(content).toContain('export MY_CUSTOM_API_KEY=');
+            expect(content).toContain('echo $MY_CUSTOM_API_KEY');
         });
 
         it('should handle AI client errors with suggestions', async () => {
@@ -138,7 +161,7 @@ describe('ErrorWriter', () => {
             const content = readFileSync(errorPath, 'utf-8');
             expect(content).toContain('## Suggestions');
             expect(content).toContain('retry automatically');
-            expect(content).toContain('status.anthropic.com');
+            expect(content).toContain('AI provider status page');
         });
 
         it('should handle network errors with suggestions', async () => {
@@ -152,7 +175,7 @@ describe('ErrorWriter', () => {
             const content = readFileSync(errorPath, 'utf-8');
             expect(content).toContain('## Suggestions');
             expect(content).toContain('internet connection');
-            expect(content).toContain('api.anthropic.com');
+            expect(content).toContain('AI provider API endpoint');
             expect(content).toContain('retry automatically');
         });
 

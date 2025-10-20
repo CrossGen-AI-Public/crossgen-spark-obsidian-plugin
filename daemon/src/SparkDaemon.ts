@@ -88,7 +88,8 @@ export class SparkDaemon implements ISparkDaemon {
       if (!apiKey) {
         throw new SparkError(
           `${this.config.ai.claude.api_key_env} environment variable not set`,
-          'CONFIG_ERROR'
+          'API_KEY_NOT_SET',
+          { apiKeyEnv: this.config.ai.claude.api_key_env }
         );
       }
 
@@ -146,6 +147,11 @@ export class SparkDaemon implements ISparkDaemon {
       this.logger.info('Spark daemon started successfully');
     } catch (error) {
       this.state = 'error';
+      // Re-throw SparkErrors as-is to preserve error codes and context
+      if (error instanceof SparkError) {
+        throw error;
+      }
+      // Wrap other errors
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new SparkError(`Failed to start daemon: ${message}`, 'START_FAILED', {
         originalError: error,

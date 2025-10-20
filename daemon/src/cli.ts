@@ -11,6 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync, unlinkSync, writeFileSync, mkdirSync } from 'fs';
 import { registerDaemon, unregisterDaemon, getActiveDaemons, findDaemon } from './cli/registry.js';
+import { handleCliError } from './errors/ErrorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -121,8 +122,7 @@ program
     try {
       await daemon.start();
     } catch (error) {
-      console.error('Failed to start daemon:', error);
-      process.exit(1);
+      handleCliError(error, 'Starting daemon', absolutePath);
     }
 
     // Graceful shutdown handlers

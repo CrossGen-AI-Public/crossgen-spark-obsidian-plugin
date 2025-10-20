@@ -43,11 +43,11 @@ export class ConfigValidator implements IConfigValidator {
     }
 
     if (typeof d.debounce_ms !== 'number') {
-      throw new SparkError('daemon.debounce_ms is required', 'INVALID_DEBOUNCE');
+      throw new SparkError('daemon.debounce_ms must be a number', 'INVALID_DEBOUNCE');
     }
 
     if (d.debounce_ms < 0) {
-      throw new SparkError('daemon.debounce_ms must be a number', 'INVALID_DEBOUNCE');
+      throw new SparkError('daemon.debounce_ms must be a non-negative number', 'INVALID_DEBOUNCE');
     }
   }
 
