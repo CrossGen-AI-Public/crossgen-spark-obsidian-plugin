@@ -81,11 +81,11 @@ export class MentionDecorator {
 	}
 
 	/**
-	 * Start observing HTML table cells for mention styling
+	 * Start observing HTML table cells and metadata properties for mention styling
 	 */
 	startTableObserver() {
 		this.observer = new MutationObserver(() => {
-			this.processAllTableCells();
+			this.processAllElements();
 		});
 
 		this.observer.observe(document.body, {
@@ -94,8 +94,12 @@ export class MentionDecorator {
 			characterData: true,
 		});
 
-		// Process existing cells
-		this.processAllTableCells();
+		// Listen for focus events on contenteditable metadata inputs
+		document.addEventListener('focusin', this.handleFocusIn.bind(this));
+		document.addEventListener('focusout', this.handleFocusOut.bind(this));
+
+		// Process existing elements
+		this.processAllElements();
 	}
 
 	/**
@@ -104,17 +108,49 @@ export class MentionDecorator {
 	stopTableObserver() {
 		this.observer?.disconnect();
 		this.observer = null;
+		document.removeEventListener('focusin', this.handleFocusIn.bind(this));
+		document.removeEventListener('focusout', this.handleFocusOut.bind(this));
 	}
 
 	/**
-	 * Process all inactive table cells
+	 * Handle focus into contenteditable fields
 	 */
-	private processAllTableCells() {
+	private handleFocusIn(event: FocusEvent) {
+		const target = event.target as HTMLElement;
+		if (target.classList.contains('metadata-input-longtext') && target.isContentEditable) {
+			// Remove decoration attributes to allow clean editing
+			target.removeAttribute('data-spark-processed');
+			target.removeAttribute('data-spark-text');
+		}
+	}
+
+	/**
+	 * Handle focus out from contenteditable fields
+	 */
+	private handleFocusOut(event: FocusEvent) {
+		const target = event.target as HTMLElement;
+		if (target.classList.contains('metadata-input-longtext') && target.isContentEditable) {
+			// Re-process after a short delay to allow Obsidian to save changes
+			window.setTimeout(() => {
+				this.processTableCell(target);
+			}, 100);
+		}
+	}
+
+	/**
+	 * Process all inactive table cells and metadata properties
+	 */
+	private processAllElements() {
+		// Process table cells
 		const tables = document.querySelectorAll('.table-editor');
 		tables.forEach(table => {
 			const cells = table.querySelectorAll('.table-cell-wrapper');
 			cells.forEach(cell => this.processTableCell(cell as HTMLElement));
 		});
+
+		// Process metadata property values
+		const metadataInputs = document.querySelectorAll('.metadata-input-longtext');
+		metadataInputs.forEach(input => this.processTableCell(input as HTMLElement));
 	}
 
 	/**
@@ -125,6 +161,11 @@ export class MentionDecorator {
 		if (cell.querySelector('.cm-content, .cm-editor')) {
 			cell.removeAttribute('data-spark-processed');
 			cell.removeAttribute('data-spark-text');
+			return;
+		}
+
+		// Skip if contenteditable element is currently focused
+		if (cell.isContentEditable && document.activeElement === cell) {
 			return;
 		}
 
