@@ -50,9 +50,11 @@ describe('ResultWriter', () => {
 
             expect(lines[2]).toBe('✅ /summarize this content');
             expect(lines[3]).toBe('');
-            expect(lines[4]).toBe('This is a summary of the content.');
-            expect(lines[5]).toBe('');
-            expect(lines[6]).toBe('Some other content');
+            expect(lines[4]).toBe('<!-- spark-result-start -->');
+            expect(lines[5]).toBe('This is a summary of the content.');
+            expect(lines[6]).toBe('<!-- spark-result-end -->');
+            expect(lines[7]).toBe('');
+            expect(lines[8]).toBe('Some other content');
         });
 
         it('should write result inline without blank lines', async () => {
@@ -78,9 +80,11 @@ describe('ResultWriter', () => {
             const lines = result.split('\n');
 
             expect(lines[2]).toBe('✅ /summarize this content');
-            expect(lines[3]).toBe('This is a summary.');
-            expect(lines[4]).toBe('');
-            expect(lines[5]).toBe('Some other content');
+            expect(lines[3]).toBe('<!-- spark-result-start -->');
+            expect(lines[4]).toBe('This is a summary.');
+            expect(lines[5]).toBe('<!-- spark-result-end -->');
+            expect(lines[6]).toBe('');
+            expect(lines[7]).toBe('Some other content');
         });
 
         it('should replace existing status emoji', async () => {
@@ -107,7 +111,9 @@ describe('ResultWriter', () => {
 
             expect(lines[2]).toBe('✅ /summarize this content');
             expect(lines[3]).toBe('');
-            expect(lines[4]).toBe('Done!');
+            expect(lines[4]).toBe('<!-- spark-result-start -->');
+            expect(lines[5]).toBe('Done!');
+            expect(lines[6]).toBe('<!-- spark-result-end -->');
         });
 
         it('should throw error for invalid line number', async () => {

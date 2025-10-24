@@ -10,9 +10,10 @@ describe('ConfigDefaults', () => {
         });
 
         it('should have valid AI configuration', () => {
-            expect(DEFAULT_SPARK_CONFIG.ai.provider).toBe('claude');
-            expect(DEFAULT_SPARK_CONFIG.ai.claude!.model).toBe('claude-3-5-sonnet-20241022');
-            expect(DEFAULT_SPARK_CONFIG.ai.claude!.api_key_env).toBe('ANTHROPIC_API_KEY');
+            expect(DEFAULT_SPARK_CONFIG.ai.defaultProvider).toBe('claude-agent');
+            expect(DEFAULT_SPARK_CONFIG.ai.providers['claude-agent']!.model).toBe('claude-sonnet-4-5-20250929');
+            expect(DEFAULT_SPARK_CONFIG.ai.providers['claude-agent']!.apiKeyEnv).toBe('ANTHROPIC_API_KEY');
+            expect(DEFAULT_SPARK_CONFIG.ai.providers['claude-client']!.model).toBe('claude-sonnet-4-5-20250929');
         });
 
         it('should have valid logging configuration', () => {
@@ -127,12 +128,13 @@ describe('ConfigDefaults', () => {
                     debounce_ms: 500,
                 },
                 ai: {
-                    provider: 'claude',
-                    claude: {
-                        model: 'claude-3-opus-20240229',
-                        api_key_env: 'CUSTOM_API_KEY',
-                        max_tokens: 8192,
-                        temperature: 0.5,
+                    providers: {
+                        'claude-client': {
+                            model: 'claude-3-opus-20240229',
+                            apiKeyEnv: 'CUSTOM_API_KEY',
+                            maxTokens: 8192,
+                            temperature: 0.5,
+                        },
                     },
                 },
             };
@@ -145,7 +147,7 @@ describe('ConfigDefaults', () => {
             // User config should override
             expect(result.daemon.watch.patterns).toEqual(['custom/*.md']);
             expect(result.daemon.debounce_ms).toBe(500);
-            expect(result.ai.claude!.model).toBe('claude-3-opus-20240229');
+            expect(result.ai.providers['claude-client']!.model).toBe('claude-3-opus-20240229');
 
             // Defaults should be preserved for unspecified fields
             expect(result.logging.level).toBe('info');

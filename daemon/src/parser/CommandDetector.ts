@@ -17,8 +17,21 @@ export class CommandDetector implements ICommandDetector {
     const lines = content.split('\n');
     const commands: ParsedCommand[] = [];
     let inCodeBlock = false;
+    let inSparkResult = false; // Track if we're inside an AI response
 
     lines.forEach((line, index) => {
+      // Skip AI responses to prevent feedback loop
+      if (line.trim() === '<!-- spark-result-start -->') {
+        inSparkResult = true;
+        return;
+      }
+      if (line.trim() === '<!-- spark-result-end -->') {
+        inSparkResult = false;
+        return;
+      }
+      if (inSparkResult) {
+        return; // Skip lines inside AI responses
+      }
       // Track code blocks
       if (line.trim().startsWith('```')) {
         inCodeBlock = !inCodeBlock;

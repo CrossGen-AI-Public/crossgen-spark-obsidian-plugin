@@ -191,6 +191,45 @@ export class ErrorHandler {
           "Ensure you're in the correct vault directory",
         ];
 
+      case 'PROVIDER_NOT_FOUND':
+        return [
+          'Check your .spark/config.yaml file',
+          'Verify the provider name is correct',
+          'Available providers are listed in the error message',
+          'Make sure the provider is registered in the daemon',
+        ];
+
+      case 'PROVIDER_INIT_FAILED':
+        return [
+          'Check your .spark/config.yaml for provider configuration',
+          'Verify the API key environment variable is set',
+          'Check the error details above for specific issues',
+          'Try restarting the daemon: spark stop <vault> && spark start <vault>',
+        ];
+
+      case 'PROVIDER_NOT_CONFIGURED':
+        return [
+          'Add the provider configuration to .spark/config.yaml',
+          'Ensure ai.providers contains your desired provider',
+          'Set ai.defaultProvider to match one of your configured providers',
+          'See example-vault/.spark/config.yaml for reference',
+        ];
+
+      case 'PROVIDER_NOT_SPECIFIED':
+        return [
+          'Set ai.defaultProvider in .spark/config.yaml',
+          'Or specify a provider in the agent configuration',
+          'Available providers are listed in the error message',
+        ];
+
+      case 'INVALID_PROVIDER_CONFIG':
+        return [
+          'Check your provider configuration in .spark/config.yaml',
+          'Ensure all required fields are present (type, model)',
+          'Verify field types match the specification',
+          'See example-vault/.spark/config.yaml for correct format',
+        ];
+
       default:
         return [];
     }

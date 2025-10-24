@@ -70,9 +70,11 @@ describe('ConfigLoader', () => {
         it('should handle nested config overrides', async () => {
             const userConfig = {
                 ai: {
-                    claude: {
-                        model: 'claude-3-opus-20240229',
-                        max_tokens: 8192,
+                    providers: {
+                        'claude-client': {
+                            model: 'claude-3-opus-20240229',
+                            maxTokens: 8192,
+                        },
                     },
                 },
             };
@@ -80,10 +82,10 @@ describe('ConfigLoader', () => {
             await vault.writeConfig(userConfig);
             const config = await loader.load(vault.root);
 
-            expect(config.ai.claude!.model).toBe('claude-3-opus-20240229');
-            expect(config.ai.claude!.max_tokens).toBe(8192);
+            expect(config.ai.providers['claude-client']!.model).toBe('claude-3-opus-20240229');
+            expect(config.ai.providers['claude-client']!.maxTokens).toBe(8192);
             // Default preserved
-            expect(config.ai.claude!.api_key_env).toBe('ANTHROPIC_API_KEY');
+            expect(config.ai.providers['claude-client']!.apiKeyEnv).toBe('ANTHROPIC_API_KEY');
         });
 
         it('should handle empty config file', async () => {
@@ -225,6 +227,50 @@ describe('ConfigLoader', () => {
         it('should return correct config path', () => {
             const expectedPath = `${vault.root}/.spark/config.yaml`;
             expect(loader.getConfigPath(vault.root)).toBe(expectedPath);
+        });
+    });
+
+    describe('loadWithRetry', () => {
+        it('should succeed on first attempt', async () => {
+            const userConfig = {
+                daemon: {
+                    debounce_ms: 500,
+                },
+            };
+
+            await vault.writeConfig(userConfig);
+            const config = await loader.loadWithRetry(vault.root);
+
+            expect(config.daemon.debounce_ms).toBe(500);
+        });
+
+        it('should return defaults when no config file exists', async () => {
+            const config = await loader.loadWithRetry(vault.root);
+            expect(config).toEqual(DEFAULT_SPARK_CONFIG);
+        });
+
+        it('should eventually fail after all retries', async () => {
+            // Write invalid YAML that will consistently fail
+            await vault.writeFile('.spark/config.yaml', 'invalid: yaml: [content');
+
+            await expect(loader.loadWithRetry(vault.root, 1, 2)).rejects.toThrow();
+        });
+
+        it('should use exponential backoff between retries', async () => {
+            // Write invalid config
+            await vault.writeFile('.spark/config.yaml', 'invalid: [yaml');
+
+            const startTime = Date.now();
+
+            try {
+                await loader.loadWithRetry(vault.root, 1, 3);
+            } catch {
+                // Expected to fail
+            }
+
+            const elapsed = Date.now() - startTime;
+            // Should have delays: 200ms + 400ms = 600ms minimum
+            expect(elapsed).toBeGreaterThanOrEqual(500);
         });
     });
 });

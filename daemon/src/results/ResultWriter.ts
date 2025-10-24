@@ -47,8 +47,10 @@ export class ResultWriter {
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `✅ ${cleanLine}`;
 
-      // Insert result after command line
-      const resultLines = addBlankLines ? ['', result] : [result];
+      // Insert result after command line with markers to prevent feedback loop
+      const resultLines = addBlankLines
+        ? ['', '<!-- spark-result-start -->', result, '<!-- spark-result-end -->']
+        : ['<!-- spark-result-start -->', result, '<!-- spark-result-end -->'];
       lines.splice(commandLine, 0, ...resultLines);
 
       // Atomic write

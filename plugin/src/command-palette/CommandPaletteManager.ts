@@ -171,8 +171,15 @@ export class CommandPaletteManager {
 	private async showPalette(): Promise<void> {
 		if (!this.activeTrigger) return;
 
+		// Store reference to avoid race condition
+		const trigger = this.activeTrigger;
+
 		const items = await this.getFilteredItems();
-		const coords = this.coordinateDetector.getCoordinates(this.activeTrigger.editor);
+
+		// Check again in case palette was closed during async operation
+		if (!this.activeTrigger) return;
+
+		const coords = this.coordinateDetector.getCoordinates(trigger.editor);
 
 		if (coords) {
 			this.paletteView.show(items, coords);

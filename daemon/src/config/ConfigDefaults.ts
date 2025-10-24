@@ -36,12 +36,22 @@ export const DEFAULT_SPARK_CONFIG: SparkConfig = {
     },
   },
   ai: {
-    provider: 'claude',
-    claude: {
-      model: 'claude-3-5-sonnet-20241022',
-      api_key_env: 'ANTHROPIC_API_KEY',
-      max_tokens: 4096,
-      temperature: 0.7,
+    defaultProvider: 'claude-agent',
+    providers: {
+      'claude-client': {
+        type: 'claude',
+        model: 'claude-sonnet-4-5-20250929', // Latest Claude Sonnet 4.5
+        apiKeyEnv: 'ANTHROPIC_API_KEY',
+        maxTokens: 4096,
+        temperature: 0.7,
+      },
+      'claude-agent': {
+        type: 'claude',
+        model: 'claude-sonnet-4-5-20250929', // Latest Claude Sonnet 4.5
+        apiKeyEnv: 'ANTHROPIC_API_KEY',
+        maxTokens: 4096,
+        temperature: 0.7,
+      },
     },
   },
   logging: {

@@ -21,13 +21,13 @@ export class MentionParser implements IMentionParser {
       {
         type: 'command',
         regex: /(?:^|[\s@])\/([a-z][a-z0-9-]*)/gim,
-        priority: 5,
+        priority: 6,
       },
       // Service: $service-name
       {
         type: 'service',
         regex: /\$([a-z][a-z0-9-]*)/gi,
-        priority: 4,
+        priority: 5,
       },
       // Quoted File: @"path/to/file name.ext" (handles spaces)
       {
@@ -35,7 +35,7 @@ export class MentionParser implements IMentionParser {
         regex: /@"([^"]+\.(md|txt|pdf|docx|xlsx|csv|json|html|xml))"/gi,
         priority: 4,
       },
-      // File: @path/to/filename.ext (must be checked BEFORE folder to prevent partial matches)
+      // File with extension: @path/to/filename.ext
       {
         type: 'file',
         regex: /@([\w-]+(?:\/[\w-]+)*\.(md|txt|pdf|docx|xlsx|csv|json|html|xml))/gi,
@@ -47,7 +47,10 @@ export class MentionParser implements IMentionParser {
         regex: /@([\w-]+(?:\/[\w-]+)*\/)/g,
         priority: 2,
       },
-      // Agent: @agent-name (supports hyphens and underscores, no extension, no trailing slash)
+      // Agent/File: @name (no extension, no trailing slash)
+      // Could be agent or file - ContextLoader will resolve by checking existence
+      // - First tries .spark/agents/{name}.md
+      // - If not found, tries to find {name}.md in vault
       {
         type: 'agent',
         regex: /@([a-z][a-z0-9_-]*)(?![/\w.])/gi,

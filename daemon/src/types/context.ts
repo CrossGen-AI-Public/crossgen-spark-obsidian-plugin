@@ -38,6 +38,17 @@ export interface MentionedFile {
 export interface AgentContext {
   path: string;
   persona: string;
+  aiConfig?: AgentAIConfig;
+}
+
+/**
+ * Agent AI configuration (from frontmatter)
+ */
+export interface AgentAIConfig {
+  provider?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 /**

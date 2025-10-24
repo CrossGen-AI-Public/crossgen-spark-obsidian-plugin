@@ -7,6 +7,7 @@
 export * from './config.js';
 export * from './events.js';
 export * from './ai.js';
+export * from './provider.js';
 export * from './notification.js';
 export * from './result.js';
 

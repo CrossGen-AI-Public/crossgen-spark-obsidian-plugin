@@ -58,10 +58,47 @@ export interface ResultsConfig {
  * AI provider configuration
  */
 export interface AIConfig {
-  provider: 'claude' | 'openai' | 'local';
+  /**
+   * Default provider to use
+   */
+  defaultProvider: string;
+
+  /**
+   * Provider configurations by name
+   */
+  providers: Record<string, ProviderConfiguration>;
+
+  /**
+   * Legacy support (deprecated)
+   */
+  provider?: 'claude' | 'openai' | 'local';
   claude?: ClaudeConfig;
   openai?: OpenAIConfig;
   fallback?: FallbackConfig;
+}
+
+/**
+ * Individual provider configuration
+ */
+export interface ProviderConfiguration {
+  type: 'claude' | 'openai' | 'local';
+  model: string;
+  apiKeyEnv?: string;
+  maxTokens?: number;
+  temperature?: number;
+  systemPrompt?: string | SystemPromptConfiguration;
+  fallbackProvider?: string;
+  options?: Record<string, unknown>;
+}
+
+/**
+ * System prompt configuration
+ */
+export interface SystemPromptConfiguration {
+  type: 'custom' | 'preset' | 'hybrid';
+  preset?: string;
+  customPrompt?: string;
+  sparkExtensions?: boolean;
 }
 
 /**

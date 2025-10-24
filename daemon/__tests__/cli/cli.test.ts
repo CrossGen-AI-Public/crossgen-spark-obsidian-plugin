@@ -127,12 +127,15 @@ describe('CLI', () => {
                 },
             },
             ai: {
-                provider: 'claude',
-                claude: {
-                    model: 'claude-3-5-sonnet-20241022',
-                    max_tokens: 4096,
-                    temperature: 0.7,
-                    api_key_env: 'ANTHROPIC_API_KEY',
+                defaultProvider: 'claude-client',
+                providers: {
+                    'claude-client': {
+                        type: 'claude',
+                        model: 'claude-3-5-sonnet-20241022',
+                        maxTokens: 4096,
+                        temperature: 0.7,
+                        apiKeyEnv: 'ANTHROPIC_API_KEY',
+                    },
                 },
             },
             logging: {
@@ -369,7 +372,10 @@ describe('CLI', () => {
                     status_indicators: { enabled: false, pending: '', processing: '', completed: '', error: '', warning: '' },
                     results: { mode: 'inline', inline_max_chars: 0, separate_folder: '', add_blank_lines: false },
                 },
-                ai: { provider: 'claude', claude: { model: '', max_tokens: 0, temperature: 0, api_key_env: '' } },
+                ai: {
+                    defaultProvider: 'claude-client',
+                    providers: { 'claude-client': { type: 'claude', model: '', maxTokens: 0, temperature: 0, apiKeyEnv: '' } },
+                },
             };
 
             const result = mockConfigLoader.validate(config);
@@ -404,7 +410,7 @@ describe('CLI', () => {
 
         it('should show AI configuration', () => {
             const config = mockSparkDaemon.getConfig();
-            expect(config?.ai.provider).toBe('claude');
+            expect(config?.ai.defaultProvider).toBe('claude-client');
         });
 
         it('should check API key status', () => {

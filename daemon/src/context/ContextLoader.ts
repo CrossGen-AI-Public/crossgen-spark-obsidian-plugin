@@ -4,20 +4,23 @@
  */
 
 import { readFileSync } from 'fs';
-import type { IContextLoader, LoadedContext } from '../types/context.js';
+import type { IContextLoader, LoadedContext, AgentAIConfig } from '../types/context.js';
 import type { ParsedMention } from '../types/parser.js';
 import { PathResolver } from './PathResolver.js';
 import { ProximityCalculator } from './ProximityCalculator.js';
+import { FrontmatterParser } from '../parser/FrontmatterParser.js';
 import { Logger } from '../logger/Logger.js';
 
 export class ContextLoader implements IContextLoader {
   private resolver: PathResolver;
   private proximityCalc: ProximityCalculator;
+  private frontmatterParser: FrontmatterParser;
   private logger: Logger;
 
   constructor(vaultPath: string) {
     this.resolver = new PathResolver(vaultPath);
     this.proximityCalc = new ProximityCalculator();
+    this.frontmatterParser = new FrontmatterParser();
     this.logger = Logger.getInstance();
   }
 
@@ -45,9 +48,15 @@ export class ContextLoader implements IContextLoader {
 
   private async loadMention(mention: ParsedMention, context: LoadedContext): Promise<void> {
     switch (mention.type) {
-      case 'agent':
-        await this.loadAgent(mention.value, context);
+      case 'agent': {
+        // Try agent first, fallback to file if not found
+        const agentLoaded = await this.loadAgent(mention.value, context);
+        if (!agentLoaded) {
+          this.logger.debug('Agent not found, trying as file', { mention: mention.value });
+          await this.loadFile(mention.value, context);
+        }
         break;
+      }
 
       case 'file':
         await this.loadFile(mention.value, context);
@@ -67,48 +76,54 @@ export class ContextLoader implements IContextLoader {
     }
   }
 
-  private async loadAgent(agentName: string, context: LoadedContext): Promise<void> {
+  private async loadAgent(agentName: string, context: LoadedContext): Promise<boolean> {
     const agentPath = await this.resolver.resolveAgent(agentName);
     if (!agentPath) {
-      return;
+      return false; // Agent not found
     }
 
     const content = this.safeReadFile(agentPath);
     if (!content || content.trim().length === 0) {
       // Empty agent file - skip
-      return;
+      return false;
     }
 
     // Parse frontmatter and body
     const frontmatterMatch = content.match(/^---\s*\n(.*?)\n---\s*\n([\s\S]*)$/s);
 
     if (frontmatterMatch) {
-      const frontmatter = frontmatterMatch[1] || '';
       const body = frontmatterMatch[2]?.trim() || '';
+
+      // Parse frontmatter using FrontmatterParser for proper YAML support
+      const metadata = this.frontmatterParser.extractFrontmatter(content);
+      const aiConfig = this.extractAgentAIConfig(metadata, agentName);
 
       // Need at least a body for the persona
       if (!body || body.length === 0) {
         // Frontmatter only, no instructions - use a helpful default
-        const metadata = this.parseFrontmatterForAgent(frontmatter);
         const defaultName = (metadata.name as string) || agentName;
         const defaultRole = (metadata.role as string) || 'a helpful assistant';
         const persona = this.formatAgentPersona(
-          metadata,
+          metadata as Record<string, string | string[]>,
           `You are ${defaultName}, ${defaultRole}.`
         );
 
         context.agent = {
           path: agentPath,
           persona,
+          aiConfig,
         };
       } else {
         // Normal case: frontmatter + body
-        const metadata = this.parseFrontmatterForAgent(frontmatter);
-        const persona = this.formatAgentPersona(metadata, body);
+        const persona = this.formatAgentPersona(
+          metadata as Record<string, string | string[]>,
+          body
+        );
 
         context.agent = {
           path: agentPath,
           persona,
+          aiConfig,
         };
       }
     } else {
@@ -119,54 +134,43 @@ export class ContextLoader implements IContextLoader {
         persona: content.trim(),
       };
     }
+
+    return true; // Agent successfully loaded
   }
 
-  private parseFrontmatterForAgent(frontmatter: string): Record<string, string | string[]> {
-    const metadata: Record<string, string | string[]> = {};
-
-    try {
-      const lines = frontmatter.split('\n');
-
-      let currentKey = '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-
-        // Skip empty lines and comments
-        if (!trimmed || trimmed.startsWith('#')) {
-          continue;
-        }
-
-        // Key-value pairs (not indented, contains colon)
-        if (line.includes(':') && !line.startsWith(' ') && !line.startsWith('-')) {
-          const colonIndex = line.indexOf(':');
-          const key = line.substring(0, colonIndex).trim();
-          const value = line.substring(colonIndex + 1).trim();
-
-          currentKey = key;
-
-          if (value) {
-            // Inline value (e.g., "name: Betty")
-            metadata[currentKey] = value;
-          } else {
-            // Array or multi-line value (e.g., "expertise:")
-            metadata[currentKey] = [];
-          }
-        } else if (trimmed.startsWith('-') && currentKey) {
-          // Array item (e.g., "  - Financial reporting")
-          const item = trimmed.substring(1).trim();
-          const currentValue = metadata[currentKey];
-          if (item && currentValue && Array.isArray(currentValue)) {
-            currentValue.push(item);
-          }
-        }
-      }
-    } catch (error) {
-      // If parsing fails, return empty metadata
-      // Agent will still work with just the body
-      this.logger.warn('Failed to parse agent frontmatter, using defaults', { error });
+  /**
+   * Extract AI configuration from agent metadata
+   */
+  private extractAgentAIConfig(
+    metadata: Record<string, unknown>,
+    agentName: string
+  ): AgentAIConfig | undefined {
+    if (!metadata.ai || typeof metadata.ai !== 'object') {
+      return undefined;
     }
 
-    return metadata;
+    const ai = metadata.ai as Record<string, unknown>;
+    const aiConfig: AgentAIConfig = {
+      provider: typeof ai.provider === 'string' ? ai.provider : undefined,
+      model: typeof ai.model === 'string' ? ai.model : undefined,
+      temperature: typeof ai.temperature === 'number' ? ai.temperature : undefined,
+      maxTokens: typeof ai.maxTokens === 'number' ? ai.maxTokens : undefined,
+    };
+
+    // Only return aiConfig if at least one field is set
+    if (!aiConfig.provider && !aiConfig.model && !aiConfig.temperature && !aiConfig.maxTokens) {
+      return undefined;
+    }
+
+    this.logger.debug('Agent AI config loaded', {
+      agent: agentName,
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+      temperature: aiConfig.temperature,
+      maxTokens: aiConfig.maxTokens,
+    });
+
+    return aiConfig;
   }
 
   private formatAgentPersona(metadata: Record<string, string | string[]>, body: string): string {
@@ -205,7 +209,10 @@ export class ContextLoader implements IContextLoader {
   }
 
   private async loadFile(filename: string, context: LoadedContext): Promise<void> {
-    const filePath = await this.resolver.resolveFile(filename);
+    // If filename has no extension, assume .md
+    const fileToResolve = filename.includes('.') ? filename : `${filename}.md`;
+
+    const filePath = await this.resolver.resolveFile(fileToResolve);
     if (filePath) {
       const content = this.safeReadFile(filePath);
       context.mentionedFiles.push({
@@ -213,6 +220,8 @@ export class ContextLoader implements IContextLoader {
         content,
         priority: 1.0, // Explicitly mentioned files have highest priority
       });
+    } else {
+      this.logger.debug('File not found', { filename, attempted: fileToResolve });
     }
   }
 

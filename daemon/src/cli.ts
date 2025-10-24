@@ -366,6 +366,9 @@ program
   .action(async (vaultPath: string, options: { verbose: boolean }) => {
     const absolutePath = path.resolve(vaultPath);
 
+    // Validate that this is an Obsidian vault
+    validateVault(absolutePath, 'start');
+
     console.log(`Validating configuration at: ${absolutePath}`);
 
     try {
@@ -383,8 +386,9 @@ program
         console.log(`  Console logging: ${config.logging.console ? 'enabled' : 'disabled'}`);
         console.log(`  Watch patterns: ${config.daemon.watch.patterns.join(', ')}`);
         console.log(`  Debounce: ${config.daemon.debounce_ms}ms`);
-        console.log(`  AI Provider: ${config.ai.provider}`);
-        console.log(`  AI Model: ${config.ai.claude?.model || 'not configured'}`);
+        console.log(`  Default AI Provider: ${config.ai.defaultProvider}`);
+        const defaultProvider = config.ai.providers?.[config.ai.defaultProvider];
+        console.log(`  AI Model: ${defaultProvider?.model || 'not configured'}`);
       }
     } catch (error) {
       console.error('❌ Configuration validation failed:');
@@ -402,6 +406,9 @@ program
   .argument('[vault-path]', 'Path to Obsidian vault', process.cwd())
   .action(async (vaultPath: string) => {
     const absolutePath = path.resolve(vaultPath);
+
+    // Validate that this is an Obsidian vault
+    validateVault(absolutePath, 'start');
 
     console.log(`Inspecting vault: ${absolutePath}`);
     console.log('');
@@ -439,13 +446,18 @@ program
 
       // Show AI config
       console.log('🤖 AI Configuration:');
-      console.log(`  Provider: ${config.ai.provider}`);
-      if (config.ai.claude) {
-        console.log(`  Model: ${config.ai.claude.model}`);
-        console.log(`  API Key Env: ${config.ai.claude.api_key_env}`);
-        const apiKey = process.env[config.ai.claude.api_key_env];
-        console.log(`  API Key: ${apiKey ? '✓ configured' : '✗ missing'}`);
-        console.log(`  Max tokens: ${config.ai.claude.max_tokens}`);
+      console.log(`  Default Provider: ${config.ai.defaultProvider}`);
+      console.log(`  Available Providers:`);
+      for (const [name, providerConfig] of Object.entries(config.ai.providers || {})) {
+        const isDefault = name === config.ai.defaultProvider;
+        console.log(`    ${isDefault ? '→' : ' '} ${name}`);
+        console.log(`      Type: ${providerConfig.type}`);
+        console.log(`      Model: ${providerConfig.model}`);
+        console.log(`      API Key Env: ${providerConfig.apiKeyEnv}`);
+        const apiKey = providerConfig.apiKeyEnv ? process.env[providerConfig.apiKeyEnv] : undefined;
+        console.log(`      API Key: ${apiKey ? '✓ configured' : '✗ missing'}`);
+        console.log(`      Max Tokens: ${providerConfig.maxTokens}`);
+        console.log(`      Temperature: ${providerConfig.temperature}`);
       }
     } catch (error) {
       console.error('❌ Inspection failed:');
@@ -533,6 +545,10 @@ program
   .option('-c, --clear', 'Clear history', false)
   .action(async (vaultPath: string, options: { limit: string; stats: boolean; clear: boolean }) => {
     const absolutePath = path.resolve(vaultPath);
+
+    // Validate that this is an Obsidian vault
+    validateVault(absolutePath, 'start');
+
     const historyFile = path.join(absolutePath, '.spark', 'history.json');
 
     // Clear history if requested
@@ -635,6 +651,9 @@ program
   .argument('[vault-path]', 'Path to Obsidian vault', process.cwd())
   .action(async (vaultPath: string) => {
     const absolutePath = path.resolve(vaultPath);
+
+    // Validate that this is an Obsidian vault
+    validateVault(absolutePath, 'start');
 
     // Find the running daemon
     const daemon = findDaemon(absolutePath);

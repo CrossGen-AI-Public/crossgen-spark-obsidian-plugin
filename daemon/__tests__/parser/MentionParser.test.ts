@@ -45,13 +45,13 @@ describe('MentionParser', () => {
             });
         });
 
-        it('should handle agent names with hyphens', () => {
+        it('should handle agent names with hyphens (parser treats as agent)', () => {
             const content = '@betty-bot assist';
             const mentions = parser.parse(content);
 
             expect(mentions).toHaveLength(1);
             expect(mentions[0]).toMatchObject({
-                type: 'agent',
+                type: 'agent', // Parser classifies as agent, ContextLoader will resolve
                 value: 'betty-bot',
             });
         });
@@ -337,6 +337,84 @@ describe('MentionParser', () => {
             const mentions = parser.parse(content);
 
             expect(mentions[0]!.type).toBe('service');
+        });
+    });
+
+    describe('Ambiguous Mention Resolution', () => {
+        it('should parse bare names as agent type (resolution happens in ContextLoader)', () => {
+            // Parser classifies all bare @name as 'agent' - ContextLoader resolves actual type
+            const content = '@review-q4-finances needs attention';
+            const mentions = parser.parse(content);
+
+            expect(mentions).toHaveLength(1);
+            expect(mentions[0]).toMatchObject({
+                type: 'agent', // Parser doesn't know if it's agent or file
+                value: 'review-q4-finances',
+                raw: '@review-q4-finances',
+            });
+        });
+
+        it('should handle hyphenated names as agent type for parser', () => {
+            const content = '@code-assistant help me';
+            const mentions = parser.parse(content);
+
+            expect(mentions).toHaveLength(1);
+            expect(mentions[0]).toMatchObject({
+                type: 'agent', // Parser classifies as agent, ContextLoader resolves
+                value: 'code-assistant',
+                raw: '@code-assistant',
+            });
+        });
+
+        it('should parse simple names as agents', () => {
+            const content = '@betty and @quinn collaborate';
+            const mentions = parser.parse(content);
+
+            expect(mentions).toHaveLength(2);
+            expect(mentions[0]!.type).toBe('agent');
+            expect(mentions[1]!.type).toBe('agent');
+        });
+
+        it('should parse all bare mentions as agent type', () => {
+            const content = '@betty review @meeting-notes-2024-10-24 and @draft-proposal';
+            const mentions = parser.parse(content);
+
+            expect(mentions).toHaveLength(3);
+            // All are parsed as 'agent' type - ContextLoader will resolve based on existence
+            expect(mentions[0]).toMatchObject({
+                type: 'agent',
+                value: 'betty',
+            });
+            expect(mentions[1]).toMatchObject({
+                type: 'agent',
+                value: 'meeting-notes-2024-10-24',
+            });
+            expect(mentions[2]).toMatchObject({
+                type: 'agent',
+                value: 'draft-proposal',
+            });
+        });
+
+        it('should prioritize explicit extension (makes it unambiguously a file)', () => {
+            const content = '@my-file.md';
+            const mentions = parser.parse(content);
+
+            expect(mentions).toHaveLength(1);
+            expect(mentions[0]).toMatchObject({
+                type: 'file', // Extension makes it clearly a file
+                value: 'my-file.md',
+            });
+        });
+
+        it('should handle explicit folder syntax', () => {
+            const content = '@tasks/';
+            const mentions = parser.parse(content);
+
+            expect(mentions).toHaveLength(1);
+            expect(mentions[0]).toMatchObject({
+                type: 'folder', // Trailing slash makes it clearly a folder
+                value: 'tasks/',
+            });
         });
     });
 });

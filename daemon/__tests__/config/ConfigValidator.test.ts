@@ -149,12 +149,15 @@ describe('ConfigValidator', () => {
                 const config = {
                     ...DEFAULT_SPARK_CONFIG,
                     ai: {
-                        provider: 'claude' as const,
-                        claude: {
-                            model: 'claude-3-opus-20240229',
-                            api_key_env: 'ANTHROPIC_API_KEY',
-                            max_tokens: 8192,
-                            temperature: 0.7,
+                        defaultProvider: 'claude-client',
+                        providers: {
+                            'claude-client': {
+                                type: 'claude' as const,
+                                model: 'claude-3-opus-20240229',
+                                apiKeyEnv: 'ANTHROPIC_API_KEY',
+                                maxTokens: 8192,
+                                temperature: 0.7,
+                            },
                         },
                     },
                 };
@@ -181,19 +184,20 @@ describe('ConfigValidator', () => {
                 };
 
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
-                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('ai.provider is required');
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('ai.defaultProvider and ai.providers are required');
             });
 
-            it('should throw if ai.claude is missing when provider is claude', () => {
+            it('should throw if provider config is missing', () => {
                 const config = {
                     ...DEFAULT_SPARK_CONFIG,
                     ai: {
-                        provider: 'claude' as const,
+                        defaultProvider: 'claude-client',
+                        providers: {},
                     },
                 };
 
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
-                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('ai.claude');
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('Provider');
             });
         });
 
@@ -333,12 +337,15 @@ describe('ConfigValidator', () => {
                         },
                     },
                     ai: {
-                        provider: 'claude',
-                        claude: {
-                            model: 'claude-3-opus-20240229',
-                            api_key_env: 'MY_CLAUDE_KEY',
-                            max_tokens: 8192,
-                            temperature: 0.8,
+                        defaultProvider: 'claude-client',
+                        providers: {
+                            'claude-client': {
+                                type: 'claude',
+                                model: 'claude-3-opus-20240229',
+                                apiKeyEnv: 'MY_CLAUDE_KEY',
+                                maxTokens: 8192,
+                                temperature: 0.8,
+                            },
                         },
                     },
                     logging: {
@@ -356,6 +363,145 @@ describe('ConfigValidator', () => {
                 expect(() => validator.validate(config)).not.toThrow();
                 const result = validator.validate(config);
                 expect(result).toEqual(config);
+            });
+        });
+
+        describe('provider configuration validation', () => {
+            it('should throw if provider type is invalid', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'invalid-type',
+                                model: 'test-model',
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('must be one of: claude, openai, local');
+            });
+
+            it('should throw if provider model is empty', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'claude',
+                                model: '',
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('model is required');
+            });
+
+            it('should throw if apiKeyEnv is not a string', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'claude',
+                                model: 'test-model',
+                                apiKeyEnv: 123,
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('apiKeyEnv must be a string');
+            });
+
+            it('should throw if maxTokens is not a number', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'claude',
+                                model: 'test-model',
+                                maxTokens: '4096',
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('maxTokens must be a number');
+            });
+
+            it('should throw if temperature is not a number', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'claude',
+                                model: 'test-model',
+                                temperature: '0.7',
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('temperature must be a number');
+            });
+
+            it('should throw if fallbackProvider is not a string', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'claude',
+                                model: 'test-model',
+                                fallbackProvider: 123,
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('fallbackProvider must be a string');
+            });
+
+            it('should validate provider with all optional fields', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'test-provider',
+                        providers: {
+                            'test-provider': {
+                                type: 'claude',
+                                model: 'test-model',
+                                apiKeyEnv: 'TEST_KEY',
+                                maxTokens: 8192,
+                                temperature: 0.9,
+                                fallbackProvider: 'backup',
+                            },
+                            'backup': {
+                                type: 'claude',
+                                model: 'backup-model',
+                            },
+                        },
+                    },
+                };
+
+                expect(() => validator.validate(config as unknown as SparkConfig)).not.toThrow();
             });
         });
     });

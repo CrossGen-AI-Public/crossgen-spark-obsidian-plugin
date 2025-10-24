@@ -58,89 +58,99 @@ export class ConfigValidator implements IConfigValidator {
 
     const a = ai as Record<string, unknown>;
 
-    if (!a.provider || typeof a.provider !== 'string') {
-      throw new SparkError('ai.provider is required', 'INVALID_AI_PROVIDER');
+    // Validate multi-provider format
+    if (a.defaultProvider && a.providers) {
+      this.validateMultiProviderConfig(a);
+    } else {
+      throw new SparkError(
+        'ai.defaultProvider and ai.providers are required',
+        'INVALID_AI_PROVIDER'
+      );
+    }
+  }
+
+  private validateMultiProviderConfig(a: Record<string, unknown>): void {
+    // Validate defaultProvider
+    if (!a.defaultProvider || typeof a.defaultProvider !== 'string') {
+      throw new SparkError('ai.defaultProvider must be a string', 'INVALID_AI_PROVIDER');
     }
 
-    const validProviders = ['claude', 'openai', 'local'];
-    if (!validProviders.includes(a.provider as string)) {
+    // Validate providers object
+    if (!a.providers || typeof a.providers !== 'object') {
+      throw new SparkError('ai.providers must be an object', 'INVALID_AI_PROVIDER');
+    }
+
+    const providers = a.providers as Record<string, unknown>;
+
+    // Check if defaultProvider exists in providers
+    if (!((a.defaultProvider as string) in providers)) {
       throw new SparkError(
-        `ai.provider must be one of: ${validProviders.join(', ')}`,
+        `ai.defaultProvider "${a.defaultProvider}" not found in ai.providers`,
         'INVALID_AI_PROVIDER'
       );
     }
 
-    if (a.provider === 'claude') {
-      if (!a.claude || typeof a.claude !== 'object') {
-        throw new SparkError(
-          'ai.claude configuration is required when provider is "claude"',
-          'INVALID_CLAUDE_CONFIG'
-        );
-      }
-      this.validateClaudeConfig(a.claude as Record<string, unknown>);
+    // Validate each provider configuration
+    for (const [name, config] of Object.entries(providers)) {
+      this.validateProviderConfig(name, config);
     }
   }
 
-  private validateClaudeConfig(claude: Record<string, unknown>): void {
+  // eslint-disable-next-line complexity
+  private validateProviderConfig(name: string, config: unknown): void {
+    if (!config || typeof config !== 'object') {
+      throw new SparkError(`ai.providers.${name} must be an object`, 'INVALID_PROVIDER_CONFIG');
+    }
+
+    const c = config as Record<string, unknown>;
+
+    // Validate type
+    if (!c.type || typeof c.type !== 'string') {
+      throw new SparkError(`ai.providers.${name}.type is required`, 'INVALID_PROVIDER_CONFIG');
+    }
+
+    const validTypes = ['claude', 'openai', 'local'];
+    if (!validTypes.includes(c.type as string)) {
+      throw new SparkError(
+        `ai.providers.${name}.type must be one of: ${validTypes.join(', ')}`,
+        'INVALID_PROVIDER_CONFIG'
+      );
+    }
+
     // Validate model
-    if (!claude.model || typeof claude.model !== 'string') {
-      throw new SparkError('ai.claude.model is required', 'INVALID_CLAUDE_MODEL');
-    }
-
-    if (claude.model.trim().length === 0) {
-      throw new SparkError('ai.claude.model cannot be empty', 'INVALID_CLAUDE_MODEL');
-    }
-
-    // Validate known model patterns
-    const validModelPrefixes = ['claude-', 'gpt-']; // Allow gpt- for potential future compatibility
-    const hasValidPrefix = validModelPrefixes.some((prefix) =>
-      (claude.model as string).startsWith(prefix)
-    );
-
-    if (!hasValidPrefix) {
+    if (!c.model || typeof c.model !== 'string' || c.model.trim().length === 0) {
       throw new SparkError(
-        `ai.claude.model should start with one of: ${validModelPrefixes.join(', ')}. Got: ${claude.model}`,
-        'INVALID_CLAUDE_MODEL'
+        `ai.providers.${name}.model is required and must be a non-empty string`,
+        'INVALID_PROVIDER_CONFIG'
       );
     }
 
-    // Validate api_key_env
-    if (!claude.api_key_env || typeof claude.api_key_env !== 'string') {
-      throw new SparkError('ai.claude.api_key_env is required', 'INVALID_CLAUDE_API_KEY_ENV');
-    }
-
-    if (claude.api_key_env.trim().length === 0) {
-      throw new SparkError('ai.claude.api_key_env cannot be empty', 'INVALID_CLAUDE_API_KEY_ENV');
-    }
-
-    // Validate max_tokens
-    if (typeof claude.max_tokens !== 'number') {
-      throw new SparkError('ai.claude.max_tokens must be a number', 'INVALID_CLAUDE_MAX_TOKENS');
-    }
-
-    if (claude.max_tokens <= 0) {
+    // Validate optional fields
+    if (c.apiKeyEnv !== undefined && typeof c.apiKeyEnv !== 'string') {
       throw new SparkError(
-        'ai.claude.max_tokens must be greater than 0',
-        'INVALID_CLAUDE_MAX_TOKENS'
+        `ai.providers.${name}.apiKeyEnv must be a string`,
+        'INVALID_PROVIDER_CONFIG'
       );
     }
 
-    if (claude.max_tokens > 200000) {
+    if (c.maxTokens !== undefined && typeof c.maxTokens !== 'number') {
       throw new SparkError(
-        'ai.claude.max_tokens is too large (max 200,000)',
-        'INVALID_CLAUDE_MAX_TOKENS'
+        `ai.providers.${name}.maxTokens must be a number`,
+        'INVALID_PROVIDER_CONFIG'
       );
     }
 
-    // Validate temperature
-    if (typeof claude.temperature !== 'number') {
-      throw new SparkError('ai.claude.temperature must be a number', 'INVALID_CLAUDE_TEMPERATURE');
+    if (c.temperature !== undefined && typeof c.temperature !== 'number') {
+      throw new SparkError(
+        `ai.providers.${name}.temperature must be a number`,
+        'INVALID_PROVIDER_CONFIG'
+      );
     }
 
-    if (claude.temperature < 0 || claude.temperature > 1) {
+    if (c.fallbackProvider !== undefined && typeof c.fallbackProvider !== 'string') {
       throw new SparkError(
-        'ai.claude.temperature must be between 0 and 1',
-        'INVALID_CLAUDE_TEMPERATURE'
+        `ai.providers.${name}.fallbackProvider must be a string`,
+        'INVALID_PROVIDER_CONFIG'
       );
     }
   }

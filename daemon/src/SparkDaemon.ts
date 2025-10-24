@@ -17,11 +17,10 @@ import { Logger } from './logger/Logger.js';
 import { SparkError } from './types/index.js';
 import { FileParser } from './parser/FileParser.js';
 import { DaemonInspector } from './cli/DaemonInspector.js';
-import { ClaudeClient } from './ai/ClaudeClient.js';
-import { PromptBuilder } from './ai/PromptBuilder.js';
 import { ContextLoader } from './context/ContextLoader.js';
 import { ResultWriter } from './results/ResultWriter.js';
 import { CommandExecutor } from './execution/CommandExecutor.js';
+import { ProviderRegistry, ClaudeDirectProvider, ClaudeAgentProvider } from './providers/index.js';
 
 export class SparkDaemon implements ISparkDaemon {
   private vaultPath: string;
@@ -31,12 +30,11 @@ export class SparkDaemon implements ISparkDaemon {
   private logger: Logger | null;
   private fileParser: FileParser | null;
   private inspector: DaemonInspector | null;
-  private claudeClient: ClaudeClient | null;
-  private promptBuilder: PromptBuilder | null;
   private contextLoader: ContextLoader | null;
   private resultWriter: ResultWriter | null;
   private commandExecutor: CommandExecutor | null;
   private state: DaemonState;
+  private providersRegistered: boolean;
 
   constructor(vaultPath: string) {
     this.vaultPath = vaultPath;
@@ -46,12 +44,11 @@ export class SparkDaemon implements ISparkDaemon {
     this.logger = null;
     this.fileParser = null;
     this.inspector = null;
-    this.claudeClient = null;
-    this.promptBuilder = null;
     this.contextLoader = null;
     this.resultWriter = null;
     this.commandExecutor = null;
     this.state = 'stopped';
+    this.providersRegistered = false;
   }
 
   public async start(): Promise<void> {
@@ -79,27 +76,16 @@ export class SparkDaemon implements ISparkDaemon {
       this.fileParser = new FileParser();
       this.logger.debug('File parser initialized');
 
+      // Register AI providers (only once)
+      if (!this.providersRegistered) {
+        this.registerProviders();
+        this.providersRegistered = true;
+      }
+
       // Initialize AI components
-      if (!this.config.ai.claude) {
-        throw new SparkError('Claude configuration missing in config.yaml', 'CONFIG_ERROR');
-      }
-
-      const apiKey = process.env[this.config.ai.claude.api_key_env];
-      if (!apiKey) {
-        throw new SparkError(
-          `${this.config.ai.claude.api_key_env} environment variable not set`,
-          'API_KEY_NOT_SET',
-          { apiKeyEnv: this.config.ai.claude.api_key_env }
-        );
-      }
-
-      this.claudeClient = new ClaudeClient(apiKey, this.config.ai.claude);
-      this.promptBuilder = new PromptBuilder();
       this.contextLoader = new ContextLoader(this.vaultPath);
       this.resultWriter = new ResultWriter();
       this.commandExecutor = new CommandExecutor(
-        this.claudeClient,
-        this.promptBuilder,
         this.contextLoader,
         this.resultWriter,
         this.config,
@@ -195,6 +181,30 @@ export class SparkDaemon implements ISparkDaemon {
   }
 
   /**
+   * Register AI providers
+   * Called once during daemon initialization
+   */
+  private registerProviders(): void {
+    const registry = ProviderRegistry.getInstance();
+
+    // Register Claude Client Provider (Anthropic SDK - direct)
+    registry.registerProvider('claude-client', 'claude', (config) => {
+      return new ClaudeDirectProvider(config);
+    });
+
+    // Register Claude Agent Provider (Claude Agent SDK - with tools/file operations)
+    registry.registerProvider('claude-agent', 'claude', (config) => {
+      return new ClaudeAgentProvider(config);
+    });
+
+    if (this.logger) {
+      this.logger.debug('AI providers registered', {
+        providers: registry.getProviderNames(),
+      });
+    }
+  }
+
+  /**
    * Reload configuration without restarting daemon
    * Useful for development and config changes
    */
@@ -214,6 +224,23 @@ export class SparkDaemon implements ISparkDaemon {
 
       // Update config
       this.config = newConfig;
+
+      // Clear AI provider cache so new config is used
+      if (this.commandExecutor) {
+        // Note: We can't directly access providerFactory, but recreating CommandExecutor
+        // will create a new factory with the new config
+        this.contextLoader = new ContextLoader(this.vaultPath);
+        this.resultWriter = new ResultWriter();
+        this.commandExecutor = new CommandExecutor(
+          this.contextLoader,
+          this.resultWriter,
+          this.config,
+          this.vaultPath
+        );
+        if (this.logger) {
+          this.logger.info('AI components reinitialized with new config');
+        }
+      }
 
       // Update logger with new config (singleton pattern - don't recreate)
       if (this.logger) {

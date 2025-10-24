@@ -30,13 +30,28 @@ daemon:
 
 # AI provider configuration
 ai:
-  provider: claude
+  # Default provider to use
+  defaultProvider: claude-agent  # Using Agent SDK for file operations
   
-  claude:
-    model: claude-3-5-sonnet-20241022
-    api_key_env: ANTHROPIC_API_KEY
-    max_tokens: 4096
-    temperature: 0.7
+  # Provider configurations
+  providers:
+    # Claude Client (uses Anthropic SDK directly)
+    claude-client:
+      type: claude
+      model: claude-3-5-sonnet-20241022
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+      # fallbackProvider: claude-agent  # Optional: fallback if this fails
+    
+    # Claude Agent (uses Claude Agent SDK with advanced tools and file operations)
+    claude-agent:
+      type: claude
+      model: claude-sonnet-4-5-20250929  # Latest and fastest model
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+      # fallbackProvider: claude-client  # Optional: fallback to client if agent fails
 
 # Logging
 logging:
