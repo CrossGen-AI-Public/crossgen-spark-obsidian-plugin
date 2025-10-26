@@ -179,7 +179,8 @@ No message markers here
             expect(mockLogger.error).toHaveBeenCalled();
             expect(existsSync(queueFile)).toBe(false);
 
-            const resultFile = join(vault.path, '.spark', 'chat-results', 'conv.jsonl');
+            // Should now correctly extract conv-456 from frontmatter
+            const resultFile = join(vault.path, '.spark', 'chat-results', 'conv-456.jsonl');
             expect(existsSync(resultFile)).toBe(true);
         });
 

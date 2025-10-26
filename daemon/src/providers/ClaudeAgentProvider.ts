@@ -19,6 +19,7 @@ export class ClaudeAgentProvider implements IAIProvider {
   private config: ProviderConfiguration;
   private logger: Logger;
   private vaultPath: string;
+  private errorHandler: ClaudeAgentErrorHandler;
 
   constructor(config: ProviderConfiguration) {
     if (!config.apiKeyEnv) {
@@ -42,6 +43,7 @@ export class ClaudeAgentProvider implements IAIProvider {
     // Get vaultPath from config.options if available
     this.vaultPath = (config.options?.vaultPath as string) || process.cwd();
     this.logger = Logger.getInstance();
+    this.errorHandler = new ClaudeAgentErrorHandler();
     this.logger.info(`ClaudeAgentProvider (${this.name}) initialized`, {
       vaultPath: this.vaultPath,
     });
@@ -147,12 +149,7 @@ export class ClaudeAgentProvider implements IAIProvider {
         }
       }
     } catch (error) {
-      this.logger.error('Claude Agent SDK error', { error });
-      throw new SparkError(
-        `Claude Agent SDK error: ${error instanceof Error ? error.message : String(error)}`,
-        'PROVIDER_CALL_FAILED',
-        { originalError: error }
-      );
+      this.errorHandler.handleError(error, this.config.apiKeyEnv);
     }
   }
 
@@ -191,9 +188,20 @@ export class ClaudeAgentProvider implements IAIProvider {
             inputTokens,
             outputTokens,
           });
+        } else if (msg.subtype === 'error_during_execution') {
+          // Error during execution - log details and throw
+          this.logger.error('SDK execution error', {
+            subtype: msg.subtype,
+            message: msg,
+          });
+          throw new SparkError(
+            `Agent SDK execution error: ${msg.subtype}`,
+            'PROVIDER_CALL_FAILED',
+            { resultMessage: msg }
+          );
         } else {
-          // Error during execution
-          throw new SparkError(`Agent SDK execution error: ${msg.subtype}`, 'PROVIDER_CALL_FAILED');
+          // Other error subtypes
+          throw new SparkError(`Agent SDK error: ${msg.subtype}`, 'PROVIDER_CALL_FAILED');
         }
       }
       // Accumulate usage from assistant messages as well
@@ -211,6 +219,17 @@ export class ClaudeAgentProvider implements IAIProvider {
       inputTokens,
       outputTokens,
     });
+
+    // Check if we got an empty result with zero tokens (suspicious)
+    if (!resultText && inputTokens === 0 && outputTokens === 0) {
+      this.logger.warn(
+        'Claude Agent SDK returned empty result with zero tokens - possible SDK crash'
+      );
+      throw new SparkError('Claude Code process exited with code 1', 'PROVIDER_CALL_FAILED', {
+        detail:
+          'SDK returned empty result with zero token usage - the SDK process may have crashed',
+      });
+    }
 
     return {
       content: resultText,
@@ -328,5 +347,106 @@ export class ClaudeAgentProvider implements IAIProvider {
       fallbackProvider: this.config.fallbackProvider,
       options: this.config.options,
     };
+  }
+}
+
+/**
+ * Error handler for Claude Agent SDK errors
+ */
+class ClaudeAgentErrorHandler {
+  private logger: Logger;
+
+  constructor() {
+    this.logger = Logger.getInstance();
+  }
+
+  /**
+   * Handle Claude Agent SDK errors and convert them to SparkErrors
+   */
+  handleError(error: unknown, apiKeyEnv?: string): never {
+    // Log detailed error information for debugging
+    const errorObj = error as Record<string, unknown>;
+    this.logger.error('Claude Agent SDK error details', {
+      error,
+      errorType: typeof error,
+      errorConstructor: error?.constructor?.name,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
+      exit_code: errorObj.exit_code,
+      errorProps: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    });
+
+    // Check for CLI not found error
+    if (this.isCliNotFoundError(error)) {
+      throw new SparkError(
+        'Claude Code CLI is not installed. Please install it: npm install -g @anthropic-ai/claude-code',
+        'PROVIDER_INIT_FAILED',
+        { originalError: error }
+      );
+    }
+
+    // Check for process exit errors
+    const exitCode = this.extractExitCode(error);
+    if (exitCode !== null) {
+      this.handleProcessExitError(error, exitCode, apiKeyEnv);
+    }
+
+    // Check for JSON parse errors
+    if (this.isJsonParseError(error)) {
+      throw new SparkError(
+        'Failed to parse response from Claude Code. The CLI may be outputting unexpected data.',
+        'PROVIDER_CALL_FAILED',
+        { originalError: error }
+      );
+    }
+
+    // Generic error handling
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new SparkError(errorMessage, 'PROVIDER_CALL_FAILED', { originalError: error });
+  }
+
+  private isCliNotFoundError(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      error.message.includes('claude-code') &&
+      error.message.includes('not found')
+    );
+  }
+
+  private extractExitCode(error: unknown): number | null {
+    if (!(error instanceof Error)) {
+      return null;
+    }
+
+    const exitCodeMatch = error.message.match(/process exited with code (\d+)/);
+    if (exitCodeMatch && exitCodeMatch[1]) {
+      return parseInt(exitCodeMatch[1], 10);
+    }
+
+    return null;
+  }
+
+  private handleProcessExitError(error: unknown, exitCode: number, apiKeyEnv?: string): never {
+    // Exit code 1 usually means API error (auth, credits, etc)
+    if (exitCode === 1) {
+      throw new SparkError(
+        'Claude Code process failed. This usually indicates an API authentication or credit issue. Check your API key and account credits.',
+        'AI_CLIENT_ERROR',
+        { originalError: error, exitCode, apiKeyEnv }
+      );
+    }
+
+    // Other exit codes
+    throw new SparkError(
+      `Claude Code process exited with code ${exitCode}. Check the error logs for more details.`,
+      'PROVIDER_CALL_FAILED',
+      { originalError: error, exitCode }
+    );
+  }
+
+  private isJsonParseError(error: unknown): boolean {
+    return (
+      error instanceof Error && (error.message.includes('JSON') || error.message.includes('parse'))
+    );
   }
 }

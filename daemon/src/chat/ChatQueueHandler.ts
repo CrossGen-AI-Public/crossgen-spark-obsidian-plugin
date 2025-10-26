@@ -9,14 +9,19 @@ import type { Logger } from '../logger/Logger.js';
 import type { CommandExecutor } from '../execution/CommandExecutor.js';
 import type { MentionParser } from '../parser/MentionParser.js';
 import type { ParsedCommand, ParsedMention } from '../types/parser.js';
+import { ErrorWriter } from '../results/ErrorWriter.js';
 
 export class ChatQueueHandler {
+  private errorWriter: ErrorWriter;
+
   constructor(
     private vaultPath: string,
     private commandExecutor: CommandExecutor,
     private mentionParser: MentionParser,
     private logger: Logger
-  ) {}
+  ) {
+    this.errorWriter = new ErrorWriter(vaultPath);
+  }
 
   /**
    * Check if a path is a chat queue file
@@ -103,13 +108,49 @@ export class ChatQueueHandler {
         error: error instanceof Error ? error.message : String(error),
       });
 
+      // Try to extract conversationId from file content if parse failed
+      let conversationId = 'unknown';
+      try {
+        const content = readFileSync(fullPath, 'utf-8');
+        const match = content.match(/conversation_id:\s*(.+)/);
+        if (match && match[1]) {
+          conversationId = match[1].trim();
+        } else {
+          // Fallback: extract from queueId (format: conversationId-timestamp)
+          // queueId like "chat-1761512613391-1761512618581" should extract "chat-1761512613391"
+          const parts = queueId.split('-');
+          if (parts.length >= 2) {
+            conversationId = parts.slice(0, -1).join('-');
+          }
+        }
+      } catch {
+        // If we can't read file, use fallback extraction
+        const parts = queueId.split('-');
+        if (parts.length >= 2) {
+          conversationId = parts.slice(0, -1).join('-');
+        }
+      }
+
+      // Write error log file and notification
+      try {
+        await this.errorWriter.writeError({
+          error,
+          filePath: relativePath,
+          commandLine: 0,
+        });
+      } catch (writeError) {
+        // Log but don't fail if error writing fails
+        this.logger.error('Failed to write error log', { writeError });
+      }
+
+      // Also write error to chat result for UI display
       this.writeResult({
-        conversationId: queueId.split('-')[0] || 'unknown',
+        conversationId,
         queueId,
         timestamp: Date.now(),
         agent: 'System',
         content: '',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: this.formatErrorForChat(error),
       });
 
       if (existsSync(fullPath)) {
@@ -188,5 +229,27 @@ export class ChatQueueHandler {
     const agentMention = mentions.find((m) => m.type === 'agent');
     // Use explicit mention if present, fallback to primary agent, then "Assistant"
     return agentMention ? agentMention.value : primaryAgent || 'Assistant';
+  }
+
+  /**
+   * Format error for chat display (user-friendly message)
+   */
+  private formatErrorForChat(error: unknown): string {
+    // Get base error message
+    let message = error instanceof Error ? error.message : String(error);
+
+    // For Claude API errors with embedded JSON, extract the clean message
+    // Match: Claude API error: 400 {"type":"error","error":{"message":"..."}}
+    const jsonMatch = message.match(/\{.*?"message"\s*:\s*"([^"]+)"/);
+    if (jsonMatch && jsonMatch[1]) {
+      return jsonMatch[1];
+    }
+
+    // Clean up common error prefixes
+    message = message
+      .replace(/^Claude Agent SDK error:\s*/, '')
+      .replace(/^Claude API error:\s*\d+\s*/, '');
+
+    return message || 'An unexpected error occurred';
   }
 }
