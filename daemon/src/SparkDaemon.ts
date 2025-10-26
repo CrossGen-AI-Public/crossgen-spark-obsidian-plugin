@@ -16,10 +16,12 @@ import { FileWatcher } from './watcher/FileWatcher.js';
 import { Logger } from './logger/Logger.js';
 import { SparkError } from './types/index.js';
 import { FileParser } from './parser/FileParser.js';
+import { MentionParser } from './parser/MentionParser.js';
 import { DaemonInspector } from './cli/DaemonInspector.js';
 import { ContextLoader } from './context/ContextLoader.js';
 import { ResultWriter } from './results/ResultWriter.js';
 import { CommandExecutor } from './execution/CommandExecutor.js';
+import { ChatQueueHandler } from './chat/ChatQueueHandler.js';
 import { ProviderRegistry, ClaudeDirectProvider, ClaudeAgentProvider } from './providers/index.js';
 
 export class SparkDaemon implements ISparkDaemon {
@@ -33,6 +35,8 @@ export class SparkDaemon implements ISparkDaemon {
   private contextLoader: ContextLoader | null;
   private resultWriter: ResultWriter | null;
   private commandExecutor: CommandExecutor | null;
+  private mentionParser: MentionParser | null;
+  private chatQueueHandler: ChatQueueHandler | null;
   private state: DaemonState;
   private providersRegistered: boolean;
 
@@ -47,6 +51,8 @@ export class SparkDaemon implements ISparkDaemon {
     this.contextLoader = null;
     this.resultWriter = null;
     this.commandExecutor = null;
+    this.mentionParser = null;
+    this.chatQueueHandler = null;
     this.state = 'stopped';
     this.providersRegistered = false;
   }
@@ -72,9 +78,10 @@ export class SparkDaemon implements ISparkDaemon {
         debounceMs: this.config.daemon.debounce_ms,
       });
 
-      // Initialize file parser
+      // Initialize parsers
       this.fileParser = new FileParser();
-      this.logger.debug('File parser initialized');
+      this.mentionParser = new MentionParser();
+      this.logger.debug('Parsers initialized');
 
       // Register AI providers (only once)
       if (!this.providersRegistered) {
@@ -90,6 +97,12 @@ export class SparkDaemon implements ISparkDaemon {
         this.resultWriter,
         this.config,
         this.vaultPath
+      );
+      this.chatQueueHandler = new ChatQueueHandler(
+        this.vaultPath,
+        this.commandExecutor,
+        this.mentionParser,
+        this.logger
       );
       this.logger.debug('AI components initialized');
 
@@ -412,6 +425,14 @@ export class SparkDaemon implements ISparkDaemon {
       return;
     }
 
+    // Check if this is a chat queue file
+    if (this.chatQueueHandler?.isChatQueueFile(change.path)) {
+      this.logger.debug('Chat queue file detected', { path: change.path });
+      await this.chatQueueHandler.process(change.path);
+      return;
+    }
+
+    // Regular file processing
     try {
       const fullPath = join(this.vaultPath, change.path);
       const parsed = this.fileParser.parseFromFile(fullPath);

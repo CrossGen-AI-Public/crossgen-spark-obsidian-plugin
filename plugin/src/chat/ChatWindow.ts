@@ -4,23 +4,28 @@ import SparkPlugin from '../main';
 import { ConversationStorage } from './ConversationStorage';
 import { ChatMentionHandler } from './ChatMentionHandler';
 import { ChatSelector } from './ChatSelector';
+import { ChatQueue } from './ChatQueue';
+import { ChatResultWatcher, ChatResult } from './ChatResultWatcher';
 
 export class ChatWindow extends Component {
 	private app: App;
 	private plugin: SparkPlugin;
 	private containerEl: HTMLElement;
 	private messagesEl: HTMLElement;
-	private inputEl: HTMLTextAreaElement;
+	private inputEl: HTMLDivElement;
 	private titleEl: HTMLElement;
 	private conversationStorage: ConversationStorage;
 	private mentionHandler: ChatMentionHandler;
 	private chatSelector: ChatSelector;
+	private chatQueue: ChatQueue;
+	private resultWatcher: ChatResultWatcher;
 	private state: ChatState = {
 		isVisible: false,
 		conversationId: null,
 		messages: [],
 		isProcessing: false,
 		mentionedAgents: new Set(),
+		lastMentionedAgent: null,
 	};
 
 	constructor(app: App, plugin: SparkPlugin) {
@@ -29,6 +34,8 @@ export class ChatWindow extends Component {
 		this.plugin = plugin;
 		this.conversationStorage = new ConversationStorage(app);
 		this.mentionHandler = new ChatMentionHandler(app);
+		this.chatQueue = new ChatQueue(app);
+		this.resultWatcher = new ChatResultWatcher(app);
 		this.chatSelector = new ChatSelector(
 			app,
 			this.conversationStorage,
@@ -41,6 +48,21 @@ export class ChatWindow extends Component {
 		await this.mentionHandler.initialize();
 		this.createChatWindow();
 		this.setupEventListeners();
+		this.setupResultWatcher();
+	}
+
+	onunload() {
+		this.resultWatcher.stop();
+	}
+
+	private setupResultWatcher() {
+		// Listen for results from daemon
+		this.resultWatcher.onResult((result: ChatResult) => {
+			this.handleDaemonResult(result);
+		});
+
+		// Start watching
+		void this.resultWatcher.start();
 	}
 
 	private createChatWindow() {
@@ -90,11 +112,27 @@ export class ChatWindow extends Component {
 		const inputContainerEl = document.createElement('div');
 		inputContainerEl.className = 'spark-chat-input-container';
 
-		this.inputEl = document.createElement('textarea');
-		this.inputEl.className = 'spark-chat-input';
-		this.inputEl.placeholder = 'Type your message... (use @ to mention agents/files)';
+		const inputWrapperEl = document.createElement('div');
+		inputWrapperEl.className = 'spark-chat-input-wrapper';
 
-		inputContainerEl.appendChild(this.inputEl);
+		this.inputEl = document.createElement('div');
+		this.inputEl.className = 'spark-chat-input';
+		this.inputEl.contentEditable = 'true';
+		this.inputEl.setAttribute(
+			'data-placeholder',
+			'Type your message... (use @ to mention agents/files)'
+		);
+		this.inputEl.setAttribute('data-empty', 'true'); // Initially empty
+
+		const sendBtn = document.createElement('button');
+		sendBtn.className = 'spark-chat-send-btn';
+		sendBtn.innerHTML = '↑';
+		sendBtn.setAttribute('aria-label', 'Send message');
+		sendBtn.onclick = () => this.sendMessage();
+
+		inputWrapperEl.appendChild(this.inputEl);
+		inputWrapperEl.appendChild(sendBtn);
+		inputContainerEl.appendChild(inputWrapperEl);
 
 		// Assemble window
 		this.containerEl.appendChild(headerEl);
@@ -109,23 +147,79 @@ export class ChatWindow extends Component {
 	}
 
 	private setupEventListeners() {
-		// Attach mention handler to input
-		this.mentionHandler.attachToInput(this.inputEl);
+		// Attach mention handler to input with chat container reference
+		this.mentionHandler.attachToInput(this.inputEl, this.containerEl);
 
-		// Handle input changes
-		this.inputEl.addEventListener('input', e => {
-			const target = e.target as HTMLTextAreaElement;
-			target.style.height = 'auto';
-			target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+		// Handle input changes for auto-height and placeholder
+		this.inputEl.addEventListener('input', () => {
+			// Check if input is truly empty (filter out zero-width spaces, BRs)
+			const text = this.inputEl.textContent?.replace(/\u200B/g, '').trim() || '';
+			const isEmpty = text.length === 0;
+
+			// If empty, clear the input completely for proper placeholder display
+			// This removes leftover BR elements, zero-width spaces, or empty text nodes
+			if (isEmpty && this.inputEl.innerHTML !== '') {
+				this.inputEl.innerHTML = '';
+			}
+
+			this.inputEl.setAttribute('data-empty', isEmpty ? 'true' : 'false');
+
+			// Adjust height
+			this.adjustInputHeight();
 		});
 
 		// Handle keyboard shortcuts
 		this.inputEl.addEventListener('keydown', e => {
-			if (e.key === 'Enter' && !e.shiftKey) {
-				// Enter sends message, Shift+Enter adds new line
-				e.preventDefault();
-				this.sendMessage();
+			// Let mention handler deal with palette first
+			if (e.defaultPrevented) return;
+
+			if (e.key === 'Enter') {
+				if (e.shiftKey) {
+					// Shift+Enter adds new line
+					e.preventDefault();
+					const selection = window.getSelection();
+					if (selection && selection.rangeCount > 0) {
+						const range = selection.getRangeAt(0);
+						range.deleteContents();
+
+						// Insert <br>
+						const br = document.createElement('br');
+						range.insertNode(br);
+
+						// Insert zero-width space after BR to anchor cursor
+						const zwsp = document.createTextNode('\u200B');
+						if (br.nextSibling) {
+							br.parentNode?.insertBefore(zwsp, br.nextSibling);
+						} else {
+							br.parentNode?.appendChild(zwsp);
+						}
+
+						// Position cursor at START of zero-width space (offset 0)
+						// This allows typing to appear at correct position
+						// When deleting, user deletes content first, then BR (zwsp is filtered in calculations)
+						const newRange = document.createRange();
+						newRange.setStart(zwsp, 0);
+						newRange.setEnd(zwsp, 0);
+						selection.removeAllRanges();
+						selection.addRange(newRange);
+
+						// Manually adjust height instead of triggering input event
+						// (to avoid mention handler reprocessing and losing cursor position)
+						this.adjustInputHeight();
+					}
+				} else {
+					// Enter sends message
+					e.preventDefault();
+					this.sendMessage();
+				}
 			}
+		});
+
+		// Handle paste to strip formatting
+		this.inputEl.addEventListener('paste', e => {
+			e.preventDefault();
+			const text = e.clipboardData?.getData('text/plain') || '';
+			document.execCommand('insertText', false, text);
 		});
 
 		// Make window draggable
@@ -239,6 +333,7 @@ export class ChatWindow extends Component {
 		this.messagesEl.innerHTML = '';
 		this.state.messages = [];
 		this.state.mentionedAgents.clear();
+		this.state.lastMentionedAgent = null;
 
 		// Try to load existing conversation using ConversationStorage
 		try {
@@ -249,6 +344,17 @@ export class ChatWindow extends Component {
 				console.log('Spark Chat: Successfully loaded conversation data');
 				this.state.messages = conversation.messages || [];
 				this.state.mentionedAgents = new Set(conversation.mentionedAgents || []);
+
+				// Restore lastMentionedAgent from message history
+				// Find the most recent agent message (excluding "Spark Assistant")
+				for (let i = this.state.messages.length - 1; i >= 0; i--) {
+					const msg = this.state.messages[i];
+					if (msg.type === 'agent' && msg.agent && msg.agent !== 'Spark Assistant') {
+						this.state.lastMentionedAgent = msg.agent;
+						break;
+					}
+				}
+
 				this.renderAllMessages();
 				this.updateChatTitle(Array.from(this.state.mentionedAgents));
 				console.log(
@@ -256,7 +362,8 @@ export class ChatWindow extends Component {
 					this.state.messages.length,
 					'messages and',
 					this.state.mentionedAgents.size,
-					'agents'
+					'agents, last agent:',
+					this.state.lastMentionedAgent
 				);
 			} else {
 				console.log('Spark Chat: No conversation data found for ID:', this.state.conversationId);
@@ -306,7 +413,7 @@ export class ChatWindow extends Component {
 	}
 
 	private sendMessage() {
-		const content = this.inputEl.value.trim();
+		const content = this.getInputText().trim();
 		if (!content) return;
 
 		const message: ChatMessage = {
@@ -317,11 +424,40 @@ export class ChatWindow extends Component {
 		};
 
 		this.addMessage(message);
-		this.inputEl.value = '';
-		this.inputEl.style.height = 'auto';
+		this.clearInput();
 
 		// Process message through command executor
 		void this.processMessage(message);
+	}
+
+	private getInputText(): string {
+		return this.inputEl.textContent || '';
+	}
+
+	private clearInput(): void {
+		this.inputEl.innerHTML = '';
+		this.inputEl.setAttribute('data-empty', 'true');
+		this.adjustInputHeight();
+	}
+
+	private adjustInputHeight(): void {
+		// Reset height to auto to recalculate
+		this.inputEl.style.height = 'auto';
+
+		// Use min-height of 56px (2 lines) for empty or small content
+		const minHeight = 56;
+		const scrollHeight = Math.max(this.inputEl.scrollHeight, minHeight);
+
+		// Limit height to 120px (like textarea behavior)
+		if (scrollHeight > 120) {
+			this.inputEl.style.height = '120px';
+			this.inputEl.style.maxHeight = '120px';
+			this.inputEl.style.overflowY = 'auto';
+		} else {
+			this.inputEl.style.height = scrollHeight + 'px';
+			this.inputEl.style.maxHeight = 'none';
+			this.inputEl.style.overflowY = 'hidden';
+		}
 	}
 
 	addMessage(message: ChatMessage) {
@@ -352,8 +488,12 @@ export class ChatWindow extends Component {
 			// Create jumping dots loader
 			contentEl.innerHTML =
 				'<span class="spark-chat-loading-dots">Thinking</span><span class="spark-jumping-dots"></span>';
+		} else if (message.type === 'agent') {
+			// Render agent responses as markdown
+			void this.renderMarkdown(message.content, contentEl);
 		} else {
-			contentEl.textContent = message.content;
+			// User messages with mention decoration
+			contentEl.innerHTML = this.decorateMentions(message.content);
 		}
 
 		messageEl.appendChild(contentEl);
@@ -363,6 +503,104 @@ export class ChatWindow extends Component {
 		(messageEl as any)._sparkMessage = message;
 
 		this.messagesEl.appendChild(messageEl);
+	}
+
+	private async extractAgentNames(content: string): Promise<string[]> {
+		const agentNames: string[] = [];
+		// Match @mentions including hyphens and folder slashes (same pattern as decorateMentions)
+		const mentionMatches = content.match(/@([\w-]+\/?)/g) || [];
+
+		for (const match of mentionMatches) {
+			const name = match.substring(1); // Remove @
+
+			// Check if it's a folder (ends with /)
+			const isFolder = name.endsWith('/');
+			if (isFolder) {
+				continue; // Skip folders
+			}
+
+			// Check if it's a valid agent (exists in .spark/agents/)
+			// Following daemon's pattern: try agent first
+			const agentPath = `.spark/agents/${name}.md`;
+			const isAgent = await this.app.vault.adapter.exists(agentPath);
+
+			// Only add to chat title if it's an actual agent
+			if (isAgent) {
+				agentNames.push(name);
+			}
+		}
+
+		return agentNames;
+	}
+
+	private decorateMentions(content: string): string {
+		// Escape HTML
+		let html = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+		// Decorate @mentions
+		html = html.replace(/@([\w-]+\/?)/g, (match, name) => {
+			const isFolder = name.endsWith('/');
+			const basename = isFolder ? name.slice(0, -1) : name;
+
+			// Determine mention type
+			let type = '';
+			if (isFolder) {
+				type = 'folder';
+			} else {
+				// Check if it's a file
+				const isFile = this.app.vault.getMarkdownFiles().some(f => f.basename === basename);
+				type = isFile ? 'file' : 'agent';
+			}
+
+			return `<span class="spark-token spark-token-${type}">${match}</span>`;
+		});
+
+		// Decorate /commands
+		html = html.replace(/(?:^|\s)(\/[\w-]+)/g, (match, command) => {
+			return match.replace(
+				command,
+				`<span class="spark-token spark-token-command">${command}</span>`
+			);
+		});
+
+		return html;
+	}
+
+	private async renderMarkdown(content: string, containerEl: HTMLElement): Promise<void> {
+		// Fallback to simple markdown-like rendering
+		containerEl.innerHTML = this.simpleMarkdownToHtml(content);
+	}
+
+	private simpleMarkdownToHtml(markdown: string): string {
+		// Simple markdown conversion for basic formatting
+		let html = markdown
+			// Escape HTML first
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			// Code blocks (```)
+			.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+				return `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`;
+			})
+			// Inline code (`)
+			.replace(/`([^`]+)`/g, '<code>$1</code>')
+			// Bold (**text** or __text__)
+			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+			.replace(/__([^_]+)__/g, '<strong>$1</strong>')
+			// Italic (*text* or _text_)
+			.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+			.replace(/_([^_]+)_/g, '<em>$1</em>')
+			// Lists (- item or * item)
+			.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
+			// Newlines
+			.replace(/\n/g, '<br>');
+
+		// Wrap list items in ul
+		html = html.replace(/(<li>.*<\/li>(?:<br>)?)+/g, match => {
+			return '<ul>' + match.replace(/<br>/g, '') + '</ul>';
+		});
+
+		return html;
 	}
 
 	private scrollToBottom() {
@@ -444,6 +682,7 @@ export class ChatWindow extends Component {
 	clearConversation() {
 		this.state.messages = [];
 		this.state.mentionedAgents.clear();
+		this.state.lastMentionedAgent = null;
 		this.state.conversationId = this.generateConversationId();
 		this.messagesEl.innerHTML = '';
 		this.updateChatTitle();
@@ -476,9 +715,8 @@ export class ChatWindow extends Component {
 	}
 
 	private async processMessage(message: ChatMessage) {
-		// Extract all agent names from message if mentioned and update title
-		const agentMatches = message.content.match(/@(\w+)/g) || [];
-		const agentNames = agentMatches.map(match => match.substring(1)); // Remove @ symbol
+		// Extract agent names (not files) from message
+		const agentNames = await this.extractAgentNames(message.content);
 
 		// Check if this is the first message with no agents in the conversation
 		const hasAgentsInConversation = this.state.mentionedAgents.size > 0;
@@ -499,15 +737,11 @@ export class ChatWindow extends Component {
 			return; // Don't process the message further
 		}
 
-		// If no agents mentioned in this message but conversation has agents, use existing agents
-		if (!hasAgentsInMessage && hasAgentsInConversation) {
-			// Use existing agents from the conversation state
-			agentNames.push(...Array.from(this.state.mentionedAgents));
-		}
-
-		// Track mentioned agents in state
+		// Track mentioned agents in state (only real agents, not files)
 		agentNames.forEach(agentName => {
 			this.state.mentionedAgents.add(agentName);
+			// Update last mentioned agent (most recent one)
+			this.state.lastMentionedAgent = agentName;
 		});
 
 		// Update chat title (excluding Spark Assistant if real agents are mentioned)
@@ -523,21 +757,102 @@ export class ChatWindow extends Component {
 		this.addMessage(loadingMessage);
 		this.state.isProcessing = true;
 
-		// TODO: Integrate with daemon to process message
-		// Remove loading message from DOM and state
-		this.removeMessage(loadingMessage.id);
+		try {
+			// Build conversation history for context
+			const history = this.state.messages
+				.filter(msg => msg.type !== 'loading')
+				.slice(-10) // Last 10 messages for context
+				.map(msg => ({
+					role: msg.type === 'user' ? 'user' : 'assistant',
+					content: msg.content,
+				}));
 
-		// Use the first mentioned agent for the response
-		const responseAgent = agentNames.length > 0 ? agentNames[0] : 'Spark Assistant';
+			// Enqueue message for daemon processing
+			if (this.state.conversationId) {
+				// Get currently active file for vault context
+				const activeFile = this.app.workspace.getActiveFile();
+				const activeFilePath = activeFile?.path;
 
-		const response: ChatMessage = {
-			id: this.generateId(),
-			timestamp: new Date().toISOString(),
-			type: 'agent',
-			content: `I received your message: "${message.content}"`,
-			agent: responseAgent,
-		};
-		this.addMessage(response);
+				await this.chatQueue.enqueue(
+					this.state.conversationId,
+					message.content,
+					history,
+					activeFilePath,
+					this.state.lastMentionedAgent || undefined
+				);
+				console.log('ChatWindow: Message enqueued for processing', {
+					activeFilePath,
+					primaryAgent: this.state.lastMentionedAgent,
+				});
+			}
+		} catch (error) {
+			console.error('ChatWindow: Failed to enqueue message:', error);
+			// Remove loading message and show error
+			this.removeMessage(loadingMessage.id);
+			const errorMessage: ChatMessage = {
+				id: this.generateId(),
+				timestamp: new Date().toISOString(),
+				type: 'agent',
+				content: '❌ Failed to send message. Please try again.',
+				agent: 'Spark Assistant',
+			};
+			this.addMessage(errorMessage);
+			this.state.isProcessing = false;
+		}
+	}
+
+	/**
+	 * Handle result from daemon
+	 */
+	private handleDaemonResult(result: ChatResult): void {
+		// Only process results for current conversation
+		if (result.conversationId !== this.state.conversationId) {
+			return;
+		}
+
+		console.log('ChatWindow: Received daemon result:', result);
+
+		// Remove loading message
+		const loadingMessages = this.state.messages.filter(msg => msg.type === 'loading');
+		loadingMessages.forEach(msg => this.removeMessage(msg.id));
+
+		// Add agent response
+		if (result.error) {
+			const errorMessage: ChatMessage = {
+				id: this.generateId(),
+				timestamp: new Date(result.timestamp).toISOString(),
+				type: 'agent',
+				content: `❌ Error: ${result.error}`,
+				agent: result.agent || 'Spark Assistant',
+			};
+			this.addMessage(errorMessage);
+		} else {
+			const response: ChatMessage = {
+				id: this.generateId(),
+				timestamp: new Date(result.timestamp).toISOString(),
+				type: 'agent',
+				content: result.content,
+				agent: result.agent,
+				filesModified: result.filesModified,
+			};
+			this.addMessage(response);
+
+			// Show file modification notification if any
+			if (result.filesModified && result.filesModified.length > 0) {
+				const notificationMessage: ChatMessage = {
+					id: this.generateId(),
+					timestamp: new Date(result.timestamp).toISOString(),
+					type: 'agent',
+					content: `📝 Modified ${result.filesModified.length} file(s):\n${result.filesModified.map(f => `  • ${f}`).join('\n')}`,
+					agent: 'Spark Assistant',
+				};
+				this.addMessage(notificationMessage);
+			}
+		}
+
 		this.state.isProcessing = false;
+
+		// Clean up queue file
+		void this.chatQueue.dequeue(result.queueId);
 	}
 }

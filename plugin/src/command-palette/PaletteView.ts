@@ -25,26 +25,61 @@ export class PaletteView {
 	/**
 	 * Create and show the palette DOM
 	 */
-	show(items: PaletteItem[], cursorCoords: { top: number; left: number }): void {
+	show(
+		items: PaletteItem[],
+		cursorCoords: { top: number; left: number },
+		positionAbove?: boolean,
+		chatContainer?: HTMLElement
+	): void {
 		this.hide();
 		this.items = items;
 		this.selectedIndex = 0;
 
-		this.containerEl = this.createContainer(cursorCoords);
+		this.containerEl = this.createContainer(cursorCoords, positionAbove, chatContainer);
 		this.renderItems();
 	}
 
 	/**
 	 * Create the palette container element
 	 */
-	private createContainer(coords: { top: number; left: number }): HTMLElement {
+	private createContainer(
+		coords: { top: number; left: number },
+		positionAbove?: boolean,
+		chatContainer?: HTMLElement
+	): HTMLElement {
+		// If chat container provided, use chat-specific positioning
+		if (chatContainer) {
+			const container = chatContainer.createDiv('spark-palette spark-palette-chat');
+
+			// Calculate input section height dynamically to avoid overlap
+			const inputContainer = chatContainer.querySelector('.spark-chat-input-container');
+			if (inputContainer) {
+				const inputHeight = (inputContainer as HTMLElement).offsetHeight;
+				// Position palette directly above input (no gap)
+				container.style.bottom = `${inputHeight}px`;
+			}
+
+			return container;
+		}
+
+		// Regular palette positioning (for editor)
 		const container = document.body.createDiv('spark-palette');
 
 		// Use fixed positioning relative to viewport
 		container.style.position = 'fixed';
-		container.style.top = `${coords.top + 20}px`;
 		container.style.left = `${coords.left}px`;
 		container.style.zIndex = '1000';
+
+		if (positionAbove) {
+			// Position from bottom when above cursor
+			// Distance from bottom of viewport to cursor, plus offset
+			const distanceFromBottom = window.innerHeight - coords.top + 20;
+			container.style.bottom = `${distanceFromBottom}px`;
+			container.classList.add('spark-palette-above');
+		} else {
+			// Position from top when below cursor
+			container.style.top = `${coords.top + 20}px`;
+		}
 
 		return container;
 	}
@@ -66,6 +101,11 @@ export class PaletteView {
 			const itemEl = this.createItemElement(item, index);
 			this.containerEl?.appendChild(itemEl);
 		});
+
+		// If positioned above, scroll to bottom to show items closest to cursor
+		if (this.containerEl.classList.contains('spark-palette-above')) {
+			this.containerEl.scrollTop = this.containerEl.scrollHeight;
+		}
 	}
 
 	/**

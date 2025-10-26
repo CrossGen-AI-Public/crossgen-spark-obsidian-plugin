@@ -5,11 +5,7 @@
 
 import type { ParsedCommand } from '../types/parser.js';
 import type { SparkConfig } from '../types/config.js';
-import type {
-  IAIProvider,
-  ProviderCompletionOptions,
-  ProviderContextFile,
-} from '../types/provider.js';
+import type { ProviderCompletionOptions, ProviderContextFile } from '../types/provider.js';
 import type { ContextLoader } from '../context/ContextLoader.js';
 import type { ResultWriter } from '../results/ResultWriter.js';
 import { AIProviderFactory } from '../providers/index.js';
@@ -33,18 +29,99 @@ export class CommandExecutor {
   }
 
   /**
-   * Execute a command using AI
+   * Core AI execution - returns AI response without writing to files
    */
   // eslint-disable-next-line complexity
-  async execute(command: ParsedCommand, filePath: string): Promise<void> {
+  private async executeAI(command: ParsedCommand, filePath: string): Promise<string> {
     this.logger.info('Executing command', {
       command: command.raw.substring(0, 100),
       file: filePath,
     });
 
-    let context = null;
-    let provider: IAIProvider | null = null;
+    // Load context including mentioned files and nearby files ranked by proximity
+    const context = await this.contextLoader.load(filePath, command.mentions || []);
 
+    this.logger.debug('Context loaded', {
+      mentionedFiles: context.mentionedFiles.map((f) => f.path),
+      nearbyFiles: context.nearbyFiles.map((f) => ({ path: f.path, distance: f.distance })),
+      hasAgent: !!context.agent,
+      agentPath: context.agent?.path,
+      agentPersonaLength: context.agent?.persona?.length,
+    });
+
+    // Get appropriate AI provider (with agent-specific overrides if applicable)
+    const provider = this.providerFactory.createWithAgentConfig(
+      this.config.ai,
+      context.agent?.aiConfig
+    );
+
+    this.logger.debug('Provider selected', {
+      provider: provider.name,
+      type: provider.type,
+      model: provider.getConfig().model,
+      hasAgentOverrides: !!context.agent?.aiConfig,
+      agentProvider: context.agent?.aiConfig?.provider,
+      agentModel: context.agent?.aiConfig?.model,
+    });
+
+    // Build provider completion options
+    const providerOptions: ProviderCompletionOptions = {
+      prompt: command.raw,
+      systemPrompt: this.buildSystemPrompt(),
+      context: {
+        files: this.buildContextFiles(context),
+        agentPersona: context.agent?.persona,
+      },
+    };
+
+    this.logger.debug('Calling AI provider', {
+      provider: provider.name,
+      promptLength: providerOptions.prompt.length,
+      filesCount: providerOptions.context?.files?.length || 0,
+      contextFiles:
+        providerOptions.context?.files?.map((f) => ({ path: f.path, priority: f.priority })) || [],
+    });
+
+    // Log full prompt in debug mode (for troubleshooting)
+    this.logger.debug('Full prompt being sent', {
+      userPrompt: providerOptions.prompt,
+      systemPrompt: providerOptions.systemPrompt,
+      contextFileContents:
+        providerOptions.context?.files?.map((f) => ({
+          path: f.path,
+          priority: f.priority,
+          contentLength: f.content.length,
+          contentPreview: f.content.substring(0, 200) + (f.content.length > 200 ? '...' : ''),
+        })) || [],
+    });
+
+    // Call AI provider
+    const result = await provider.complete(providerOptions);
+
+    this.logger.info('Command executed', {
+      provider: provider.name,
+      outputTokens: result.usage.outputTokens,
+      inputTokens: result.usage.inputTokens,
+    });
+
+    this.logger.debug('AI response', { response: result.content });
+
+    return result.content;
+  }
+
+  /**
+   * Execute command and return AI response without writing to file
+   * Used for chat and other cases where custom result handling is needed
+   */
+  async executeAndReturn(command: ParsedCommand, filePath: string): Promise<string> {
+    return await this.executeAI(command, filePath);
+  }
+
+  /**
+   * Execute command with inline result writing (standard file-based workflow)
+   */
+
+  async execute(command: ParsedCommand, filePath: string): Promise<void> {
     try {
       // Update status to processing
       await this.resultWriter.updateStatus({
@@ -54,81 +131,15 @@ export class CommandExecutor {
         status: '⏳',
       });
 
-      // Load context including mentioned files and nearby files ranked by proximity
-      context = await this.contextLoader.load(filePath, command.mentions || []);
-
-      this.logger.debug('Context loaded', {
-        mentionedFiles: context.mentionedFiles.map((f) => f.path),
-        nearbyFiles: context.nearbyFiles.map((f) => ({ path: f.path, distance: f.distance })),
-        hasAgent: !!context.agent,
-        agentPath: context.agent?.path,
-        agentPersonaLength: context.agent?.persona?.length,
-      });
-
-      // Get appropriate AI provider (with agent-specific overrides if applicable)
-      provider = this.providerFactory.createWithAgentConfig(
-        this.config.ai,
-        context.agent?.aiConfig
-      );
-
-      this.logger.debug('Provider selected', {
-        provider: provider.name,
-        type: provider.type,
-        model: provider.getConfig().model,
-        hasAgentOverrides: !!context.agent?.aiConfig,
-        agentProvider: context.agent?.aiConfig?.provider,
-        agentModel: context.agent?.aiConfig?.model,
-      });
-
-      // Build provider completion options
-      const providerOptions: ProviderCompletionOptions = {
-        prompt: command.raw,
-        systemPrompt: this.buildSystemPrompt(),
-        context: {
-          files: this.buildContextFiles(context),
-          agentPersona: context.agent?.persona,
-        },
-      };
-
-      this.logger.debug('Calling AI provider', {
-        provider: provider.name,
-        promptLength: providerOptions.prompt.length,
-        filesCount: providerOptions.context?.files?.length || 0,
-        contextFiles:
-          providerOptions.context?.files?.map((f) => ({ path: f.path, priority: f.priority })) ||
-          [],
-      });
-
-      // Log full prompt in debug mode (for troubleshooting)
-      this.logger.debug('Full prompt being sent', {
-        userPrompt: providerOptions.prompt,
-        systemPrompt: providerOptions.systemPrompt,
-        contextFileContents:
-          providerOptions.context?.files?.map((f) => ({
-            path: f.path,
-            priority: f.priority,
-            contentLength: f.content.length,
-            contentPreview: f.content.substring(0, 200) + (f.content.length > 200 ? '...' : ''),
-          })) || [],
-      });
-
-      // Call AI provider
-      const result = await provider.complete(providerOptions);
-
-      this.logger.info('Command executed', {
-        provider: provider.name,
-        outputTokens: result.usage.outputTokens,
-        inputTokens: result.usage.inputTokens,
-      });
-
-      this.logger.debug('AI response', { response: result.content });
+      // Execute AI
+      const aiResponse = await this.executeAI(command, filePath);
 
       // Write result back to file
       await this.resultWriter.writeInline({
         filePath,
         commandLine: command.line,
         commandText: command.raw,
-        result: result.content,
+        result: aiResponse,
         addBlankLines: this.config.daemon.results.add_blank_lines,
       });
 
@@ -150,12 +161,6 @@ export class CommandExecutor {
         filePath,
         commandLine: command.line,
         commandText: command.raw,
-        context: {
-          provider: provider?.name,
-          hasAgent: context?.agent ? true : false,
-          mentionedFilesCount: context?.mentionedFiles?.length || 0,
-          nearbyFilesCount: context?.nearbyFiles?.length || 0,
-        },
       });
 
       throw error;

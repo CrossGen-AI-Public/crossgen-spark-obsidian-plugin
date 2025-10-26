@@ -16,7 +16,13 @@ export const DEFAULT_SPARK_CONFIG: SparkConfig = {
         '.git/**',
         '.obsidian/**',
         'node_modules/**',
-        '.spark/**', // Exclude all Spark system files (config, agents, commands, etc.)
+        '.spark/agents/**',
+        '.spark/commands/**',
+        '.spark/conversations/**',
+        '.spark/chat-results/**',
+        '.spark/logs/**',
+        '.spark/config.yaml',
+        // Note: .spark/chat-queue/ is watched for chat message processing
       ],
     },
     debounce_ms: 300,

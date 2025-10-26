@@ -1,14 +1,82 @@
 # Chat Functionality Specification
 
-**Status:** Planning Phase  
-**Date:** October 24, 2025  
-**Related Docs:** AGENT_SDK_NEXT_STEPS.md, PRD.md
+**Status:** MVP Complete - Polish & Bug Fixes Needed  
+**Date:** October 26, 2025  
+**Last Updated:** October 26, 2025  
+**Related Docs:** AGENT_SDK_NEXT_STEPS.md, PRD.md, BUGS.md
+
+---
+
+## Implementation Status
+
+### ✅ Completed (MVP)
+
+**Phase 1: UI Implementation**
+- ✅ ChatWindow - Floating overlay with drag/resize
+- ✅ ChatInput - Contenteditable div with mention support
+- ✅ ChatMessages - Message display with formatting
+- ✅ ChatManager - Window state management
+- ✅ ChatSelector - New chat creation and conversation switching
+- ✅ Hotkey support (Cmd+K)
+- ✅ Auto-scroll to latest messages
+- ✅ Loading animation with jumping dots
+- ✅ Multi-agent chat title support
+
+**Phase 2: Conversation Management**
+- ✅ ConversationStorage - JSON file persistence in `.spark/conversations/`
+- ✅ Message history with conversation context
+- ✅ Chat selector with dropdown
+- ✅ New chat button and conversation switching
+- ✅ Default to most recent conversation
+
+**Phase 3: Agent Integration**
+- ✅ ChatQueue - File-based plugin→daemon communication (`.spark/chat-queue/`)
+- ✅ ChatResultWatcher - File-based daemon→plugin communication (`.spark/chat-results/`)
+- ✅ ChatQueueHandler (daemon) - Process chat messages via CommandExecutor
+- ✅ Integration with existing agent system
+- ✅ Active file context tracking for vault proximity
+- ✅ Mention parsing (@agent, @file, @folder/)
+- ✅ ChatMentionHandler - Basic mention decoration in input
+
+**File System Communication**
+- ✅ Plugin writes to `.spark/chat-queue/*.md` with conversation context
+- ✅ Daemon watches queue directory and processes messages
+- ✅ Daemon writes results to `.spark/chat-results/*.jsonl`
+- ✅ Plugin watches results and updates UI in real-time
+- ✅ Active file path passed for proper vault context
+
+### 🐛 Known Issues (See BUGS.md)
+
+1. Agent/file name confusion in chat titles
+2. Wrong agent attribution in multi-agent chats
+3. Missing send button (arrow-up icon)
+4. Shift+Enter not creating new line
+5. Conversation text not selectable/copiable
+6. **Agent responses not rendered as markdown** (shows raw ``` markers)
+7. Mentions not decorated in conversation history
+8. No command palette integration in chat input
+
+### 🔄 Not Yet Implemented
+
+**Phase 3 Remaining:**
+- Command palette integration in chat input (trigger on @ and /)
+- File modification tracking and notifications
+- Clickable mentions in messages
+
+**Phase 4: Enhanced Features (Future)**
+- Conversation search across all chats
+- Export/import conversations
+- Advanced multi-agent support
+- Context preservation improvements
+- Quick action shortcuts
 
 ---
 
 ## Executive Summary
 
-This specification outlines the implementation of a cursor-like floating chat window functionality for Spark. The chat system will enable users to interact with AI agents through a persistent overlay in the bottom-right corner of the screen, with support for conversation history and file modification capabilities.
+This specification outlines the implementation of a cursor-like floating chat window functionality for Spark. The chat system enables users to interact with AI agents through a persistent overlay in the bottom-right corner of the screen, with support for conversation history and file modification capabilities.
+
+**Current State:** The MVP is functional with full plugin-daemon communication via file system, conversation persistence, and basic agent interaction. Polish and bug fixes needed before production-ready.
 
 ## Requirements Overview
 
@@ -28,13 +96,21 @@ Based on Linear task requirements:
 3. **ChatMessageHandler** - Processes messages through existing CommandExecutor
 4. **ChatResultWriter** - Writes chat responses back to the chat UI
 
-### Data Flow
+### Data Flow (Implemented)
 
 ```
-User Input (Cmd+K) → ChatWindowManager → ConversationManager → 
-MessageHandler → CommandExecutor → Agent SDK → 
-ResultWriter → ChatWindowManager → UI Update
+User Input (Cmd+K) → ChatWindow → ChatQueue writes to .spark/chat-queue/ →
+Daemon (ChatQueueHandler) → CommandExecutor → Agent SDK → AI Response →
+Daemon writes to .spark/chat-results/ → ChatResultWatcher → 
+ChatWindow updates UI → ConversationStorage persists
 ```
+
+**Key Design Decision:** Plugin-daemon communication uses file system (not WebSockets/IPC):
+- Plugin writes markdown files to `.spark/chat-queue/` with conversation context
+- Daemon watches queue directory and processes via existing CommandExecutor
+- Daemon writes JSONL responses to `.spark/chat-results/`
+- Plugin watches results directory and updates UI in real-time
+- Conversation JSON files remain separate for UI state management
 
 ## Implementation Plan
 
@@ -173,10 +249,22 @@ When agents modify files, the chat interface displays:
 
 ## Next Steps
 
-1. **Complete Planning Phase** - Finalize all architectural decisions
-2. **Decision Making Phase** - Resolve any open questions
-3. **Implementation Phase** - Build and test the functionality
-4. **Validation Phase** - User testing and feedback integration
+### Immediate Priorities (Bug Fixes - See BUGS.md)
+
+1. **Fix Markdown Rendering** - Agent responses need proper markdown parsing (HIGH PRIORITY)
+2. **Add Send Button** - 20x20 arrow-up icon next to input field
+3. **Implement Command Palette** - Show @mentions and /commands palette in chat
+4. **Fix Shift+Enter** - Allow multi-line messages in contenteditable div
+5. **Enable Text Selection** - Make conversation history copiable
+6. **Decorate Mentions in History** - Apply mention styling to rendered messages
+7. **Fix Agent Attribution** - Distinguish agents from files, maintain primary agent
+
+### Enhancement Priorities
+
+1. **File Modification Notifications** - Show when agents create/edit files
+2. **Clickable Mentions** - Navigate to files/folders from chat messages
+3. **Conversation Search** - Find messages across all conversations
+4. **Export/Import** - Backup and restore functionality
 
 ## Resolved Questions
 

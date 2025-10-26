@@ -33,6 +33,10 @@ example-vault/.obsidian/workspace.json
 example-vault/.obsidian/app.json
 example-vault/.obsidian/workspace-mobile.json
 example-vault/.obsidian/hotkeys.json
+example-vault/.obsidian/graph.json
+example-vault/.obsidian/appearance.json
+example-vault/.obsidian/themes/
+
 example-vault/.obsidian/plugins/*
 !example-vault/.obsidian/plugins/.gitkeep
 example-vault/.trash/
@@ -49,6 +53,10 @@ example-vault/.spark/notifications.jsonl
 # Ignore error log files but keep the logs directory
 example-vault/.spark/logs/*
 !example-vault/.spark/logs/.gitkeep
+
+# Chat system temporary files (cleaned up automatically)
+example-vault/.spark/chat-queue/*
+example-vault/.spark/chat-results/*
 
 # Add the conversations directory to VCS, but ignore all files inside
 example-vault/.spark/conversations/*

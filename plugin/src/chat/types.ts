@@ -21,4 +21,5 @@ export interface ChatState {
 	messages: ChatMessage[];
 	isProcessing: boolean;
 	mentionedAgents: Set<string>;
+	lastMentionedAgent: string | null; // Most recently mentioned agent (for conversation continuity)
 }

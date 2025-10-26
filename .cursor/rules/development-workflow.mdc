@@ -46,6 +46,7 @@ This establishes a reference point before making changes.
 - Implement the feature or fix
 - **Don't overengineer** – keep it minimal and elegant
 - **Respect existing design patterns** or use new suitable ones
+- Don't duplicate code, inspect related modules and methods before adding new ones
 - **Don't just add more code** – minimize and refine
 - **Minimize workarounds** – stick to robust implementations
 - Follow established patterns from the codebase
