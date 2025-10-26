@@ -12,6 +12,7 @@ import { PaletteItem } from '../types/command-palette';
  */
 export class ChatMentionHandler {
 	private app: App;
+	private plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } };
 	private mentionDecorator: MentionDecorator;
 	private inputElement: HTMLDivElement | null = null;
 	private isProcessing = false;
@@ -21,8 +22,12 @@ export class ChatMentionHandler {
 	private currentTrigger: { char: string; position: number } | null = null;
 	private chatContainer: HTMLElement | null = null;
 
-	constructor(app: App) {
+	constructor(
+		app: App,
+		plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } }
+	) {
 		this.app = app;
+		this.plugin = plugin;
 		this.mentionDecorator = new MentionDecorator(app);
 		this.paletteView = new PaletteView(app);
 		this.itemLoader = new ItemLoader(app);
@@ -202,28 +207,16 @@ export class ChatMentionHandler {
 		const range = selection.getRangeAt(0);
 		const cursorOffset = this.getCursorOffset(range);
 
-		const text = this.getTextWithLineBreaks(this.inputElement);
-		console.log(
-			'[ChatMentionHandler] Input event - cursor:',
-			cursorOffset,
-			'text:',
-			JSON.stringify(text)
-		);
-
 		// Check for palette trigger
 		this.checkForPalette();
 
 		// Process the content (returns true if HTML was modified)
 		const contentModified = this.processContent();
-		console.log('[ChatMentionHandler] Content modified:', contentModified);
 
 		// Only restore cursor if we actually modified the HTML
 		// (If no modification, browser's cursor is already correct)
 		if (contentModified) {
-			console.log('[ChatMentionHandler] Restoring cursor to:', cursorOffset);
 			this.restoreCursor(cursorOffset);
-		} else {
-			console.log('[ChatMentionHandler] Skipping cursor restoration (no modification)');
 		}
 	}
 
@@ -341,7 +334,7 @@ export class ChatMentionHandler {
 	 * Process content and apply mention styling
 	 * @returns true if HTML was modified, false otherwise
 	 */
-	private processContent(): boolean {
+	processContent(): boolean {
 		if (!this.inputElement) return false;
 
 		this.isProcessing = true;
@@ -362,17 +355,10 @@ export class ChatMentionHandler {
 
 			// Only update if it actually changed
 			if (currentNormalized !== cleanedNormalized) {
-				console.log(
-					'[ChatMentionHandler] Updating HTML (no mentions) - current:',
-					JSON.stringify(currentNormalized),
-					'cleaned:',
-					JSON.stringify(cleanedNormalized)
-				);
 				this.inputElement.innerHTML = cleaned;
 				this.isProcessing = false;
 				return true;
 			}
-			console.log('[ChatMentionHandler] No HTML update needed (no mentions)');
 			this.isProcessing = false;
 			return false;
 		}
@@ -570,34 +556,22 @@ export class ChatMentionHandler {
 		// Special case: cursor is positioned in the input element itself (not in a child node)
 		// This happens when cursor is after a <br> or between nodes
 		if (endContainer === this.inputElement) {
-			console.log(
-				'[getCursorOffset] Special case: cursor in element itself, endOffset:',
-				endOffset,
-				'childNodes.length:',
-				this.inputElement.childNodes.length
-			);
 			// Walk through child nodes up to the offset
 			for (let i = 0; i < endOffset && i < this.inputElement.childNodes.length; i++) {
 				const child = this.inputElement.childNodes[i];
 				if (child.nodeType === Node.TEXT_NODE) {
 					const text = child.textContent || '';
 					const len = text.replace(/\u200B/g, '').length;
-					console.log(
-						`[getCursorOffset] Child ${i}: TEXT_NODE, length: ${len}, text:`,
-						JSON.stringify(text)
-					);
+
 					offset += len;
 				} else if (child.nodeName === 'BR') {
-					console.log(`[getCursorOffset] Child ${i}: BR, +1`);
 					offset += 1;
 				} else if (child.nodeType === Node.ELEMENT_NODE) {
 					// Recursively count content in element
 					const len = this.getTextWithLineBreaks(child as HTMLElement).length;
-					console.log(`[getCursorOffset] Child ${i}: ${child.nodeName}, length: ${len}`);
 					offset += len;
 				}
 			}
-			console.log('[getCursorOffset] Final offset:', offset);
 			return offset;
 		}
 
@@ -661,25 +635,13 @@ export class ChatMentionHandler {
 
 		const selection = window.getSelection();
 		if (!selection) return;
-
-		const currentText = this.getTextWithLineBreaks(this.inputElement);
-		console.log(
-			'[restoreCursor] offset:',
-			offset,
-			'currentTextLength:',
-			currentText.length,
-			'text:',
-			JSON.stringify(currentText)
-		);
-
 		try {
 			const range = this.createRangeAtOffset(this.inputElement, offset);
 			if (range) {
 				selection.removeAllRanges();
 				selection.addRange(range);
-				console.log('[restoreCursor] Success - cursor restored');
 			} else {
-				console.log('[restoreCursor] Failed - no range created');
+				console.error('[restoreCursor] Failed - no range created');
 			}
 		} catch (error) {
 			console.error('[restoreCursor] Error:', error);
@@ -691,7 +653,6 @@ export class ChatMentionHandler {
 	 * Must match the logic of getCursorOffset (count <br> as 1, filter zero-width spaces)
 	 */
 	private createRangeAtOffset(element: HTMLElement, offset: number): Range | null {
-		console.log('[createRangeAtOffset] target offset:', offset);
 		const range = document.createRange();
 		let currentOffset = 0;
 
@@ -701,15 +662,6 @@ export class ChatMentionHandler {
 				const text = node.textContent || '';
 				const filteredText = text.replace(/\u200B/g, '');
 				const textLength = filteredText.length;
-
-				console.log(
-					'[createRangeAtOffset] TEXT_NODE currentOffset:',
-					currentOffset,
-					'textLength:',
-					textLength,
-					'text:',
-					JSON.stringify(text)
-				);
 
 				if (currentOffset + textLength >= offset) {
 					// Map the offset back to the actual node offset (accounting for zero-width spaces)
@@ -722,12 +674,7 @@ export class ChatMentionHandler {
 						}
 						nodeOffset++;
 					}
-					console.log(
-						'[createRangeAtOffset] Found position - nodeOffset:',
-						nodeOffset,
-						'in text:',
-						JSON.stringify(text)
-					);
+
 					range.setStart(node, nodeOffset);
 					range.setEnd(node, nodeOffset);
 					return true;
@@ -737,14 +684,12 @@ export class ChatMentionHandler {
 				// BR elements count as 1 character (newline)
 				if (currentOffset === offset) {
 					// Cursor is right before this BR
-					console.log('[createRangeAtOffset] Cursor before BR');
 					range.setStartBefore(node);
 					range.setEndBefore(node);
 					return true;
 				}
 				if (currentOffset + 1 === offset) {
 					// Cursor is right after this BR
-					console.log('[createRangeAtOffset] Cursor after BR, nextSibling:', node.nextSibling);
 					if (node.nextSibling) {
 						// Position at start of next sibling
 						if (node.nextSibling.nodeType === Node.TEXT_NODE) {
@@ -800,7 +745,7 @@ export class ChatMentionHandler {
 	 */
 	private handleClick(event: MouseEvent): void {
 		// Use the existing mention click handler from command palette
-		handleMentionClick(this.app, event);
+		handleMentionClick(this.app, event, this.plugin);
 	}
 
 	/**

@@ -66,7 +66,7 @@ export class MentionDecorator {
 
 			const agentsFolderExists = await this.app.vault.adapter.exists('.spark/agents');
 			if (!agentsFolderExists) {
-				console.log('Spark: .spark/agents folder does not exist');
+				console.error('Spark: .spark/agents folder does not exist');
 				return;
 			}
 
@@ -94,7 +94,7 @@ export class MentionDecorator {
 
 			const commandsFolderExists = await this.app.vault.adapter.exists('.spark/commands');
 			if (!commandsFolderExists) {
-				console.log('Spark: .spark/commands folder does not exist');
+				console.error('Spark: .spark/commands folder does not exist');
 				return;
 			}
 
@@ -492,7 +492,11 @@ class FolderFileSuggestModal extends SuggestModal<TFile> {
 /**
  * Handle clicks on mentions
  */
-export function handleMentionClick(app: App, event: MouseEvent) {
+export function handleMentionClick(
+	app: App,
+	event: MouseEvent,
+	plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } }
+) {
 	const target = event.target as HTMLElement;
 
 	if (!target.classList.contains('spark-token')) {
@@ -506,7 +510,7 @@ export function handleMentionClick(app: App, event: MouseEvent) {
 
 	// Handle commands differently
 	if (type === 'command') {
-		console.log('Command clicked:', token);
+		console.debug('Command clicked:', token);
 		// TODO: Show command documentation or execute command
 		return;
 	}
@@ -523,17 +527,19 @@ export function handleMentionClick(app: App, event: MouseEvent) {
 		if (files.length > 0) {
 			new FolderFileSuggestModal(app, files, newTab).open();
 		}
+	} else if (type === 'agent') {
+		// For agent mentions, open chat with the agent pre-mentioned
+		if (plugin && plugin.chatManager) {
+			plugin.chatManager.openChatWithAgent(path);
+			event.preventDefault();
+		}
+		return;
 	} else {
-		// For file/agent mentions (can't distinguish without .md extension)
-		// Try to find as file first
+		// For file mentions
 		const file = app.vault.getMarkdownFiles().find(f => f.basename === path);
 		if (file) {
 			const leaf = newTab ? app.workspace.getLeaf('tab') : app.workspace.getLeaf();
 			void leaf.openFile(file);
-		} else {
-			// Not a file, must be an agent - do nothing for now
-			// TODO: In future, could show agent info or open chat with this agent
-			return;
 		}
 	}
 

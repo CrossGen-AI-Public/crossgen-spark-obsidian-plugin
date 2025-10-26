@@ -42,8 +42,6 @@ export class ChatResultWatcher {
 		this.cleanupInterval = window.setInterval(() => {
 			void this.cleanupOldResults();
 		}, 30000);
-
-		console.log('ChatResultWatcher: Started watching for results');
 	}
 
 	/**
@@ -58,7 +56,6 @@ export class ChatResultWatcher {
 			window.clearInterval(this.cleanupInterval);
 			this.cleanupInterval = null;
 		}
-		console.log('ChatResultWatcher: Stopped watching');
 	}
 
 	/**
@@ -124,7 +121,6 @@ export class ChatResultWatcher {
 	 * Notify all listeners of a new result
 	 */
 	private notifyListeners(result: ChatResult): void {
-		console.log('ChatResultWatcher: New result received:', result);
 		this.listeners.forEach(listener => {
 			try {
 				listener(result);
@@ -141,7 +137,6 @@ export class ChatResultWatcher {
 		const exists = await this.app.vault.adapter.exists(this.resultsDir);
 		if (!exists) {
 			await this.app.vault.adapter.mkdir(this.resultsDir);
-			console.log('ChatResultWatcher: Created results directory');
 		}
 	}
 
@@ -170,7 +165,6 @@ export class ChatResultWatcher {
 				if (age > this.CLEANUP_AGE_MS) {
 					await this.app.vault.adapter.remove(filePath);
 					this.watchedFiles.delete(filePath);
-					console.log('ChatResultWatcher: Cleaned up old result file:', filePath);
 				}
 			}
 		} catch (error) {

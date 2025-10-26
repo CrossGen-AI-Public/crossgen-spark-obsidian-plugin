@@ -29,6 +29,10 @@ export class ChatManager {
 		this.chatWindow.toggle();
 	}
 
+	openChatWithAgent(agentName: string) {
+		this.chatWindow.addAgentMention(agentName);
+	}
+
 	// Add methods for conversation management
 	getMessages(): ChatMessage[] {
 		return this.chatWindow.getMessages();

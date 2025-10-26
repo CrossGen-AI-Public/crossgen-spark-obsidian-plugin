@@ -63,8 +63,6 @@ export class ChatQueue {
 
 		// Write to queue
 		await this.app.vault.adapter.write(queueFile, content);
-
-		console.log('ChatQueue: Enqueued message:', queueFile);
 		return queueId;
 	}
 
@@ -75,7 +73,6 @@ export class ChatQueue {
 		const exists = await this.app.vault.adapter.exists(this.queueDir);
 		if (!exists) {
 			await this.app.vault.adapter.mkdir(this.queueDir);
-			console.log('ChatQueue: Created queue directory');
 		}
 	}
 
@@ -88,7 +85,6 @@ export class ChatQueue {
 			const exists = await this.app.vault.adapter.exists(queueFile);
 			if (exists) {
 				await this.app.vault.adapter.remove(queueFile);
-				console.log('ChatQueue: Dequeued message:', queueFile);
 			}
 		} catch (error) {
 			console.error('ChatQueue: Failed to dequeue:', error);

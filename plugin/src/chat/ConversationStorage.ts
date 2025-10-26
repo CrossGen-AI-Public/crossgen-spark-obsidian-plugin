@@ -69,7 +69,6 @@ export class ConversationStorage {
 			const exists = await this.app.vault.adapter.exists(filePath);
 			if (exists) {
 				await this.app.vault.adapter.remove(filePath);
-				console.log('ConversationStorage: Deleted conversation:', id);
 			}
 		} catch (error) {
 			console.error('ConversationStorage: Failed to delete conversation:', id, error);
@@ -102,7 +101,6 @@ export class ConversationStorage {
 				const conversationId = mostRecentFile
 					.replace(`${this.conversationsDir}/`, '')
 					.replace('.json', '');
-				console.log('ConversationStorage: Most recent conversation found:', conversationId);
 				return conversationId;
 			}
 

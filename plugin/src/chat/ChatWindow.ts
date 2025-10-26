@@ -34,7 +34,7 @@ export class ChatWindow extends Component {
 		this.app = app;
 		this.plugin = plugin;
 		this.conversationStorage = new ConversationStorage(app);
-		this.mentionHandler = new ChatMentionHandler(app);
+		this.mentionHandler = new ChatMentionHandler(app, plugin);
 		this.chatQueue = new ChatQueue(app);
 		this.resultWatcher = new ChatResultWatcher(app);
 		this.chatSelector = new ChatSelector(
@@ -61,7 +61,7 @@ export class ChatWindow extends Component {
 			this.validAgents.clear();
 			const agentsFolderExists = await this.app.vault.adapter.exists('.spark/agents');
 			if (!agentsFolderExists) {
-				console.log('[ChatWindow] .spark/agents folder does not exist');
+				console.error('[ChatWindow] .spark/agents folder does not exist');
 				return;
 			}
 
@@ -74,7 +74,6 @@ export class ChatWindow extends Component {
 				}
 				this.validAgents.add(basename);
 			}
-			console.log('[ChatWindow] Loaded agents:', Array.from(this.validAgents));
 		} catch (error) {
 			console.error('[ChatWindow] Failed to load agents:', error);
 		}
@@ -319,14 +318,111 @@ export class ChatWindow extends Component {
 		}
 	}
 
+	/**
+	 * Add agent mention to chat - either opens new chat or appends to existing
+	 */
+	addAgentMention(agentName: string): void {
+		if (this.state.isVisible) {
+			// Chat is open - append mention to existing input
+			this.insertAgentMention(agentName);
+		} else {
+			// Chat is closed - open new chat with agent
+			this.openWithAgent(agentName);
+		}
+	}
+
+	/**
+	 * Insert agent mention into current chat input
+	 */
+	private insertAgentMention(agentName: string): void {
+		// Get current content and trim trailing spaces to avoid double spaces
+		const currentText = (this.inputEl.textContent || '').trimEnd();
+
+		// Add space before mention only if content exists (since we trimmed, it won't end with space)
+		const prefix = currentText.length > 0 ? ' ' : '';
+
+		// Build new content with mention (no trailing space yet - will add after decoration)
+		const newContent = `${currentText}${prefix}@${agentName}`;
+		this.inputEl.textContent = newContent;
+
+		// Remove placeholder state
+		this.inputEl.setAttribute('data-empty', 'false');
+
+		// Process content to apply mention decoration
+		this.mentionHandler.processContent();
+
+		// Now append a space AFTER decoration (as a non-breaking space to ensure it's visible)
+		const spaceText = document.createTextNode('\u00A0'); // Non-breaking space
+		this.inputEl.appendChild(spaceText);
+
+		// Focus input first
+		this.inputEl.focus();
+
+		// Set cursor after the space
+		const range = document.createRange();
+		const selection = window.getSelection();
+		range.setStartAfter(spaceText);
+		range.collapse(true);
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+	}
+
+	/**
+	 * Open new chat with agent mention
+	 */
+	private openWithAgent(agentName: string): void {
+		// Show window first (but don't initialize conversation yet)
+		this.containerEl.style.display = 'flex';
+		this.state.isVisible = true;
+
+		// Create NEW conversation (clears everything)
+		this.createNewChat();
+
+		// Pre-fill input with agent mention (no trailing space yet - will add after decoration)
+		const mention = `@${agentName}`;
+		this.inputEl.innerHTML = ''; // Clear any existing content
+		this.inputEl.textContent = mention;
+
+		// Remove placeholder state
+		this.inputEl.setAttribute('data-empty', 'false');
+
+		// Update state
+		this.state.lastMentionedAgent = agentName;
+		this.state.mentionedAgents.add(agentName);
+
+		// Update title
+		this.updateChatTitle([agentName]);
+
+		// Process content to apply mention decoration
+		this.mentionHandler.processContent();
+
+		// Now append a space AFTER decoration (as a non-breaking space to ensure it's visible)
+		const spaceText = document.createTextNode('\u00A0'); // Non-breaking space
+		this.inputEl.appendChild(spaceText);
+
+		// Wait for next tick to ensure DOM is ready, then focus and position cursor
+		window.setTimeout(() => {
+			this.inputEl.focus();
+
+			// Position cursor at the very end of the input (after all content)
+			const range = document.createRange();
+			const selection = window.getSelection();
+
+			// Select the entire content and collapse to end
+			range.selectNodeContents(this.inputEl);
+			range.collapse(false); // false = collapse to end
+
+			selection?.removeAllRanges();
+			selection?.addRange(range);
+		}, 50); // 50ms to ensure everything is settled
+	}
+
 	private async initializeConversation() {
 		// Try to find most recent conversation
 		const recentConversation = await this.findMostRecentConversation();
 		if (recentConversation) {
-			console.log('Spark Chat: Found recent conversation:', recentConversation);
 			this.state.conversationId = recentConversation;
 		} else {
-			console.log('Spark Chat: No recent conversation found, creating new one');
 			this.state.conversationId = this.generateConversationId();
 		}
 
@@ -342,7 +438,6 @@ export class ChatWindow extends Component {
 		try {
 			// Use ConversationStorage to find most recent conversation
 			const recentConversation = await this.conversationStorage.getMostRecentConversation();
-			console.log('Spark Chat: Most recent conversation from storage:', recentConversation);
 			return recentConversation;
 		} catch (error) {
 			console.error('Spark Chat: Error finding recent conversation:', error);
@@ -352,11 +447,8 @@ export class ChatWindow extends Component {
 
 	private async loadConversation() {
 		if (!this.state.conversationId) {
-			console.log('Spark Chat: No conversation ID to load');
 			return;
 		}
-
-		console.log('Spark Chat: Loading conversation:', this.state.conversationId);
 
 		// Clear current messages
 		this.messagesEl.innerHTML = '';
@@ -370,7 +462,6 @@ export class ChatWindow extends Component {
 				this.state.conversationId
 			);
 			if (conversation) {
-				console.log('Spark Chat: Successfully loaded conversation data');
 				this.state.messages = conversation.messages || [];
 				this.state.mentionedAgents = new Set(conversation.mentionedAgents || []);
 
@@ -386,16 +477,6 @@ export class ChatWindow extends Component {
 
 				this.renderAllMessages();
 				this.updateChatTitle(Array.from(this.state.mentionedAgents));
-				console.log(
-					'Spark Chat: Loaded',
-					this.state.messages.length,
-					'messages and',
-					this.state.mentionedAgents.size,
-					'agents, last agent:',
-					this.state.lastMentionedAgent
-				);
-			} else {
-				console.log('Spark Chat: No conversation data found for ID:', this.state.conversationId);
 			}
 		} catch (error) {
 			console.error('Spark Chat: Failed to load conversation:', error);
@@ -412,7 +493,6 @@ export class ChatWindow extends Component {
 			// Delete the empty conversation
 			try {
 				await this.conversationStorage.deleteConversation(this.state.conversationId);
-				console.log('Spark Chat: Deleted empty conversation:', this.state.conversationId);
 			} catch (error) {
 				console.error('Spark Chat: Failed to delete empty conversation:', error);
 			}
@@ -429,7 +509,6 @@ export class ChatWindow extends Component {
 
 		try {
 			await this.conversationStorage.saveConversation(conversationData);
-			console.log('Spark Chat: Successfully saved conversation:', this.state.conversationId);
 		} catch (error) {
 			console.error('Spark Chat: Failed to save conversation:', error);
 		}
@@ -783,7 +862,6 @@ export class ChatWindow extends Component {
 
 		// Handle commands differently
 		if (type === 'command') {
-			console.log('Command clicked:', token);
 			// TODO: Show command documentation or execute command
 			return;
 		}
@@ -888,7 +966,6 @@ export class ChatWindow extends Component {
 
 	// Chat selector methods
 	createNewChat(): void {
-		console.log('Spark Chat: Creating new chat');
 		// Save current conversation if it has messages
 		if (this.state.messages.length > 0) {
 			void this.saveConversation();
@@ -910,8 +987,6 @@ export class ChatWindow extends Component {
 	}
 
 	async switchToConversation(conversationId: string): Promise<void> {
-		console.log('Spark Chat: Switching to conversation:', conversationId);
-
 		// Save current conversation if it has messages and is different
 		if (this.state.messages.length > 0 && this.state.conversationId !== conversationId) {
 			await this.saveConversation();
@@ -1040,10 +1115,6 @@ export class ChatWindow extends Component {
 					activeFilePath,
 					this.state.lastMentionedAgent || undefined
 				);
-				console.log('ChatWindow: Message enqueued for processing', {
-					activeFilePath,
-					primaryAgent: this.state.lastMentionedAgent,
-				});
 			}
 		} catch (error) {
 			console.error('ChatWindow: Failed to enqueue message:', error);
@@ -1069,8 +1140,6 @@ export class ChatWindow extends Component {
 		if (result.conversationId !== this.state.conversationId) {
 			return;
 		}
-
-		console.log('ChatWindow: Received daemon result:', result);
 
 		// Remove loading message
 		const loadingMessages = this.state.messages.filter(msg => msg.type === 'loading');

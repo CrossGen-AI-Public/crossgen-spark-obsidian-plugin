@@ -9,7 +9,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
     settings: SparkSettings;
     private commandPaletteManager: CommandPaletteManager;
     private mentionDecorator: MentionDecorator;
-    private chatManager: ChatManager;
+    chatManager: ChatManager;
 
     async onload() {
         console.log('Spark Assistant: Loading plugin...');
@@ -63,7 +63,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
         // Register click handler for tokens (mentions and commands)
         this.registerDomEvent(document, 'click', (event: MouseEvent) => {
-            handleMentionClick(this.app, event);
+            handleMentionClick(this.app, event, this);
         });
 
         // Add settings tab
@@ -72,7 +72,6 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         // Add status bar item
         const statusBarItem = this.addStatusBarItem();
         statusBarItem.setText('⚡ Spark');
-
         console.log('Spark Assistant: Plugin loaded successfully');
     }
 
