@@ -9,17 +9,20 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 	private conversations: ChatConversation[];
 	private onSelect: (conversation: ChatConversation | null) => void;
 	private storage: ConversationStorage;
+	private selector: ChatSelector | null;
 
 	constructor(
 		app: App,
 		storage: ConversationStorage,
 		conversations: ChatConversation[],
-		onSelect: (conversation: ChatConversation | null) => void
+		onSelect: (conversation: ChatConversation | null) => void,
+		selector?: ChatSelector
 	) {
 		super(app);
 		this.storage = storage;
 		this.conversations = conversations;
 		this.onSelect = onSelect;
+		this.selector = selector || null;
 	}
 
 	// Returns available suggestions.
@@ -80,6 +83,9 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 		try {
 			await this.storage.deleteConversation(conversationId);
 			this.conversations = this.conversations.filter(conv => conv.id !== conversationId);
+
+			// Notify selector to update its cache
+			this.selector?.onConversationDeleted(conversationId);
 
 			// Remove from UI with animation
 			element.style.opacity = '0';
@@ -145,6 +151,15 @@ export class ChatSelector {
 	}
 
 	/**
+	 * Handle conversation deletion - update cache
+	 */
+	onConversationDeleted(conversationId: string): void {
+		if (this.conversations) {
+			this.conversations = this.conversations.filter(conv => conv.id !== conversationId);
+		}
+	}
+
+	/**
 	 * Create the selector UI for the left side (dropdown next to title)
 	 */
 	createTitleSide(containerEl: HTMLElement): void {
@@ -203,7 +218,8 @@ export class ChatSelector {
 				if (conversation) {
 					this.onSelectConversation(conversation.id);
 				}
-			}
+			},
+			this
 		);
 
 		this.activeModal.open();
