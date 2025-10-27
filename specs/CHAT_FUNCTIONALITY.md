@@ -75,7 +75,7 @@
 ### Chat Window
 - **Floating overlay** positioned in bottom-right corner
 - **Resizable window** with minimum/maximum dimensions
-- **Dynamic chat titles** showing active agents (e.g., "Chat with betty and mykola")
+- **Dynamic chat titles** showing active agents (e.g., "Chat with betty and bob")
 - **Title truncation** for conversations with many agents
 - **Closeable** with ESC key or close button
 - **Always on top** of other Obsidian elements
@@ -365,7 +365,7 @@ When agents modify files, the chat interface displays:
 - Message timestamps and agent indicators
 - Loading animation with jumping dots during agent processing
 - Keyboard shortcuts: Enter to send, Shift+Enter for new line
-- Multi-agent chat title support with truncation (e.g., "Chat with betty and mykola", "Chat with agent1, agent2 and 3 others")
+- Multi-agent chat title support with truncation (e.g., "Chat with betty and bob", "Chat with agent1, agent2 and 3 others")
 - **Command palette integration**: @mentions and /commands in chat input
 - **Mention decoration**: Visual styling for agents, files, folders, and commands
 - **Chat selector**: New chat button and conversation list dropdown

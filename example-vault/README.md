@@ -274,7 +274,7 @@ Specialized AI personas with domain expertise:
 **Available agents:**
 - `@betty` - Senior Accountant & Financial Analyst (financial reporting, tax compliance, QuickBooks)
 - `@alice` - Content Editor & Writing Coach (content editing, grammar, tone and voice)
-- `@mykola` - System Debugger & Context Validator (context validation, debugging with attitude)
+- `@bob` - System Debugger & Context Validator (context validation, debugging with attitude)
 
 **Create your own!** Add a new `.md` file to `.spark/agents/` with YAML frontmatter and instructions. The daemon picks up new agents instantly — no restart needed.
 

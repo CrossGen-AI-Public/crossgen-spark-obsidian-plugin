@@ -1389,7 +1389,7 @@ spark migrate --from=1.0 --to=2.0 --apply
 - [x] Implemented `getConfig()` in `ClaudeAgentProvider` and `ClaudeDirectProvider`
 - [x] Agent AI config supports: `provider`, `model`, `temperature`, `maxTokens`
 - [x] Debug logs show model used when agent processes response
-- [x] Example agent (Mykola) updated with AI config demonstration
+- [x] Example agent (Bob) updated with AI config demonstration
 - [x] All tests passing (28 suites, 497 tests, 6 skipped)
 
 **Key Features Implemented:**
@@ -1493,7 +1493,7 @@ When an agent with AI config is invoked, the logs show:
 
 ```
 [DEBUG] Agent AI config loaded {
-  agent: 'mykola',
+  agent: 'bob',
   provider: undefined,
   model: 'claude-sonnet-4-5-20250929',
   temperature: 0.8,

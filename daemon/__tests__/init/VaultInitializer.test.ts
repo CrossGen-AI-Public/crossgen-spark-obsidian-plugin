@@ -82,7 +82,7 @@ describe('VaultInitializer', () => {
             await initializer.initialize();
 
             const agentsDir = join(vaultPath, '.spark', 'agents');
-            const expectedAgents = ['betty.md', 'alice.md', 'mykola.md'];
+            const expectedAgents = ['betty.md', 'alice.md', 'bob.md'];
 
             for (const agent of expectedAgents) {
                 const agentPath = join(agentsDir, agent);
@@ -188,14 +188,14 @@ describe('VaultInitializer', () => {
             expect(content).toContain('model: claude-sonnet-4-5-20250929');
         });
 
-        it('should create complete mykola agent with correct content', async () => {
+        it('should create complete bob agent with correct content', async () => {
             const initializer = new VaultInitializer(vaultPath);
             await initializer.initialize();
 
-            const mykolaPath = join(vaultPath, '.spark', 'agents', 'mykola.md');
-            const content = readFileSync(mykolaPath, 'utf-8');
+            const bobPath = join(vaultPath, '.spark', 'agents', 'bob.md');
+            const content = readFileSync(bobPath, 'utf-8');
 
-            expect(content).toContain('name: Mykola');
+            expect(content).toContain('name: Bob');
             expect(content).toContain('role: System Debugger & Context Validator');
             expect(content).toContain('Context analysis and validation');
             expect(content).toContain('model: claude-sonnet-4-5-20250929');

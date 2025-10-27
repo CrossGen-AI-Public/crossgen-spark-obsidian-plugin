@@ -251,7 +251,7 @@ help me
             const content = `---
 conversation_id: conv-888
 queue_id: conv-888-123
-primary_agent: mykola
+primary_agent: bob
 ---
 
 <!-- spark-chat-message -->
@@ -262,7 +262,7 @@ what's your name?
 
             // Parser returns no mentions from the user message
             mockParser.parse.mockReturnValue([]);
-            mockExecutor.executeAndReturn.mockResolvedValue('I am Mykola');
+            mockExecutor.executeAndReturn.mockResolvedValue('I am Bob');
 
             await handler.process('.spark/chat-queue/conv-888-123.md');
 
@@ -275,15 +275,15 @@ what's your name?
             expect(command.mentions).toHaveLength(1);
             expect(command.mentions![0]).toEqual({
                 type: 'agent',
-                value: 'mykola',
-                raw: '@mykola',
+                value: 'bob',
+                raw: '@bob',
                 position: 0,
             });
 
             // Verify result uses primaryAgent
             const resultFile = join(vault.path, '.spark', 'chat-results', 'conv-888.jsonl');
             const result = JSON.parse(readFileSync(resultFile, 'utf-8'));
-            expect(result.agent).toBe('mykola');
+            expect(result.agent).toBe('bob');
         });
 
         it('should prioritize explicit agent mention over primaryAgent', async () => {
@@ -294,7 +294,7 @@ what's your name?
             const content = `---
 conversation_id: conv-777
 queue_id: conv-777-123
-primary_agent: mykola
+primary_agent: bob
 ---
 
 <!-- spark-chat-message -->
