@@ -1,5 +1,0 @@
----
-alwaysApply: true
----
-
-When fixing a bug, validate that after the fix there are no errors, running `npm run check`.

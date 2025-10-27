@@ -348,15 +348,15 @@ export class ChatWindow extends Component {
 		// Remove placeholder state
 		this.inputEl.setAttribute('data-empty', 'false');
 
+		// Focus input first (before processContent, so focus event's processContent runs first)
+		this.inputEl.focus();
+
 		// Process content to apply mention decoration
 		this.mentionHandler.processContent();
 
 		// Now append a space AFTER decoration (as a non-breaking space to ensure it's visible)
 		const spaceText = document.createTextNode('\u00A0'); // Non-breaking space
 		this.inputEl.appendChild(spaceText);
-
-		// Focus input first
-		this.inputEl.focus();
 
 		// Set cursor after the space
 		const range = document.createRange();
