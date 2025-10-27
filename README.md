@@ -9,6 +9,24 @@ Spark Assistant enables "markdown files triggering AI agents" - turning your Obs
 
 ---
 
+## 📑 Table of Contents
+
+- [🎯 What is Spark?](#-what-is-spark)
+- [🚀 Quick Start](#-quick-start)
+- [🔧 CLI Commands](#-cli-commands)
+- [📁 Repository Structure](#-repository-structure)
+- [🎨 Features](#-features)
+- [🏗️ Architecture](#-architecture)
+- [📝 Configuration](#-configuration)
+- [🔧 Development](#-development)
+- [🐛 Troubleshooting](#-troubleshooting)
+- [📚 Documentation](#-documentation)
+- [🤝 Contributing](#-contributing)
+- [🙏 Acknowledgments](#-acknowledgments)
+- [📧 Contact](#-contact)
+
+---
+
 ## 🎯 What is Spark?
 
 Spark provides two powerful interfaces for AI interaction in Obsidian:
@@ -251,13 +269,17 @@ Quick, inline actions triggered by typing `/`:
 Specialized AI personas with domain expertise:
 
 ```markdown
-@betty review @finance/Q4/ comparing with $quickbooks, flag issues in @compliance-rules.md
+@betty review @tasks/review-q4-finances.md and check if all data sources are accessible
+
+@alice edit @emails/draft-client-proposal.md for clarity and professionalism
 ```
 
 **Available agents:**
-- `@betty` - Senior Accountant (financial analysis, QuickBooks)
-- `@analyst` - Business Analyst (data analysis, reporting)
-- `@legal` - Legal Advisor (contract review, compliance)
+- `@betty` - Senior Accountant & Financial Analyst (financial reporting, tax compliance, QuickBooks)
+- `@alice` - Content Editor & Writing Coach (content editing, grammar, tone and voice)
+- `@mykola` - System Debugger & Context Validator (context validation, debugging with attitude)
+
+**Create your own!** Add a new `.md` file to `.spark/agents/` with YAML frontmatter and instructions. The daemon picks up new agents instantly — no restart needed.
 
 **How it works:**
 1. Type `@` to see agents and files
@@ -273,15 +295,16 @@ Persistent conversational AI with vault awareness:
 ```
 Press Cmd+K
 
-You: @betty what's our burn rate for Q4?
+You: @betty review @tasks/review-q4-finances.md
 
-Betty: Let me analyze @finance/Q4/...
-       Your burn rate is $34,333/month
-       That's a 9.2% reduction from Q3!
+Betty: I see the Q4 financial review task.
+       I'll need access to QuickBooks and finance data.
+       Let me check the required data sources...
 
-You: Create an email summary for investors
+You: @alice can you improve @emails/draft-client-proposal.md?
 
-Betty: Draft created at @emails/investor-update.md
+Alice: I'll review your proposal for clarity and tone.
+       Draft improvements will appear inline.
 ```
 
 **How it works:**
@@ -369,8 +392,8 @@ Universal syntax for referencing anything:
 | Syntax | Type | Example |
 |--------|------|---------|
 | `@name` | Agent | `@betty` |
-| `@file.md` | File | `@report.md` |
-| `@folder/` | Folder | `@finance/Q4/` |
+| `@file.md` | File | `@agents.md` |
+| `@folder/` | Folder | `@tasks/` |
 | `/command` | Command | `/summarize` |
 | `$service` | MCP Service | `$gmail` |
 | `#tag` | Tag | `#urgent` |

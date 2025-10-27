@@ -2,6 +2,24 @@
 
 The intelligence layer for Spark Assistant. A Node.js daemon that watches your Obsidian vault, parses Spark syntax, loads context, calls Claude API, and writes results back to files.
 
+## 📑 Table of Contents
+
+- [Status: ✅ MVP Complete](#status--mvp-complete)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [CLI Commands](#cli-commands)
+- [Development Mode 🔥](#development-mode-)
+- [Global Registry](#global-registry)
+- [Development](#development)
+- [TypeScript Configuration](#typescript-configuration)
+- [Pre-Commit Hooks](#pre-commit-hooks)
+- [Code Standards](#code-standards)
+- [Documentation](#documentation)
+- [License](#license)
+
+---
+
 ## Status: ✅ MVP Complete
 
 Core features implemented:

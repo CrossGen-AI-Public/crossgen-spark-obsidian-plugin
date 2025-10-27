@@ -2,6 +2,17 @@
 
 AI-powered automation for Obsidian with slash commands, chat widget, and intelligent workflows.
 
+## 📑 Table of Contents
+
+- [Features](#features)
+- [Development](#development)
+- [Current Status](#current-status)
+- [Architecture](#architecture)
+- [Documentation](#documentation)
+- [License](#license)
+
+---
+
 ## Features
 
 ### ✅ Command Palette

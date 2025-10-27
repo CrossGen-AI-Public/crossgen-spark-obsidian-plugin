@@ -1,5 +1,17 @@
 # Test Suite
 
+## 📑 Table of Contents
+
+- [Overview](#overview)
+- [Test Safety](#test-safety)
+- [Running Tests](#running-tests)
+- [Test Structure](#test-structure)
+- [Writing New Tests](#writing-new-tests)
+- [CI/CD](#cicd)
+- [Cost Safety Guarantee](#cost-safety-guarantee)
+
+---
+
 ## Overview
 
 This directory contains comprehensive tests for the Spark daemon. All tests are designed to run without making actual API calls or incurring costs.
