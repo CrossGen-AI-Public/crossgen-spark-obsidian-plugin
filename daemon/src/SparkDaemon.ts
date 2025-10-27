@@ -22,6 +22,7 @@ import { ContextLoader } from './context/ContextLoader.js';
 import { ResultWriter } from './results/ResultWriter.js';
 import { CommandExecutor } from './execution/CommandExecutor.js';
 import { ChatQueueHandler } from './chat/ChatQueueHandler.js';
+import { VaultInitializer } from './init/VaultInitializer.js';
 import { ProviderRegistry, ClaudeDirectProvider, ClaudeAgentProvider } from './providers/index.js';
 
 export class SparkDaemon implements ISparkDaemon {
@@ -64,6 +65,10 @@ export class SparkDaemon implements ISparkDaemon {
 
     try {
       this.state = 'starting';
+
+      // Initialize vault structure (creates dirs and default files if missing)
+      const initializer = new VaultInitializer(this.vaultPath);
+      await initializer.initialize();
 
       // Load configuration
       const configLoader = new ConfigLoader();
