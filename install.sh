@@ -136,22 +136,31 @@ PLUGINS=()
 PLUGINS+=("hot-reload")
 
 # Add existing plugins (excluding hot-reload and spark to avoid duplicates)
-while IFS= read -r plugin; do
-    if [ -n "$plugin" ] && [ "$plugin" != "hot-reload" ] && [ "$plugin" != "spark" ]; then
-        PLUGINS+=("$plugin")
-    fi
-done <<< "$EXISTING_PLUGINS"
+if [ -n "$EXISTING_PLUGINS" ]; then
+    while IFS= read -r plugin; do
+        if [ -n "$plugin" ] && [ "$plugin" != "hot-reload" ] && [ "$plugin" != "spark" ]; then
+            PLUGINS+=("$plugin")
+        fi
+    done <<< "$EXISTING_PLUGINS"
+fi
 
 PLUGINS+=("spark")
 
-# Write JSON file
+# Write JSON file (using compatible array syntax)
 echo "[" > "$COMMUNITY_PLUGINS_FILE"
-for i in "${!PLUGINS[@]}"; do
-    if [ $i -eq $((${#PLUGINS[@]} - 1)) ]; then
-        echo "  \"${PLUGINS[$i]}\"" >> "$COMMUNITY_PLUGINS_FILE"
+PLUGIN_COUNT=0
+for plugin in "${PLUGINS[@]}"; do
+    PLUGIN_COUNT=$((PLUGIN_COUNT + 1))
+done
+
+CURRENT_INDEX=0
+for plugin in "${PLUGINS[@]}"; do
+    if [ $CURRENT_INDEX -eq $((PLUGIN_COUNT - 1)) ]; then
+        echo "  \"$plugin\"" >> "$COMMUNITY_PLUGINS_FILE"
     else
-        echo "  \"${PLUGINS[$i]}\"," >> "$COMMUNITY_PLUGINS_FILE"
+        echo "  \"$plugin\"," >> "$COMMUNITY_PLUGINS_FILE"
     fi
+    CURRENT_INDEX=$((CURRENT_INDEX + 1))
 done
 echo "]" >> "$COMMUNITY_PLUGINS_FILE"
 
