@@ -2,6 +2,622 @@
 description: PRD
 alwaysApply: false
 ---
+---
+# .spark/commands/summarize.md
+id: summarize
+name: Summarize Document
+description: Create a concise summary of the current document
+context: current_file
+output: replace_selection
+---
+---
+# .spark/agents/betty.md
+name: Betty
+role: Senior Accountant & Financial Analyst
+expertise:
+  - Financial reporting
+  - Tax compliance
+  - Budget analysis
+  - QuickBooks integration
+tools:
+  - quickbooks
+  - stripe
+  - excel
+context_folders:
+  - finance/
+  - invoices/
+  - reports/financial/
+---
+---
+
+# The Spark Ecosystem: Beyond “Plugins”
+
+## Why This Vision Matters Now
+
+Once the Spark Assistant foundation is built (as outlined in the main PRD), the platform naturally evolves beyond a personal automation tool into the "Obsidian App Store" for business automation.
+
+This document outlines what becomes possible after the core system is complete. It demonstrates why building Spark Assistant properly from the start is critical - it's not just solving immediate automation needs, but creating the foundation for an entire ecosystem.
+
+## From Personal System to Platform
+
+### Phase 1: Personal Automation (Dogfooding)
+
+- Custom workflows solving specific pain points
+- Learning what actually works in practice
+- Refining the core system through daily use
+- Building a library of proven automations
+
+### Phase 2: Demand Emerges
+
+The inevitable questions start:
+
+- "How did you automate your entire back office?"
+- "Can I buy your email management system?"
+- "Will this work for my consulting practice?"
+- "Can you help me implement this?"
+
+### Phase 3: Productization
+
+Instead of one-off consulting engagements, proven workflows become "bundles" - packaged automation solutions that install in minutes. Consulting transforms from time-intensive implementation to scalable product sales.
+
+## The Bundle Concept
+
+Bundles are complete business automation solutions, packaged and ready to deploy. Rather than selling individual features or plugins, bundles deliver entire workflows:
+
+**Example: Consulting Practice Bundle**
+
+- Complete email management workflow
+- PRD generation and interview system
+- Client onboarding automation
+- Invoice generation and tracking
+- Project status reporting
+- Task delegation to AI personas
+
+A user installs this bundle, runs a 2-minute configuration wizard, and has a complete consulting business backend running in their Obsidian vault.
+
+## The Transformation Bundles Enable
+
+### For Bundle Creators
+
+**Without Bundles:**
+
+- Build useful automation
+- Share it when asked
+- Spend hours helping with setup
+- Difficult to monetize
+- Doesn't scale
+
+**With Bundles:**
+
+- Build useful automation
+- Package as installable bundle
+- Sell for $199-499
+- Automated installation
+- Passive income stream
+
+### For End Users
+
+**Without Bundles:**
+
+- Need sophisticated automation
+- Hire consultants ($10k+)
+- Weeks of implementation
+- Often doesn't match expectations
+- Requires ongoing support
+
+**With Bundles:**
+
+- Browse solution marketplace
+- Purchase proven bundle ($199)
+- Install in 10 minutes
+- Works immediately
+- Community support available
+
+## The All-Access Model
+
+Following the Setapp model, a monthly "Spark All Access" subscription provides unlimited access to all marketplace bundles:
+
+- **$49-$99/month** for everything
+- Try any bundle without commitment
+- Discover workflows from other industries
+- Always have the latest versions
+- Predictable business expense
+
+**This model benefits everyone:**
+
+- Users explore without risk
+- Developers reach wider audiences
+- Platform generates recurring revenue
+
+## Why Building the Foundation Right Matters
+
+### Technical Requirements for Ecosystem
+
+The bundle marketplace only works if the foundation provides:
+
+1. **Unified Architecture** - Everything in `.spark/` directory
+2. **Consistent Interfaces** - Slash commands and assistant that bundles can rely on
+3. **Mention System** - Universal language for all bundles
+4. **Daemon Infrastructure** - Automated workflows that bundles can configure
+5. **Clean Separation** - Business logic in Spark Core, not scattered across plugins
+
+### Without Proper Foundation
+
+Building features individually creates:
+
+- Incompatible systems that can't share bundles
+- Technical debt preventing ecosystem growth
+- Fragmented user experience
+- No path to marketplace
+
+### With Spark Assistant Foundation
+
+The core system enables:
+
+- Bundles that work instantly
+- Shared infrastructure across all solutions
+- Consistent user experience
+- Natural evolution to marketplace
+
+## Real Bundle Examples
+
+### Legal Practice Automation
+
+**Target:** Small law firms
+**Price:** $399
+**Includes:**
+
+- Contract analysis and review
+- Client intake workflows
+- Billing and time tracking
+- Court filing preparation
+- Compliance checking
+- Integration with LexisNexis, Argos, PACER, etc
+
+### E-commerce Operations
+
+**Target:** Online retailers
+**Price:** $299
+**Includes:**
+
+- Multi-channel order management
+- Inventory synchronization
+- Customer service automation
+- Returns processing
+- Review management
+- Integration with Shopify, Stripe, shipping APIs
+
+### Content Creator Suite
+
+**Target:** YouTubers, bloggers, course creators
+**Price:** $199
+**Includes:**
+
+- Content calendar management
+- Publishing workflows
+- Sponsor communication
+- Analytics tracking
+- Social media scheduling
+- Integration with YouTube, WordPress, ConvertKit
+
+## The Developer Opportunity
+
+### Bundle Development Process
+
+Creating bundles becomes straightforward:
+
+1. **Build solution for specific need**
+2. **Test and refine in production**
+3. **Package as bundle** (commands, SOPs, personas, templates)
+4. **Create setup wizard**
+5. **Submit to marketplace**
+6. **Earn passive income**
+
+### Revenue Potential
+
+A single successful bundle can generate:
+
+- **100 sales/month** at $199 = $19,900/month
+- **Developer keeps 80%** = $15,920/month
+- **Multiple bundles** multiply income
+- **All Access tier** provides baseline revenue
+
+## Competitive Landscape
+
+### Why This Wins
+
+| Aspect | Current Solutions | Spark Ecosystem |
+| --- | --- | --- |
+| **Setup Time** | Days to weeks | 10 minutes |
+| **Cost** | $1,000s in consulting | $199 one-time |
+| **Customization** | Requires developers | Edit markdown files |
+| **Updates** | Manual process | Automatic |
+| **Sharing** | Difficult | One-click install |
+
+### Market Opportunity
+
+- Millions of small businesses need automation
+- No unified platform exists
+- Current tools are fragmented
+- AI makes this possible now
+- First mover advantage
+
+## The Flywheel Effect
+
+1. **Strong Foundation** (Spark Assistant) enables rapid feature development
+2. **Rapid Features** attract power users
+3. **Power Users** create valuable workflows
+4. **Valuable Workflows** become bundles
+5. **Bundles** attract more users
+6. **More Users** create demand for more bundles
+7. **More Bundles** increase platform value
+8. **Platform Value** attracts developers
+9. **Developers** create better bundles
+10. **Better Bundles** accelerate growth
+
+## Timeline to Ecosystem
+
+### Months 1-2: Foundation
+
+Build Spark Assistant with dual interface, mention system, and daemon
+
+### Months 3-6: Dogfooding
+
+Refine through daily use, build initial workflow library
+
+### Months 7-9: Bundle Framework
+
+Create packaging system, installation wizard, registry service
+
+### Months 10-12: Marketplace Launch
+
+Open marketplace with first 10-20 bundles
+
+### Year 2+: Ecosystem Growth
+
+Hundreds of bundles, thousands of users, self-sustaining growth
+
+## Critical Success Factor
+
+The ecosystem vision only becomes reality if the foundation is built correctly from the start. This is why Spark Assistant must be the first priority, built with:
+
+- Robust architecture (not scattered plugins)
+- Unified system (everything in `.spark/`)
+- Consistent interfaces (slash commands + assistant)
+- Extensible design (mention system, SOPs, personas)
+
+Every shortcut taken now becomes a barrier to the ecosystem later.
+
+## Conclusion
+
+The Spark Ecosystem represents the natural evolution of the automation platform. It transforms individual solutions into an entire marketplace of business automation. But this future is only possible with the right foundation.
+
+Building Spark Assistant properly isn't just about immediate needs - it's about creating the platform that enables thousands of businesses to automate their operations, developers to build sustainable businesses, and the entire ecosystem to thrive.
+
+The choice is between building another set of hacky plugins that solve today's problems, or building the foundation for the business automation platform of the future. **The vision is clear. The opportunity is massive. The foundation must be built right.**
+
+# PRD
+
+## Executive Summary
+
+Spark Assistant is the foundational AI infrastructure that transforms Obsidian into an intelligent business operating system. It delivers the promise of "markdown files triggering AI agents" while solving the critical UX and technical challenges that make the difference between a proof-of-concept and a platform that can run entire businesses.
+
+This isn't just an improvement on existing tools - it's a fundamental reimagining of how AI integrates with business operations. By providing both instant slash commands and persistent conversational AI, Spark creates the "Cursor for business operations" - a product category that doesn't yet exist but desperately needs to.
+
+<aside>
+🔥
+
+**Critical insight:** Every single feature planned for this platform - email automation, task management, PRD generation, accounting, legal workflows - requires these exact same capabilities. Building them independently would mean recreating the same infrastructure 10+ times. Building Spark Assistant first means every subsequent feature takes 1-2 days instead of weeks.
+
+</aside>
+
+## The Problem: Why Current Solutions Fail
+
+### The Context Reset Problem
+
+Every time you invoke Claude Code or any CLI tool:
+
+- Memory resets completely
+- Context must be rebuilt from scratch
+- No learning from previous interactions
+- Complex workflows become impossible
+- Users repeat themselves constantly
+
+### The Interface Fragmentation Problem
+
+Current workflow automation requires:
+
+- Multiple disconnected tools
+- Different interfaces for each function
+- Constant context switching
+- No unified command language
+- Manual coordination between systems
+
+### The Development Velocity Problem
+
+Building each business automation independently means:
+
+- 5-10 days per feature minimum
+- No shared infrastructure
+- Inconsistent user experience
+- Maintenance nightmare
+- Slow iteration cycles
+
+### The Architectural Fragility Problem
+
+The current implementation, while functional, relies on:
+
+- Multiple third-party plugins with uncertain longevity
+- Scattered integrations without unified control
+- Hackish workarounds that break with updates
+- No guarantee of long-term stability
+- Difficult to replicate or scale
+
+## The Solution: A Unified AI Operating System
+
+Spark Assistant solves all these problems simultaneously by creating a **dual-interface AI platform** that maintains persistent context while providing both instant commands and deep conversational capabilities.
+
+<aside>
+💡
+
+As the technical architect, **Automaze's role is to deliver Sean's vision through robust, maintainable architecture** rather than duct-tape solutions. We're not just implementing the current workflow - we're building the platform that this workflow revealed is desperately needed.
+
+</aside>
+
+### Why This Architecture Wins
+
+1. **Meets Users Where They Are**
+    - Power users get lightning-fast slash commands
+    - Complex workflows get conversational guidance
+    - No forced behavior changes
+    - Progressive disclosure of capabilities
+2. **Zero Lock-in Risk**
+    - Commands are just markdown files
+    - Work even if chat interface fails
+    - Completely portable and versionable
+    - Can be shared, sold, or customized
+3. **Infinite Composability**
+    - Chain commands together
+    - Mix personas, files, and services
+    - Create industry-specific packages
+    - Build marketplace ecosystem
+4. **True Scalability**
+    - Add new assistants without code changes
+    - Deploy specialized agents (@betty, @legal, @analyst)
+    - Extend to any business function
+    - No architectural limits
+
+## Core Product Architecture
+
+### The Three-Layer System
+
+```
+┌─────────────────────────────────────────┐
+│           OBSIDIAN (UI Layer)           │
+├─────────────────────────────────────────┤
+│  Slash Commands  │  Assistant Plugin    │
+└────────┬─────────┴──────────┬───────────┘
+         │                    │
+┌────────▼────────────────────▼───────────┐
+│ SPARK CORE (Brain)                      │
+│  • Command Registry                     │
+│  • Mention Parser                       │
+│  • Context Manager                      │
+│  • AI Session Manager                   │
+└───────┬──────────────────────┬──────────┘
+        │                      │
+┌───────▼──────┐      ┌────────▼─────────┐
+│ SPARK DAEMON │      │ MCP/TOOLS        │
+│ • Watchers   │      │ • Gmail          │
+│ • Triggers   │      │ • QuickBooks     │
+│ • SOPs       │      │ • Stripe         │
+└──────────────┘      └──────────────────┘
+
+```
+
+### The Plugin Clarification
+
+<aside>
+💡
+
+**Important architectural distinction:** 
+Most functionality does NOT require Obsidian plugins. The "brain" lives in Spark Core, not in plugins.
+
+</aside>
+
+**What requires Obsidian plugins:**
+
+- Slash command UI interface
+- Chat assistant floating window
+- Custom UI elements (buttons, panels)
+- Visual components (special views, charts)
+
+**What does NOT require plugins:**
+
+- Business logic and AI operations (Spark Core)
+- File processing and automation (Spark Daemon)
+- External integrations (MCP/Tools layer)
+- Command definitions (markdown files)
+- Workflow automation (SOPs; markdown files)
+
+This means instead of building 20+ fragile plugins, we build 2-3 robust UI plugins plus a maintainable backend system.
+
+### The Dual Interface System
+
+### 💣 Slash Commands: Your Business Keyboard Shortcuts
+
+**Purpose:** Instant, stateless operations that transform content
+
+**The Experience:**
+
+- Type `/` anywhere in Obsidian
+- Fuzzy search shows available commands
+- Execute with Enter
+- Results appear inline or in status bar
+- Zero friction, zero context switch
+
+**Real-World Commands:**
+
+```
+/summarize          → Condense current document to key points
+/extract-tasks      → Find all action items and create tasks
+/email-draft        → Convert bullets into a professional email
+/financial-summary  → Parse documents for financial data
+/legal-review       → Flag potential legal issues
+/translate-spanish  → Convert document to Spanish
+/create-sop         → Generate standard operating procedure
+```
+
+### 💬 Spark Assistant: Your AI Executive Team
+
+**Purpose:** Complex, stateful operations requiring dialogue and context
+
+**The Experience:**
+
+- Press `Cmd+K` from anywhere
+- Floating chat appears (like Intercom)
+- Maintains entire conversation history
+- Understands your business context
+- Executes complex multi-step workflows
+
+### ⚙️ The Spark Daemon: Autonomous Workflow Engine
+
+The daemon is the missing piece that enables true automation - watching your vault and triggering actions based on changes.
+
+## File System Structure
+
+All Spark components live in a single, organized location within the vault:
+
+```
+vault/
+├── .spark/                      # All Spark components
+│   ├── commands/                # Slash command definitions
+│   │   ├── summarize.md
+│   │   ├── extract-tasks.md
+│   │   └── email-draft.md
+│   ├── agents/                  # AI agent configurations
+│   │   ├── betty.md             # Accounting specialist
+│   │   ├── legal.md             # Legal advisor
+│   │   └── analyst.md           # Data analyst
+│   ├── sops/                    # Standard Operating Procedures
+│   │   ├── email-status.md      # When email_status changes
+│   │   ├── task-assigned.md     # When a task assigned to AI
+│   │   └── invoice-created.md   # When invoice detected
+│   ├── triggers/                # Automation trigger rules
+│   │   ├── frontmatter.yaml     # Frontmatter field watchers
+│   │   ├── mentions.yaml        # @ mention detection
+│   │   └── patterns.yaml        # File pattern matching
+│   ├── integrations/            # External service configs
+│   ├── conversations/           # Chat history (optional)
+│   └── config.yaml              # Main Spark configuration
+├── .claude/                     # Claude-specific commands
+│   ├── agents/                  # Symlinked from .spark/agents/
+│   └── commands/                # Symlinked from .spark/commands/
+└── [user's regular vault structure]
+```
+
+### Configuration Management
+
+The `.spark/config.yaml` serves as the central configuration:
+
+```yaml
+# Main Spark configuration
+version: 1.0
+enabled_features:
+  slash_commands: true
+  assistant: true
+  daemon: true
+
+ai_provider:
+  default: claude
+  fallback: local_llm
+
+interface:
+  assistant_hotkey: "Cmd+K"
+  command_prefix: "/"
+
+daemon:
+  watch_patterns:
+    - "*.md"
+    - "tasks/**"
+    - "invoices/**"
+  polling_interval: 1000  # milliseconds
+
+integrations:
+  enabled:
+    - gmail
+    - quickbooks
+```
+
+### Symlink Strategy
+
+Commands that should be available to Claude Code are automatically symlinked:
+
+```bash
+# Automated during setup
+ln -s /vault/.spark/commands/* /vault/.claude/commands/
+```
+
+This provides:
+
+- **Single source of truth** - All configurations in `.spark/`
+- **Claude compatibility** - Commands available where Claude expects them
+- **Clean separation** - Spark-specific vs Claude-specific functionality
+- **Easy backup** - One folder contains entire system
+
+## The Universal Mention System
+
+This is where the magic happens - a single, consistent command language that works everywhere:
+
+```
+**@betty** review @finance/Q4/ comparing with $quickbooks, flag any issues in @compliance-rules.md and /create-report
+
+↓
+
+Use the betty agent to:
+
+1. review /path/to/finance/Q4/ and compare it with data in quickbooks (using quickbooks mcp server)
+2. flag any issues in /path/to/compliance-rules.md 
+3. execute instructions in .claude/commands/create-report.md
+```
+
+**One line triggers:**
+
+- Betty (accounting agent) activation
+- Loading all Q4 financial documents
+- Live QuickBooks data integration
+- Compliance rule checking
+- Formatted report generation
+
+### Mention Type Reference
+
+| Syntax | Purpose | Example |
+| --- | --- | --- |
+| `@agent` | Activate specialized AI agent | `@betty`, `@legal`, `@developer` |
+| `@file.md` | Include specific file context | `@contracts/acme.md` |
+| `@folder/` | Include entire folder | `@projects/website/` |
+| `/command` | Execute specific command | `/summarize`, `/create-tasks` |
+| `$service` | Connect external service | `$gmail`, `$stripe`, `$quickbooks` |
+| `#tag` | Reference by tag | `#urgent`, `#client-work` |
+
+## Workflow Automation with SOPs
+
+### Standard Operating Procedure Structure
+
+SOPs define automated workflows triggered by vault changes:
+
+```markdown
+---
+# email-status.md
+trigger:
+  type: frontmatter_change
+  field: email_status
+  value: send_this_out
+context:
+  - current_file
+  - templates/email/*
+---
+
 You are processing an email that needs to be sent. Follow these steps:
 
 1. Extract recipient from frontmatter `to:` field

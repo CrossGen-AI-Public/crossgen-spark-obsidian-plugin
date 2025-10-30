@@ -2,6 +2,320 @@
 description: product architecture
 alwaysApply: false
 ---
+---
+session_id: abc123
+started: 2024-01-15T10:30:00Z
+---
+---
+
+## Product 2: Spark Daemon
+
+### Purpose
+All intelligence. Watches files, parses syntax, executes workflows, writes results.
+
+### Core Responsibilities
+
+#### 1. File Watching
+
+Watch all `.md` files in vault:
+```typescript
+watch([
+  'vault/**/*.md',
+], {
+  ignore: ['.git/**', '.obsidian/**', 'node_modules/**']
+})
+```
+
+Detect changes with 300ms debounce.
+
+#### 2. Syntax Parsing
+
+Parse markdown for Spark syntax:
+
+**Commands:**
+- `/summarize`
+- `/extract-tasks`
+- `/email-draft`
+
+**Mentions:**
+- `@betty` (agent)
+- `@finance/Q4/` (folder)
+- `@compliance-rules.md` (file)
+- `$quickbooks` (service)
+- `#urgent` (tag)
+
+**Complex chains:**
+```
+@betty review @finance/Q4/ comparing with $quickbooks and /create-report
+```
+
+#### 3. Context Loading
+
+For each mention, load appropriate context:
+
+| Mention | Action |
+|---------|--------|
+| `@betty` | Load agent config from `.spark/agents/betty.md` |
+| `@finance/Q4/` | Load all files in that folder |
+| `@rules.md` | Load file content |
+| `$quickbooks` | Connect to QuickBooks API |
+| `#urgent` | Find all files tagged `#urgent` |
+
+#### 4. AI Execution
+
+1. Build prompt from command + context + agent persona
+2. Call Claude API
+3. Get response
+4. Parse response for any file operations
+
+#### 5. Result Writing
+
+**Before:**
+```markdown
+Some content...
+
+@betty review @finance/Q4/ and /create-report
+
+More content...
+```
+
+**After:**
+```markdown
+Some content...
+
+✅ @betty review @finance/Q4/ and /create-report
+
+**Betty's Analysis:**
+I've reviewed all Q4 financial documents. Here's the summary:
+- Revenue: $450K
+- Expenses: $320K
+- Net: $130K
+
+Full report: @reports/q4-analysis.md
+
+More content...
+```
+
+#### 6. Status Indicators
+
+Add emoji to show command status:
+
+| Status | Indicator |
+|--------|-----------|
+| Pending | (no emoji) |
+| Processing | `⏳` |
+| Completed | `✅` |
+| Error | `❌` |
+| Warning | `⚠️` |
+
+**Example progression:**
+
+User types:
+```markdown
+@betty summarize this
+```
+
+Daemon detects → adds processing indicator:
+```markdown
+⏳ @betty summarize this
+```
+
+Daemon completes → updates to completed:
+```markdown
+✅ @betty summarize this
+
+Summary here...
+```
+
+#### 7. SOP System
+
+Watch for frontmatter changes that trigger SOPs:
+
+**File:**
+```markdown
+---
+---
+
+Email content here...
+```
+
+**Trigger config:** `.spark/triggers/frontmatter.yaml`
+```yaml
+- field: email_status
+  value: send_this_out
+  sop: email-automation.md
+```
+
+**SOP execution:**
+1. Daemon detects `email_status` changed to `send_this_out`
+2. Loads `.spark/sops/email-automation.md`
+3. Executes SOP (which is an AI prompt with instructions)
+4. SOP sends email via `$gmail`
+5. SOP updates frontmatter: `email_status: sent`
+6. SOP adds `sent_date: 2024-01-15`
+
+#### 8. Notifications
+
+Append to `.spark/notifications.jsonl` for plugin:
+
+```jsonl
+{"id": "abc", "type": "success", "message": "Summary completed", "file": "notes.md", "timestamp": 1234567890}
+{"id": "def", "type": "error", "message": "Rate limit exceeded", "file": "email.md", "timestamp": 1234567891}
+{"id": "ghi", "type": "info", "message": "Processing 15 files...", "progress": 0.45, "timestamp": 1234567892}
+```
+
+---
+---
+
+## File Structure
+
+```
+vault/
+├── .spark/
+│   ├── commands/              # Slash command definitions
+│   │   ├── summarize.md
+│   │   ├── extract-tasks.md
+│   │   └── email-draft.md
+│   │
+│   ├── agents/                # AI personas
+│   │   ├── betty.md           # Accounting agent
+│   │   ├── legal.md           # Legal advisor
+│   │   └── analyst.md         # Data analyst
+│   │
+│   ├── sops/                  # Automated workflows
+│   │   ├── email-automation.md
+│   │   ├── task-assignment.md
+│   │   └── invoice-processing.md
+│   │
+│   ├── triggers/              # SOP trigger configs
+│   │   └── frontmatter.yaml
+│   │
+│   ├── conversations/         # Chat history
+│   │   ├── 2024-01-15-session-abc.md
+│   │   └── 2024-01-15-session-def.md
+│   │
+│   ├── integrations/          # External services
+│   │   ├── gmail/
+│   │   ├── quickbooks/
+│   │   └── stripe/
+│   │
+│   ├── notifications.jsonl    # Daemon → Plugin messages
+│   ├── config.yaml            # Main configuration
+│   └── logs/                  # Daemon logs
+│       └── daemon.log
+│
+└── [user's regular vault files]
+```
+
+---
+---
+
+## Key Design Principles
+
+### 1. File System as API
+All communication happens via files. No HTTP, WebSocket, or IPC needed.
+
+### 2. Plugin is Dumb
+Plugin is pure UI. All intelligence in daemon.
+
+### 3. Raw User Input
+Plugin writes exactly what user types. Daemon does all parsing.
+
+### 4. Visual Feedback
+Daemon modifies files to show status (✅, ❌, ⏳).
+
+### 5. Zero Dependencies
+Plugin works without daemon (just writes files).  
+Daemon works without plugin (processes any .md changes).
+
+### 6. Inspectable
+Everything is in markdown files. Users can see, edit, and understand what's happening.
+
+### 7. Version Control Friendly
+All Spark syntax is valid markdown. No binary formats.
+
+---
+---
+
+## Success Metrics
+
+### Week 1 Success:
+✅ Type `/summarize` → see summary appear in file
+
+### Week 2 Success:
+✅ Type `@betty review @folder/` → see analysis appear
+
+### Week 3 Success:
+✅ Press Cmd+K, chat with @betty, get responses
+
+### Week 4 Success:
+✅ Change frontmatter → automation runs automatically
+
+### Week 5 Success:
+✅ `$gmail send email` → real email sent
+
+### Week 6 Success:
+✅ System handles errors gracefully  
+✅ Can dogfood for real work  
+✅ Ready to build business features on top
+
+---
+
+# Spark Assistant - Product Architecture
+
+**Status:** MVP Complete - Chat System Implemented  
+**Date:** October 26, 2025  
+**Last Updated:** October 26, 2025
+
+---
+
+## System Overview
+
+Spark consists of TWO products:
+
+### 1. Obsidian Plugin (UI Layer)
+A single plugin with two features:
+- **Slash Commands**: Surface custom commands and agents ✅ Complete
+- **Chat Widget**: Floating chat interface (Cmd+K) ✅ Complete
+
+### 2. Spark Daemon (Intelligence Layer)
+A standalone Node.js process that:
+- Watches vault for changes ✅ Complete
+- Parses Spark syntax in markdown files ✅ Complete
+- Executes commands and workflows ✅ Complete (Chat system)
+- Writes results back to files ✅ Complete (Chat system)
+
+## Implementation Status
+
+### ✅ Completed Features
+
+**Plugin:**
+- ✅ Command palette with fuzzy search for commands, agents, files, and folders
+- ✅ Chat widget with persistent conversations (Cmd+K)
+- ✅ Mention system in chat input with auto-completion
+- ✅ Conversation persistence in `.spark/conversations/`
+- ✅ Chat selector for switching between conversations
+- ✅ Real-time message updates from daemon
+- ✅ Clickable mentions in chat history
+
+**Daemon:**
+- ✅ File watching with debouncing
+- ✅ Syntax parsing for mentions, commands, and agents
+- ✅ Chat queue processing with conversation context
+- ✅ Agent execution with Claude API integration
+- ✅ Result writing via file system
+- ✅ Command line interface (start/stop/status/history)
+- ✅ Configuration management with hot reload
+
+**Communication:**
+- ✅ Plugin → Daemon: Queue files in `.spark/chat-queue/`
+- ✅ Daemon → Plugin: Result files in `.spark/chat-results/`
+- ✅ Real-time chat message updates via file watching
+- ⏸️ Toast notifications (NOT IMPLEMENTED)
+- ⏸️ Status bar updates (NOT IMPLEMENTED)
+
+---
+
 ## Product 1: Obsidian Plugin
 
 ### Purpose

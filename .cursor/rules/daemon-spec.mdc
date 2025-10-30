@@ -2,6 +2,302 @@
 description: daemon specs
 alwaysApply: false
 ---
+---
+
+## Syntax Detection
+
+The daemon looks for these patterns in markdown:
+
+### 1. Slash Commands
+
+```markdown
+/summarize
+/extract-tasks
+/email-draft
+```
+
+**Detection regex:** `^\/[\w-]+(\s+.*)?$`
+
+**Characteristics:**
+- Must be on its own line
+- Starts with `/`
+- Followed by command name (alphanumeric, hyphens)
+- Optional arguments after space
+
+### 2. At Mentions (Agent/File/Folder)
+
+```markdown
+@betty
+@finance/Q4/
+@compliance-rules.md
+```
+
+**Detection regex:** `@([\w-]+(?:\/[\w-]*)*\/?|[\w-]+\.md)`
+
+**Disambiguation rules:**
+1. If ends with `/` → Folder
+2. If ends with `.md` → File
+3. If matches agent name → Agent
+4. Else check: agents → files → folders
+5. If ambiguous → Prompt or error
+
+### 3. Service References
+
+```markdown
+$gmail
+$quickbooks
+$stripe
+```
+
+**Detection regex:** `\$([\w-]+)`
+
+**Must match configured service in:** `.spark/integrations/<service>/config.yaml`
+
+### 4. Tag References
+
+```markdown
+#urgent
+#client-work
+```
+
+**Detection regex:** `#([\w-]+)`
+
+**Loads all files with that tag**
+
+### 5. Complex Lines (Multiple Mentions)
+
+```markdown
+@betty review @finance/Q4/ comparing with $quickbooks, flag issues in @compliance.md and /create-report
+```
+
+**The daemon:**
+1. Parses all tokens in order
+2. Loads each mention (agent, files, services)
+3. Builds complete context
+4. Identifies final command (`/create-report`)
+5. Executes with full context
+
+---
+---
+
+## Status Indicators
+
+### Visual Feedback in Files
+
+The daemon modifies the command line to show status:
+
+**Pending (just typed):**
+```markdown
+@betty review @finance/Q4/
+```
+
+**Processing (daemon working on it):**
+```markdown
+⏳ @betty review @finance/Q4/
+```
+
+**Completed successfully:**
+```markdown
+✅ @betty review @finance/Q4/
+```
+
+**Failed with error:**
+```markdown
+❌ @betty review @finance/Q4/
+```
+
+**Partially completed (with warnings):**
+```markdown
+⚠️ @betty review @finance/Q4/
+```
+
+### Status Updates
+
+The daemon updates status in real-time:
+
+1. Detects command → Add `⏳`
+2. Begins processing → Keep `⏳`
+3. On completion → Replace with `✅`
+4. On error → Replace with `❌`
+
+**Implementation:**
+```typescript
+async function updateStatus(file: string, line: number, status: Status) {
+  const content = await readFile(file);
+  const lines = content.split('
+');
+  
+  // Remove existing status emoji
+  const commandLine = lines[line].replace(/^[✅❌⏳⚠️]\s*/, '');
+  
+  // Add new status
+  const emoji = {
+    pending: '',
+    processing: '⏳',
+    completed: '✅',
+    error: '❌',
+    warning: '⚠️'
+  }[status];
+  
+  lines[line] = emoji ? `${emoji} ${commandLine}` : commandLine;
+  
+  await writeFile(file, lines.join('
+'));
+}
+```
+
+---
+---
+email_status: send_this_out
+assigned_to: @betty
+task_status: completed
+---
+---
+# .spark/sops/email-automation.md
+name: Email Automation
+trigger:
+  type: frontmatter
+  field: email_status
+  value: send_this_out
+context:
+  - current_file
+  - templates/email/*
+---
+---
+
+## Notification System
+
+### Notification File Format
+
+`.spark/notifications.jsonl` (JSON Lines - append only)
+
+```jsonl
+{"id": "abc123", "type": "success", "message": "Summary completed", "file": "notes.md", "line": 42, "timestamp": 1234567890}
+{"id": "def456", "type": "error", "message": "Rate limit exceeded", "file": "email.md", "line": 15, "timestamp": 1234567891, "retry_at": 1234571491}
+{"id": "ghi789", "type": "info", "message": "Processing 15 files...", "file": "report.md", "progress": 0.45, "timestamp": 1234567892}
+```
+
+### Notification Types
+
+```typescript
+interface Notification {
+  id: string;                     // Unique ID
+  type: 'success' | 'error' | 'warning' | 'info';
+  message: string;                // User-facing message
+  file: string;                   // Which file triggered this
+  line?: number;                  // Line number of command
+  timestamp: number;
+  
+  // Optional fields
+  progress?: number;              // 0-1 for long operations
+  retry_at?: number;              // For recoverable errors
+  details?: string;               // Full error message
+  action?: {                      // Action button in toast
+    label: string;
+    command: string;
+  };
+}
+```
+
+### Plugin Integration
+
+The plugin watches `.spark/notifications.jsonl`:
+
+```typescript
+// In plugin
+watcher.on('change', async (file) => {
+  if (file === '.spark/notifications.jsonl') {
+    const newNotifications = await readNewLines(file, lastReadPosition);
+    
+    for (const notif of newNotifications) {
+      showToast(notif);
+    }
+    
+    lastReadPosition = getCurrentPosition(file);
+  }
+});
+```
+
+---
+---
+
+## Configuration
+
+### Main Config
+
+`.spark/config.yaml`
+
+```yaml
+daemon:
+  watch_patterns: ["**/*.md"]
+  ignore_patterns: [".git/**", ".obsidian/**", "node_modules/**"]
+  debounce_ms: 300
+  
+  # Status indicators
+  status_emojis:
+    pending: ""
+    processing: "⏳"
+    completed: "✅"
+    error: "❌"
+    warning: "⚠️"
+  
+  # Results formatting
+  results:
+    insert_blank_line: true
+    max_inline_length: 500  # Move to separate file if longer
+
+ai:
+  provider: claude
+  model: claude-3-5-sonnet-20241022
+  max_tokens: 4096
+  temperature: 0.7
+
+integrations:
+  enabled:
+    - gmail
+    - quickbooks
+    - stripe
+
+logging:
+  level: info
+  file: .spark/logs/daemon.log
+  max_size: 10mb
+  max_files: 5
+```
+
+---
+---
+
+## Next Steps
+
+Once these questions are resolved, we can:
+1. Spec out the Mention Parser in detail
+2. Design the Agent system
+3. Spec the MCP integration layer
+4. Create example SOPs
+
+**Which component should we detail next?**
+
+# Spark Daemon - Technical Specification
+
+**Status:** Specification Phase  
+**Date:** 2024
+
+---
+
+## Overview
+
+The Spark Daemon is a standalone Node.js process that:
+1. Watches the Obsidian vault for file changes
+2. Parses markdown files for Spark syntax
+3. Executes commands, loads context, calls AI
+4. Writes results back to files
+5. Sends notifications to the plugin
+
+**Key principle:** The daemon does ALL the intelligence. The plugin is just UI.
+
+---
+
 ## File Watching
 
 ### What Gets Watched
@@ -283,7 +579,8 @@ More content...
 async function writeResult(file: string, command: ParsedCommand, result: Result) {
   // Read file
   const content = await readFile(file);
-  const lines = content.split('\n');
+  const lines = content.split('
+');
   
   // Find command line
   const commandLine = lines[command.line];
@@ -300,7 +597,8 @@ async function writeResult(file: string, command: ParsedCommand, result: Result)
   lines.splice(command.line + 1, 0, ...resultLines);
   
   // Write back
-  await writeFile(file, lines.join('\n'));
+  await writeFile(file, lines.join('
+'));
 }
 ```
 
@@ -350,7 +648,8 @@ The daemon updates status in real-time:
 ```typescript
 async function updateStatus(file: string, line: number, status: Status) {
   const content = await readFile(file);
-  const lines = content.split('\n');
+  const lines = content.split('
+');
   
   // Remove existing status emoji
   const commandLine = lines[line].replace(/^[✅❌⏳⚠️]\s*/, '');
@@ -366,7 +665,8 @@ async function updateStatus(file: string, line: number, status: Status) {
   
   lines[line] = emoji ? `${emoji} ${commandLine}` : commandLine;
   
-  await writeFile(file, lines.join('\n'));
+  await writeFile(file, lines.join('
+'));
 }
 ```
 

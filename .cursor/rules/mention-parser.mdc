@@ -2,6 +2,470 @@
 description: mention parser
 alwaysApply: false
 ---
+---
+
+## Context Priority System
+
+**CRITICAL:** Context is ordered by importance/relevance. Claude receives context in this exact order.
+
+### Priority Levels
+
+1. **Mentioned files/folders** (highest priority)
+   - Explicitly referenced by user
+   - Always included fully
+
+2. **Current file**
+   - Where the mention was typed
+   - Full content included
+
+3. **Parent directory of current file**
+   - Sibling files for context
+   - Summaries or full content depending on size
+
+4. **Other files in vault** (lowest priority)
+   - Ordered by "reversed recursiveness":
+     - Files in root: highest relevance
+     - Files in deep subfolders: lowest relevance
+   - May be truncated if context window limited
+
+### Reversed Recursiveness Ordering
+
+**Start from current file and expand outward:**
+
+```
+Current file: vault/finance/Q4/notes.md
+
+Relevance ordering:
+1. notes.md (current file)                    # Relevance: 1.0
+2. vault/finance/Q4/details.md (sibling)      # Relevance: 0.9
+3. vault/finance/Q4/revenue.md (sibling)      # Relevance: 0.9
+4. vault/finance/summary.md (parent dir)      # Relevance: 0.7
+5. vault/finance/overview.md (parent dir)     # Relevance: 0.7
+6. vault/important.md (grandparent dir)       # Relevance: 0.5
+7. vault/other.md (grandparent dir)           # Relevance: 0.5
+8. vault/archive/old.md (distant)             # Relevance: 0.3
+```
+
+**Rationale:** Files closest to the current file are most relevant. Think of it like concentric circles radiating outward from the current file.
+
+### Context Window Management
+
+If context exceeds token limits:
+
+1. Keep mentioned files (priority 1) - always
+2. Keep current file (priority 2) - always
+3. Keep parent directory (priority 3) - summarize if needed
+4. Truncate other files (priority 4) - drop lowest relevance first
+
+---
+---
+
+## Implementation
+
+### Core Parser Function
+
+```typescript
+interface ParsedMention {
+  raw: string;
+  agent?: string;
+  instructions: string[];
+  mentions: ResolvedMention[];
+  services: string[];
+  finalCommand?: string;
+  currentFile: string;
+}
+
+async function parseMention(
+  line: string, 
+  currentFile: string, 
+  vaultPath: string
+): Promise<ParsedMention> {
+  
+  // 1. Tokenize
+  const tokens = tokenize(line);
+  
+  // 2. Resolve paths
+  const resolved = await resolvePaths(tokens, vaultPath);
+  
+  // 3. Extract components
+  const agent = resolved.find(r => r.type === 'agent');
+  const files = resolved.filter(r => r.type === 'file');
+  const folders = resolved.filter(r => r.type === 'folder');
+  const services = resolved.filter(r => r.type === 'service');
+  const command = resolved.find(r => r.type === 'command');
+  
+  // 4. Build instructions from text between mentions
+  const instructions = buildInstructions(tokens);
+  
+  return {
+    raw: line,
+    agent: agent?.resolved,
+    instructions,
+    mentions: [...files, ...folders],
+    services: services.map(s => s.resolved),
+    finalCommand: command?.resolved,
+    currentFile
+  };
+}
+```
+
+### Tokenization Function
+
+```typescript
+function tokenize(line: string): Token[] {
+  const tokens: Token[] = [];
+  
+  // Regex patterns
+  const patterns = {
+    agent: /@([\w-]+)(?!\.|\/)/,           // @betty (not @file.md or @folder/)
+    file: /@([\w-]+\.md)/,                  // @file.md
+    folder: /@([\w-\/]+\/)/,                // @folder/ or @path/to/folder/
+    service: /\$([\w-]+)/,                  // $quickbooks
+    command: /\/([\w-]+)/,                  // /create-report
+  };
+  
+  let remaining = line;
+  let lastIndex = 0;
+  
+  while (remaining.length > 0) {
+    let matched = false;
+    
+    // Try each pattern
+    for (const [type, pattern] of Object.entries(patterns)) {
+      const match = remaining.match(pattern);
+      if (match && match.index === 0) {
+        // Add any text before this match
+        if (lastIndex < match.index) {
+          tokens.push({
+            type: 'text',
+            raw: remaining.substring(0, match.index)
+          });
+        }
+        
+        // Add the matched token
+        tokens.push({
+          type: type as Token['type'],
+          raw: match[0]
+        });
+        
+        remaining = remaining.substring(match[0].length);
+        matched = true;
+        break;
+      }
+    }
+    
+    // If no match, consume one character as text
+    if (!matched) {
+      const char = remaining[0];
+      if (tokens.length > 0 && tokens[tokens.length - 1].type === 'text') {
+        tokens[tokens.length - 1].raw += char;
+      } else {
+        tokens.push({ type: 'text', raw: char });
+      }
+      remaining = remaining.substring(1);
+    }
+  }
+  
+  return tokens;
+}
+```
+
+### Path Resolution
+
+```typescript
+async function resolvePaths(
+  tokens: Token[], 
+  vaultPath: string
+): Promise<ResolvedMention[]> {
+  
+  const resolved: ResolvedMention[] = [];
+  
+  for (const token of tokens) {
+    if (token.type === 'text') continue;
+    
+    let absolutePath: string;
+    let exists: boolean;
+    
+    switch (token.type) {
+      case 'agent':
+        absolutePath = path.join(vaultPath, '.spark/agents', `${token.raw.slice(1)}.md`);
+        exists = await fs.exists(absolutePath);
+        break;
+      
+      case 'file':
+        // Search vault for file
+        absolutePath = await findFile(vaultPath, token.raw.slice(1));
+        exists = absolutePath !== null;
+        break;
+      
+      case 'folder':
+        absolutePath = path.join(vaultPath, token.raw.slice(1));
+        exists = await fs.exists(absolutePath);
+        break;
+      
+      case 'service':
+        // Check MCP config
+        const serviceName = token.raw.slice(1);
+        exists = await checkMCPService(serviceName);
+        absolutePath = serviceName;
+        break;
+      
+      case 'command':
+        absolutePath = path.join(vaultPath, '.spark/commands', `${token.raw.slice(1)}.md`);
+        exists = await fs.exists(absolutePath);
+        break;
+    }
+    
+    resolved.push({
+      type: token.type,
+      raw: token.raw,
+      absolutePath,
+      exists
+    });
+  }
+  
+  return resolved;
+}
+```
+
+### Context Loading
+
+```typescript
+async function loadContext(
+  parsed: ParsedMention,
+  vaultPath: string
+): Promise<ContextPriority> {
+  
+  const context: ContextPriority = {
+    priority: []
+  };
+  
+  // Priority 1: Mentioned files/folders
+  for (const mention of parsed.mentions) {
+    if (mention.type === 'file') {
+      const content = await fs.readFile(mention.absolutePath, 'utf-8');
+      context.priority.push({
+        type: 'file',
+        path: mention.absolutePath,
+        content,
+        priority: 1.0
+      });
+    } else if (mention.type === 'folder') {
+      const files = await loadFolderFiles(mention.absolutePath);
+      context.priority.push({
+        type: 'folder',
+        path: mention.absolutePath,
+        files,
+        priority: 1.0
+      });
+    }
+  }
+  
+  // Priority 2: Current file
+  const currentContent = await fs.readFile(parsed.currentFile, 'utf-8');
+  context.priority.push({
+    type: 'file',
+    path: parsed.currentFile,
+    content: currentContent,
+    priority: 0.9
+  });
+  
+  // Priority 3: Parent directory
+  const parentDir = path.dirname(parsed.currentFile);
+  const siblingFiles = await loadFolderFiles(parentDir);
+  context.priority.push({
+    type: 'folder',
+    path: parentDir,
+    files: siblingFiles,
+    priority: 0.8
+  });
+  
+  // Priority 4: Other vault files (by reversed recursiveness)
+  const otherFiles = await loadVaultFilesByRelevance(vaultPath, parsed.currentFile);
+  context.priority.push(...otherFiles);
+  
+  return context;
+}
+```
+
+### Reversed Recursiveness Calculation
+
+```typescript
+async function loadVaultFilesByRelevance(
+  vaultPath: string,
+  currentFile: string
+): Promise<ContextItem[]> {
+  
+  const allFiles = await findAllMarkdownFiles(vaultPath);
+  const currentDir = path.dirname(currentFile);
+  
+  const filesWithRelevance = allFiles
+    .filter(f => f !== currentFile) // Exclude current file (already added)
+    .map(filePath => {
+      // Calculate distance from current file
+      const distance = calculatePathDistance(currentFile, filePath);
+      
+      // Closer = more relevant
+      // distance 0 = same directory (siblings)
+      // distance 1 = parent or child directory
+      // distance 2 = grandparent or grandchild
+      const relevance = 1.0 / (distance + 1);
+      
+      return {
+        type: 'file' as const,
+        path: filePath,
+        distance,
+        relevance,
+        priority: relevance * 0.5 // Lower than priority 3
+      };
+    });
+  
+  // Sort by distance (closest first)
+  filesWithRelevance.sort((a, b) => a.distance - b.distance);
+  
+  // Load summaries (not full content) to save tokens
+  const contextsWithSummaries = await Promise.all(
+    filesWithRelevance.map(async (item) => ({
+      ...item,
+      summary: await generateFileSummary(item.path)
+    }))
+  );
+  
+  return contextsWithSummaries;
+}
+
+function calculatePathDistance(file1: string, file2: string): number {
+  const dir1 = path.dirname(file1);
+  const dir2 = path.dirname(file2);
+  
+  // If in same directory, distance is 0
+  if (dir1 === dir2) return 0;
+  
+  // Find common ancestor
+  const parts1 = dir1.split(path.sep);
+  const parts2 = dir2.split(path.sep);
+  
+  let commonDepth = 0;
+  for (let i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+    if (parts1[i] === parts2[i]) {
+      commonDepth++;
+    } else {
+      break;
+    }
+  }
+  
+  // Distance is how many steps to go up + how many steps to go down
+  const stepsUp = parts1.length - commonDepth;
+  const stepsDown = parts2.length - commonDepth;
+  
+  return stepsUp + stepsDown;
+}
+```
+
+### Instruction Building
+
+```typescript
+function buildInstructions(tokens: Token[]): string[] {
+  const instructions: string[] = [];
+  let currentInstruction = '';
+  
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    
+    if (token.type === 'agent') {
+      // Skip agent - it's used as persona, not instruction
+      continue;
+    }
+    
+    if (token.type === 'text') {
+      currentInstruction += token.raw;
+    } else {
+      // Replace mention with resolved path
+      currentInstruction += token.resolved || token.raw;
+    }
+    
+    // Split on conjunctions (and, then, etc.)
+    if (token.raw.match(/and|then|,/)) {
+      if (currentInstruction.trim()) {
+        instructions.push(currentInstruction.trim());
+        currentInstruction = '';
+      }
+    }
+  }
+  
+  // Add final instruction
+  if (currentInstruction.trim()) {
+    instructions.push(currentInstruction.trim());
+  }
+  
+  return instructions;
+}
+```
+
+---
+---
+
+## Edge Cases
+
+### Ambiguous References
+
+**Input:** `@betty review @rules`
+
+Problem: Is `@rules` a file (`rules.md`), folder (`rules/`), or agent (`rules`)?
+
+**Resolution order:**
+1. Check `.spark/agents/rules.md` (agent)
+2. Check for `rules.md` in vault (file)
+3. Check for `rules/` folder (folder)
+4. If multiple matches, use context or show error
+
+### Missing References
+
+**Input:** `@betty review @nonexistent.md`
+
+**Behavior:**
+1. Parser detects file doesn't exist
+2. Include error in prompt to Claude
+3. Claude can ask user for clarification
+4. Or Claude can search for similar files
+
+### Multiple Commands
+
+**Input:** `/summarize and then /extract-tasks`
+
+**Behavior:**
+1. Parse both commands
+2. Execute sequentially
+3. First command output becomes context for second
+
+### Nested Folders
+
+**Input:** `@betty review @projects/client1/`
+
+**Behavior:**
+1. Load all files recursively in folder
+2. Maintain folder structure in context
+3. Let Claude understand hierarchy
+
+---
+
+# Spark Mention Parser Specification
+
+**Status:** ✅ Implemented  
+**Date:** October 26, 2025  
+**Implementation:** `daemon/src/parser/MentionParser.ts`
+
+---
+
+## Overview
+
+The mention parser is the core intelligence of the daemon. It takes raw user input and transforms it into a structured prompt for Claude.
+
+**Input:** Raw markdown line from user  
+**Output:** Structured prompt with context, ready for Claude API
+
+---
+
 ## Parsing Algorithm
 
 ### Input Example
@@ -580,7 +1044,7 @@ function buildInstructions(tokens: Token[]): string[] {
     }
     
     // Split on conjunctions (and, then, etc.)
-    if (token.raw.match(/\band\b|\bthen\b|,/)) {
+    if (token.raw.match(/and|then|,/)) {
       if (currentInstruction.trim()) {
         instructions.push(currentInstruction.trim());
         currentInstruction = '';

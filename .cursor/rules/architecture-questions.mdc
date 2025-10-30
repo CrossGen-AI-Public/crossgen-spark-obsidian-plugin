@@ -2,6 +2,9 @@
 description: architecture questions
 alwaysApply: false
 ---
+
+**Note:** This file is superseded by `/specs/ARCHITECTURE_QUESTIONS.md`. Refer to that file for complete architecture decisions.
+
 ## 1. The Plugin vs Core Split
 
 ### ✅ DECISION MADE: File-Based Event Architecture

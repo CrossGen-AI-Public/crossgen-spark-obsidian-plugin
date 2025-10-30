@@ -2,6 +2,358 @@
 description: result handling and error handling
 alwaysApply: false
 ---
+---
+
+## When Results ARE Written
+
+### Case 1: Simple Slash Commands
+
+For simple commands that return information:
+
+**User types:**
+```markdown
+/summarize
+```
+
+**This is a READ operation** - user wants the summary in the file.
+
+**After completion:**
+```markdown
+✅ /summarize
+
+## Summary
+This document discusses quarterly financial performance...
+- Revenue increased 15%
+- Expenses decreased 8%
+- Net profit up 23%
+```
+
+### Case 2: Explicit Output Commands
+
+If command definition specifies `output: inline`:
+
+```markdown
+---
+---
+
+Create a summary...
+```
+
+Then result is written inline.
+
+### Case 3: Commands That Create Files
+
+If command creates separate files (reports, documents):
+
+```markdown
+---
+---
+
+Create a comprehensive report and save to reports/ folder...
+```
+
+**After completion:**
+```markdown
+✅ /create-report
+
+Report created: @reports/Q4-analysis.md
+```
+
+Just a link to the created file, not the full content.
+
+---
+---
+
+## Error Handling
+
+### Error Flow
+
+```
+1. Daemon detects error during execution
+2. Write detailed error to temp log file
+3. Write notification with link to log
+4. Update status indicator in file
+5. User clicks notification to see details
+```
+
+### Error Categories
+
+#### 1. Syntax Errors
+
+User typed invalid syntax.
+
+**Example:**
+```markdown
+@betty review @nonexistent.md
+```
+
+**File doesn't exist.**
+
+**Behavior:**
+```markdown
+❌ @betty review @nonexistent.md
+```
+
+**Notification:**
+```json
+{
+  "type": "error",
+  "message": "File not found: @nonexistent.md",
+  "link": ".spark/logs/error-abc123.md"
+}
+```
+
+**Error log file:** `.spark/logs/error-abc123.md`
+```markdown
+# Error Report
+
+**Time:** 2024-01-15 14:30:00
+**File:** /vault/notes/2024-01-15.md
+**Line:** 42
+
+## Error
+File not found: @nonexistent.md
+
+## Command
+@betty review @nonexistent.md
+
+## Details
+Attempted to resolve path:
+- Checked: /vault/nonexistent.md (not found)
+- Checked: /vault/notes/nonexistent.md (not found)
+- Checked: /vault/finance/nonexistent.md (not found)
+
+## Suggestion
+Did you mean one of these?
+- @compliance-rules.md
+- @financial-rules.md
+```
+
+#### 2. AI/API Errors
+
+Claude API fails (rate limit, network error, etc.)
+
+**Behavior:**
+```markdown
+⚠️ @betty review @finance/Q4/
+```
+
+**Notification:**
+```json
+{
+  "type": "warning",
+  "message": "Rate limit exceeded. Retrying in 60s...",
+  "link": ".spark/logs/error-def456.md"
+}
+```
+
+**Error log file:** `.spark/logs/error-def456.md`
+```markdown
+# Error Report
+
+**Time:** 2024-01-15 14:30:00
+**File:** /vault/notes/2024-01-15.md
+**Line:** 42
+
+## Error
+Rate limit exceeded (429)
+
+## Command
+@betty review @finance/Q4/
+
+## Details
+API Response:
+```
+{
+  "error": {
+    "type": "rate_limit_error",
+    "message": "Rate limit exceeded. Retry after 60 seconds"
+  }
+}
+```
+
+## Action Taken
+Automatically retrying in 60 seconds (attempt 1/3)
+
+## Status
+⏳ Waiting to retry...
+```
+
+#### 3. MCP Server Errors
+
+External service unavailable.
+
+**Behavior:**
+```markdown
+❌ @betty compare with $quickbooks
+```
+
+**Notification:**
+```json
+{
+  "type": "error",
+  "message": "QuickBooks service unavailable",
+  "link": ".spark/logs/error-ghi789.md",
+  "action": {
+    "label": "Check MCP Config",
+    "command": "spark:check-mcp-quickbooks"
+  }
+}
+```
+
+**Error log file:** `.spark/logs/error-ghi789.md`
+```markdown
+# Error Report
+
+**Time:** 2024-01-15 14:30:00
+**File:** /vault/notes/2024-01-15.md
+**Line:** 42
+
+## Error
+MCP server 'quickbooks' not responding
+
+## Command
+@betty compare with $quickbooks
+
+## Details
+Attempted to connect to: mcp-quickbooks
+Connection timeout after 30 seconds
+
+## Troubleshooting
+1. Check if MCP server is running:
+   ```bash
+   mcp-quickbooks --health
+   ```
+
+2. Check configuration:
+   File: .spark/integrations/quickbooks/config.yaml
+   
+3. Restart MCP server:
+   ```bash
+   pkill mcp-quickbooks
+   mcp-quickbooks &
+   ```
+
+4. Test connection:
+   ```bash
+   spark config test-mcp quickbooks
+   ```
+```
+
+#### 4. File System Errors
+
+Permission denied, disk full, etc.
+
+**Behavior:**
+```markdown
+❌ /create-report
+```
+
+**Notification:**
+```json
+{
+  "type": "error",
+  "message": "Cannot write to reports/ - permission denied",
+  "link": ".spark/logs/error-jkl012.md"
+}
+```
+
+### Error Log Format
+
+All errors written to timestamped files in `.spark/logs/`:
+
+```
+.spark/logs/
+├── error-2024-01-15-143000-abc123.md
+├── error-2024-01-15-143045-def456.md
+└── error-2024-01-15-143120-ghi789.md
+```
+
+**Filename pattern:** `error-{timestamp}-{id}.md`
+
+### Error Log Cleanup
+
+Automatically delete old error logs:
+
+```yaml
+# .spark/config.yaml
+logging:
+  error_logs:
+    max_age_days: 7      # Delete errors older than 7 days
+    max_count: 100       # Keep max 100 error files
+```
+
+---
+---
+
+## Progress Indicators
+
+For long-running operations:
+
+**Status in file:**
+```markdown
+⏳ @betty review @finance/Q4/
+```
+
+**Notification with progress:**
+```json
+{
+  "type": "progress",
+  "message": "Processing 15 files... (8/15)",
+  "progress": 0.53,
+  "timestamp": 1234567890
+}
+```
+
+**Toast with progress bar:**
+```
+┌─────────────────────────────────┐
+│ Processing files...             │
+│ ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░ 53%        │
+└─────────────────────────────────┘
+```
+
+---
+---
+
+## Summary
+
+### Result Handling
+✅ **Simple:** Just add ✅ to indicate completion  
+✅ **The action IS the result:** Modified files, created reports, sent emails  
+✅ **Only write inline when command explicitly requests it**
+
+### Error Handling
+✅ **Detailed logs:** Full error context in temp file  
+✅ **User-friendly notifications:** Simple message with link to details  
+✅ **Automatic retry:** For transient errors  
+✅ **Manual retry:** User can try again by removing ❌
+
+### Notification Strategy
+✅ **Obsidian toast first:** Native, non-intrusive  
+✅ **System notification for errors:** When Obsidian not focused  
+✅ **Configurable:** User can customize what they see
+
+**This keeps the system simple while providing rich error information when needed.**
+
+---
+
+# Spark Result and Error Handling Specification
+
+**Status:** ✅ Implemented (Chat System)  
+**Date:** October 26, 2025  
+**Implementation:** `daemon/src/results/` and `daemon/src/errors/`
+
+---
+
+## Philosophy
+
+**Results:** Most commands modify files or execute actions. The result IS the action itself. We just need to notify the user that it's done.
+
+**Errors:** Write error details to a temporary log file and notify the user with a link to that file.
+
+---
+
 ## Result Handling
 
 ### The Key Insight
@@ -20,40 +372,37 @@ The instructions tell Claude to:
 
 ### Completion Indicator
 
-**Before:**
-```markdown
-Some content...
+**Current Implementation:**
+Status indicators are shown in the chat interface when a message is being processed or completed.
 
-@betty review @finance/Q4/ comparing with $quickbooks, flag issues in @compliance-rules.md and /create-report
-
-More content...
+**Processing:**
+```
+User: @betty review @finance/Q4/
+●●● Betty is typing...
 ```
 
-**After (Completed Successfully):**
-```markdown
-Some content...
+**Completed:**
+```
+User: @betty review @finance/Q4/
 
-✅ @betty review @finance/Q4/ comparing with $quickbooks, flag issues in @compliance-rules.md and /create-report
-
-More content...
+Betty: I've reviewed the Q4 finances. Here's what I found:
+       - Revenue increased by 15%
+       - Expenses decreased by 8%
+       - Net profit: $130K
 ```
 
-That's it. The ✅ tells the user it's done.
+**Error:**
+```
+User: @betty review @nonexistent.md
 
-### Notification
-
-When complete, daemon writes to `.spark/notifications.jsonl`:
-
-```jsonl
-{"id": "abc123", "type": "success", "message": "Task completed successfully", "timestamp": 1234567890}
+❌ Error: File @nonexistent.md not found
+   The file could not be found in the vault. Please check the filename.
 ```
 
-Plugin shows toast:
-```
-┌─────────────────────────────┐
-│ ✓ Task completed            │
-└─────────────────────────────┘
-```
+**NOT IMPLEMENTED:**
+- ❌ File status indicators (✅ in the original file)
+- ❌ Toast notifications
+- ❌ `.spark/notifications.jsonl` file
 
 ---
 
@@ -125,60 +474,63 @@ Just a link to the created file, not the full content.
 
 ## Notification System
 
-### Notification Types
+### Notification Types (Current Implementation)
 
 ```typescript
-interface Notification {
+interface ChatResult {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info' | 'progress';
+  type: 'agent_response' | 'error';
   message: string;
   timestamp: number;
+  conversation_id: string;
   
-  // Optional fields
-  file?: string;              // Which file triggered this
-  line?: number;              // Line number in file
-  link?: string;              // Link to log file or result
-  progress?: number;          // 0-1 for long operations
-  action?: {
-    label: string;
-    command: string;
+  // For agent responses
+  agent?: string;
+  content?: string;
+  
+  // For errors
+  error?: {
+    code: string;
+    message: string;
+    details?: string;
   };
 }
 ```
 
-### Display Options
+### Current Display Method
 
-**Option 1: Obsidian Toast (Preferred)**
+**Chat Interface Only (Currently Implemented)**
 
-Plugin shows native Obsidian notification:
-
-```typescript
-// In Obsidian plugin
-new Notice("✓ Task completed successfully");
-```
-
-Simple, native, non-intrusive.
-
-**Option 2: System Notification (Fallback)**
-
-If Obsidian is not focused or plugin not running:
+All notifications and results are displayed directly in the chat interface:
 
 ```typescript
-// In daemon
-notifier.notify({
-  title: 'Spark',
-  message: 'Task completed successfully',
-  sound: true,
-  wait: false
-});
+// Agent response - appears as chat message
+{
+  type: 'agent_response',
+  agent: 'betty',
+  content: 'I have reviewed the Q4 finances...'
+}
+
+// Error - appears as error message in chat
+{
+  type: 'error',
+  error: {
+    code: 'FILE_NOT_FOUND',
+    message: 'File @nonexistent.md not found',
+    details: 'Checked multiple locations...'
+  }
+}
 ```
 
-Uses native OS notifications (macOS Notification Center, Windows Action Center, Linux notify-send).
+**NOT IMPLEMENTED:**
+- ❌ Obsidian toast notifications
+- ❌ System notifications
+- ❌ Status bar updates
 
-**Decision: Use both**
-- Try Obsidian toast first (write to notifications.jsonl)
-- If urgent/error, also send system notification
-- User can configure in settings
+**Future Enhancements:**
+- Toast notifications for non-critical events
+- System notifications when Obsidian is not focused
+- Status bar integration for quick status checks
 
 ---
 

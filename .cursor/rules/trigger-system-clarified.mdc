@@ -2,6 +2,271 @@
 description: trigger system clarification
 alwaysApply: false
 ---
+---
+
+## Trigger File Format
+
+**Location:** `.spark/triggers/`
+
+### Example: Email Automation
+
+```yaml
+# .spark/triggers/email-automation.yaml
+
+triggers:
+  - name: send_email_on_status_change
+    description: Send email when Kanban card moves to "sent"
+    
+    # What to watch for
+    watch:
+      directory: "emails/"           # Only watch this directory
+      frontmatter_field: status      # Watch this field
+      from_value: draft              # Previous value
+      to_value: sent                 # New value (triggers when changed to this)
+    
+    # What to do (instructions are inline, given to Claude)
+    instructions: |
+      When a file's status changes from "draft" to "sent":
+      
+      1. Extract the recipient from the `to:` frontmatter field
+      2. Extract the subject from the `subject:` frontmatter field
+      3. Use the markdown content as the email body
+      4. Send email via $gmail
+      5. Update frontmatter with: sent_date: [current timestamp]
+      6. Move file to sent/[date]/ folder
+      7. Create a follow-up task if deadline is mentioned
+    
+    priority: 10
+```
+
+### Example: Task Assignment
+
+```yaml
+# .spark/triggers/task-automation.yaml
+
+triggers:
+  - name: assign_task_to_agent
+    description: When task assigned to AI agent, process it
+    
+    watch:
+      directory: "tasks/"
+      frontmatter_field: assigned_to
+      pattern: "@*"                  # Any value starting with @
+    
+    instructions: |
+      When a task is assigned to an AI agent:
+      
+      1. Extract the agent name from assigned_to field (e.g., @betty)
+      2. Load that agent's persona from .spark/agents/[agent].md
+      3. Read the task description from the file content
+      4. Execute the task using the agent's capabilities
+      5. Update frontmatter: status: "in_progress"
+      6. Write results back to the file
+      7. Update frontmatter: status: "completed", completed_date: [timestamp]
+    
+    priority: 8
+```
+
+### Example: Invoice Processing
+
+```yaml
+# .spark/triggers/invoice-automation.yaml
+
+triggers:
+  - name: new_invoice_created
+    description: Process new invoices automatically
+    
+    watch:
+      directory: "invoices/"
+      event: file_created           # Trigger on new file
+      file_pattern: "*.md"
+    
+    instructions: |
+      When a new invoice file is created:
+      
+      1. Extract invoice details from frontmatter (client, amount, date, items)
+      2. Validate all required fields are present
+      3. Create invoice in $quickbooks
+      4. Generate PDF version of invoice
+      5. Send invoice to client via $gmail
+      6. Update frontmatter: status: "sent", quickbooks_id: [id]
+      7. Schedule payment reminder for due date
+    
+    priority: 10
+  
+  - name: invoice_overdue
+    description: Remind about overdue invoices
+    
+    watch:
+      directory: "invoices/"
+      frontmatter_field: status
+      value: overdue                # Manually set by user or another system
+    
+    instructions: |
+      When an invoice becomes overdue:
+      
+      1. Load invoice details
+      2. Generate friendly reminder email
+      3. Send reminder via $gmail
+      4. Update frontmatter: last_reminder: [timestamp]
+      5. Schedule next reminder for 7 days later
+    
+    priority: 5
+```
+
+---
+---
+
+## Trigger Watch Types
+
+### 1. Frontmatter Field Change
+
+```yaml
+watch:
+  directory: "tasks/"
+  frontmatter_field: status
+  from_value: todo          # Optional: only trigger when changing FROM this
+  to_value: done            # Trigger when changing TO this
+```
+
+### 2. Frontmatter Pattern Match
+
+```yaml
+watch:
+  directory: "emails/"
+  frontmatter_field: assigned_to
+  pattern: "@*"             # Regex or glob pattern
+```
+
+### 3. File Creation
+
+```yaml
+watch:
+  directory: "invoices/"
+  event: file_created
+  file_pattern: "*.md"
+```
+
+### 4. File Deletion
+
+```yaml
+watch:
+  directory: "archive/"
+  event: file_deleted
+```
+
+### 5. File Move
+
+```yaml
+watch:
+  from_directory: "drafts/"
+  to_directory: "published/"
+  event: file_moved
+```
+
+### 6. Any File Change
+
+```yaml
+watch:
+  directory: "monitored/"
+  event: any_change        # Any modification
+```
+
+---
+---
+
+## Multiple Triggers Example
+
+**Scenario:** Invoice file created
+
+```yaml
+# .spark/triggers/invoice-automation.yaml
+
+triggers:
+  # Trigger 1: Process the invoice
+  - name: process_invoice
+    watch:
+      directory: "invoices/"
+      event: file_created
+    instructions: |
+      Create invoice in QuickBooks and send to client
+    priority: 10
+  
+  # Trigger 2: Log the creation
+  - name: log_invoice
+    watch:
+      directory: "invoices/"
+      event: file_created
+    instructions: |
+      Append invoice details to invoices/log.md
+    priority: 5
+  
+  # Trigger 3: Update metrics
+  - name: update_metrics
+    watch:
+      directory: "invoices/"
+      event: file_created
+    instructions: |
+      Update financial dashboard with new invoice amount
+    priority: 3
+```
+
+When invoice created:
+1. Process invoice (priority 10) - sends to QuickBooks, emails client
+2. Log invoice (priority 5) - adds entry to log file
+3. Update metrics (priority 3) - updates dashboard
+
+**All three execute automatically in order.**
+
+---
+---
+
+## Comparison: Commands vs Triggers
+
+| Aspect | Commands (`/command`) | Triggers (`watch:`) |
+|--------|----------------------|---------------------|
+| **Activation** | User types explicitly | Automatic on file change |
+| **Context** | Current file + mentions | File that changed |
+| **Purpose** | On-demand action | Automated workflow |
+| **Example** | `/summarize` | Email on status change |
+| **Statefulness** | Stateless | Watches for state changes |
+
+**Both use the same underlying system:**
+- Same mention parser
+- Same context loading
+- Same Claude integration
+- Same error handling
+
+The only difference: **how they're triggered**.
+
+---
+---
+
+## Next Steps
+
+With triggers clarified:
+1. Update CONFIGURATION.md to reflect inline instructions
+2. Update FILE_FORMATS.md to show trigger format
+3. Create implementation plan with trigger system included
+
+Ready to proceed?
+
+# Spark Trigger System - Clarified
+
+**Status:** ⏸️ Not Implemented (Future Feature)  
+**Date:** October 26, 2025  
+**Priority:** Low - Chat system and slash commands take precedence
+
+---
+
+## Key Clarification
+
+**Triggers contain instructions inline, NOT references to separate SOP files.**
+
+The PRD used the term "SOP" which was confusing. Here's the corrected understanding:
+
+---
+
 ## What Triggers Are
 
 Triggers are rules that:

@@ -2,6 +2,9 @@
 description: hot reload
 alwaysApply: false
 ---
+
+**Note:** This file describes current hot reload implementation using tsx watch.
+
 # Development Hot Reload Guide
 
 ## Overview

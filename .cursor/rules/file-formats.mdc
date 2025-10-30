@@ -2,6 +2,165 @@
 description: file formats
 alwaysApply: false
 ---
+---
+# .spark/commands/summarize.md
+id: summarize
+name: Summarize Document
+description: Create a concise summary of the current document
+context: current_file
+output: replace_selection
+---
+---
+
+## Agent Files
+
+**Location:** `.spark/agents/*.md`
+
+**Format from PRD:**
+
+```markdown
+---
+---
+
+You are Betty, a senior accountant with 20 years of experience. You are
+meticulous, detail-oriented, and always ensure compliance with regulations.
+
+When analyzing financial data:
+1. Always cross-reference multiple sources
+2. Flag any discrepancies over $100
+3. Provide both summary and detailed views
+4. Include relevant tax implications
+5. Suggest optimization opportunities
+```
+
+**Key fields:**
+- `name` - Agent name
+- `role` - What they do
+- `expertise` - List of areas
+- `tools` - MCP services they can use
+- `context_folders` - Default folders to load
+
+**Body is the persona/instructions** that get injected into the AI prompt.
+
+---
+---
+# .spark/sops/email-status.md
+trigger:
+  type: frontmatter_change
+  field: email_status
+  value: send_this_out
+context:
+  - current_file
+  - templates/email/*
+---
+---
+
+## Trigger Configuration
+
+**Location:** `.spark/triggers/frontmatter.yaml`
+
+**Format from PRD:**
+
+```yaml
+# Frontmatter fields that trigger SOPs
+watched_fields:
+  - field: email_status
+    values: [send_this_out, schedule, draft]
+    sop: email-status.md
+
+  - field: task_status
+    values: [assigned, in_progress, blocked]
+    sop: task-management.md
+
+  - field: invoice_status
+    values: [created, sent, overdue]
+    sop: invoice-workflow.md
+
+  - field: assigned_to
+    pattern: "@*"  # Any @ mention
+    sop: task-assigned.md
+```
+
+**Structure:**
+- `field` - Frontmatter field to watch
+- `values` - Specific values that trigger (array)
+- `pattern` - Pattern match (alternative to values)
+- `sop` - Which SOP file to execute
+
+---
+---
+
+## Main Configuration
+
+**Location:** `.spark/config.yaml`
+
+**Format from PRD:**
+
+```yaml
+# Main Spark configuration
+version: 1.0
+enabled_features:
+  slash_commands: true
+  assistant: true
+  daemon: true
+
+ai_provider:
+  default: claude
+  fallback: local_llm
+
+interface:
+  assistant_hotkey: "Cmd+K"
+  command_prefix: "/"
+
+daemon:
+  watch_patterns:
+    - "*.md"
+    - "tasks/**"
+    - "invoices/**"
+  polling_interval: 1000  # milliseconds
+
+integrations:
+  enabled:
+    - gmail
+    - quickbooks
+```
+
+---
+---
+
+## What's Actually New?
+
+Looking at what the PRD defines vs what needs to be specced:
+
+**Already defined in PRD:** ✅
+- Command file format
+- Agent file format  
+- SOP file format
+- Trigger config format
+- Main config structure
+
+**Still needs speccing:** 🔨
+- Mention parser algorithm (how to parse `@betty review @folder/ and $service`)
+- Result writing behavior (where exactly results go)
+- Error handling specifics
+- Notification JSON schema
+- Plugin UI/UX details
+
+**Should we focus on the mention parser next?** That's the most complex logic that isn't already defined in the PRD.
+
+# Spark File Formats - From PRD
+
+**Status:** Extracted from PRD  
+**Date:** 2024
+
+---
+
+## Overview
+
+All file formats are already defined in the PRD. This document consolidates them for easy reference.
+
+---
+
 ## Command Files
 
 **Location:** `.spark/commands/*.md`
