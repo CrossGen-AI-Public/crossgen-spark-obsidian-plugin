@@ -4,7 +4,7 @@
 
 Spark Assistant enables "markdown files triggering AI agents" - turning your Obsidian vault into a living, automated workspace where notes become actions, and simple text triggers complex workflows.
 
----
+
 
 ## 📑 Table of Contents
 
@@ -411,18 +411,31 @@ Universal syntax for referencing anything:
 `.spark/config.yaml` - System configuration
 
 ```yaml
+version: 1
 daemon:
-  watch:
-    patterns: ["**/*.md"]
-    ignore: [".git/**", ".obsidian/**"]
   debounce_ms: 300
+  results:
+    add_blank_lines: true
 
 ai:
-  provider: claude
-  claude:
-    model: claude-3-5-sonnet-20241022
-    api_key_env: ANTHROPIC_API_KEY
-    max_tokens: 4096
+  defaultProvider: claude-agent
+  providers:
+    claude-client:
+      type: anthropic
+      model: claude-3-5-sonnet-20241022
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+    claude-agent:
+      type: anthropic
+      model: claude-sonnet-4-5-20250929
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+
+logging:
+  level: info
+  console: true
 
 features:
   slash_commands: true

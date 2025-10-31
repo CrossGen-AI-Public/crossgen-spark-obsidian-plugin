@@ -5,10 +5,10 @@ expertise:
   - Financial reporting
   - Tax compliance
   - QuickBooks integration
-tools:
-  - quickbooks
 context_folders:
   - tasks/
+tools:
+  - quickbooks
 ai:
   model: claude-sonnet-4-5-20250929
   temperature: 0.3

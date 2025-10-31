@@ -150,19 +150,20 @@ daemon:
 
 # AI provider configuration
 ai:
-  provider: claude       # claude | openai | local
-  
-  # Claude settings
-  claude:
-    model: claude-3-5-sonnet-20241022
-    api_key_env: ANTHROPIC_API_KEY
-    max_tokens: 4096
-    temperature: 0.7
-  
-  # Fallback provider (optional)
-  fallback:
-    enabled: false
-    provider: openai
+  defaultProvider: claude-agent
+  providers:
+    claude-agent:
+      type: anthropic
+      model: claude-sonnet-4-5-20250929
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+    claude-client:
+      type: anthropic
+      model: claude-3-5-sonnet-20241022
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
 
 # MCP (Model Context Protocol) integrations
 # Note: MCP servers must be installed separately
@@ -510,17 +511,22 @@ The daemon validates configuration on startup:
 interface ConfigValidation {
   // Must have at least one AI provider configured
   ai: {
-    provider: string;
-    [provider]: {
-      api_key_env: string;  // Must be valid env var
+    defaultProvider: string;
+    providers: {
+      [name: string]: {
+        type: string;  // 'anthropic' | 'openai' | etc.
+        apiKeyEnv: string;  // Must be valid env var
+        model: string;
+        maxTokens?: number;
+        temperature?: number;
+      };
     };
   };
   
-  // Watch patterns must be valid globs
+  // Version and daemon settings
+  version: number;  // Must be 1
   daemon: {
-    watch: {
-      patterns: string[];  // Must be valid glob patterns
-    };
+    debounce_ms: number;
   };
 }
 ```
@@ -532,7 +538,7 @@ interface ConfigValidation {
 ```
 ❌ Configuration Error in .spark/config.yaml
 
-Line 23: ai.claude.api_key_env
+Line 23: ai.providers.claude-agent.apiKeyEnv
   → Environment variable ANTHROPIC_API_KEY not found
   → Set it in your environment: export ANTHROPIC_API_KEY=sk-...
 
@@ -556,23 +562,27 @@ On first run, Spark generates `.spark/config.yaml` with sensible defaults:
 
 version: 1.0
 
+version: 1
 daemon:
-  watch:
-    patterns: ["**/*.md"]
-    ignore: [".git/**", ".obsidian/**", ".spark/**"]
   debounce_ms: 300
-  status_indicators:
-    enabled: true
-    processing: "⏳"
-    completed: "✅"
-    error: "❌"
+  results:
+    add_blank_lines: true
 
 ai:
-  provider: claude
-  claude:
-    model: claude-3-5-sonnet-20241022
-    api_key_env: ANTHROPIC_API_KEY
-    max_tokens: 4096
+  defaultProvider: claude-agent
+  providers:
+    claude-agent:
+      type: anthropic
+      model: claude-sonnet-4-5-20250929
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+    claude-client:
+      type: anthropic
+      model: claude-3-5-sonnet-20241022
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
 
 mcp:
   servers: {}  # Add MCP servers here
@@ -580,7 +590,7 @@ mcp:
 
 logging:
   level: info
-  file: .spark/logs/daemon.log
+  console: true
 
 features:
   slash_commands: true
@@ -648,15 +658,17 @@ Spark only:
 **Bad:**
 ```yaml
 ai:
-  claude:
-    api_key: sk-ant-1234567890  # DON'T DO THIS
+  providers:
+    claude-agent:
+      apiKey: sk-ant-1234567890  # DON'T DO THIS
 ```
 
 **Good:**
 ```yaml
 ai:
-  claude:
-    api_key_env: ANTHROPIC_API_KEY  # Reference env var
+  providers:
+    claude-agent:
+      apiKeyEnv: ANTHROPIC_API_KEY  # Reference env var
 ```
 
 ### 2. Disable Unused Features
@@ -784,7 +796,7 @@ User B:
 ```
 
 **4. Security**
-- Daemon config references environment variables: `api_key_env: ANTHROPIC_API_KEY`
+- Daemon config references environment variables: `apiKeyEnv: ANTHROPIC_API_KEY`
 - Actual secrets stored outside repo
 - Plugin settings don't contain secrets
 

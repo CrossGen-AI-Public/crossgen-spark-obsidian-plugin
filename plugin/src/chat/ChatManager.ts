@@ -13,8 +13,8 @@ export class ChatManager {
 	constructor(app: App, plugin: SparkPlugin) {
 		this.app = app;
 		this.plugin = plugin;
-		this.chatWindow = new ChatWindow(app, plugin);
 		this.conversationStorage = new ConversationStorage(app);
+		this.chatWindow = new ChatWindow(app, plugin, this.conversationStorage);
 	}
 
 	initialize() {
@@ -48,6 +48,10 @@ export class ChatManager {
 
 	clearConversation() {
 		this.chatWindow.clearConversation();
+	}
+
+	async refreshCurrentChat(): Promise<void> {
+		await this.chatWindow.refreshCurrentChat();
 	}
 
 	// Export conversation storage for external access

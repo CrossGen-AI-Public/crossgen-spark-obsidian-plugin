@@ -2,6 +2,7 @@ import { ConfigValidator } from '../../src/config/ConfigValidator.js';
 import { DEFAULT_SPARK_CONFIG } from '../../src/config/ConfigDefaults.js';
 import type { SparkConfig } from '../../src/types/config.js';
 import { SparkError } from '../../src/types/index.js';
+import { ProviderType } from '../../src/types/provider.js';
 
 describe('ConfigValidator', () => {
     let validator: ConfigValidator;
@@ -152,7 +153,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'claude-client',
                         providers: {
                             'claude-client': {
-                                type: 'claude' as const,
+                                type: ProviderType.ANTHROPIC as const,
                                 model: 'claude-3-opus-20240229',
                                 apiKeyEnv: 'ANTHROPIC_API_KEY',
                                 maxTokens: 8192,
@@ -340,7 +341,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'claude-client',
                         providers: {
                             'claude-client': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'claude-3-opus-20240229',
                                 apiKeyEnv: 'MY_CLAUDE_KEY',
                                 maxTokens: 8192,
@@ -382,7 +383,7 @@ describe('ConfigValidator', () => {
                 };
 
                 expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
-                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('must be one of: claude, openai, local');
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow('must be one of: anthropic');
             });
 
             it('should throw if provider model is empty', () => {
@@ -392,7 +393,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'test-provider',
                         providers: {
                             'test-provider': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: '',
                             },
                         },
@@ -410,7 +411,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'test-provider',
                         providers: {
                             'test-provider': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'test-model',
                                 apiKeyEnv: 123,
                             },
@@ -429,7 +430,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'test-provider',
                         providers: {
                             'test-provider': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'test-model',
                                 maxTokens: '4096',
                             },
@@ -448,7 +449,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'test-provider',
                         providers: {
                             'test-provider': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'test-model',
                                 temperature: '0.7',
                             },
@@ -467,7 +468,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'test-provider',
                         providers: {
                             'test-provider': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'test-model',
                                 fallbackProvider: 123,
                             },
@@ -486,7 +487,7 @@ describe('ConfigValidator', () => {
                         defaultProvider: 'test-provider',
                         providers: {
                             'test-provider': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'test-model',
                                 apiKeyEnv: 'TEST_KEY',
                                 maxTokens: 8192,
@@ -494,7 +495,7 @@ describe('ConfigValidator', () => {
                                 fallbackProvider: 'backup',
                             },
                             'backup': {
-                                type: 'claude',
+                                type: ProviderType.ANTHROPIC,
                                 model: 'backup-model',
                             },
                         },

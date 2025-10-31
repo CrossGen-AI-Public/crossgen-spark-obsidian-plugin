@@ -5,6 +5,7 @@
 
 import type { IConfigValidator, SparkConfig } from '../types/config.js';
 import { SparkError } from '../types/index.js';
+import { ProviderType } from '../types/provider.js';
 
 export class ConfigValidator implements IConfigValidator {
   public validate(config: unknown): SparkConfig {
@@ -109,8 +110,8 @@ export class ConfigValidator implements IConfigValidator {
       throw new SparkError(`ai.providers.${name}.type is required`, 'INVALID_PROVIDER_CONFIG');
     }
 
-    const validTypes = ['claude', 'openai', 'local'];
-    if (!validTypes.includes(c.type as string)) {
+    const validTypes = Object.values(ProviderType);
+    if (!validTypes.includes(c.type as ProviderType)) {
       throw new SparkError(
         `ai.providers.${name}.type must be one of: ${validTypes.join(', ')}`,
         'INVALID_PROVIDER_CONFIG'

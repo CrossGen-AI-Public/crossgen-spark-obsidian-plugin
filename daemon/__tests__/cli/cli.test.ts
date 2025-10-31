@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 import type { Mock } from 'jest-mock';
 import path from 'path';
 import type { SparkConfig } from '../../src/types/config.js';
+import { ProviderType } from '../../src/types/provider.js';
 
 // Define proper types for mocks
 interface DaemonRegistryEntry {
@@ -130,7 +131,7 @@ describe('CLI', () => {
                 defaultProvider: 'claude-client',
                 providers: {
                     'claude-client': {
-                        type: 'claude',
+                        type: ProviderType.ANTHROPIC,
                         model: 'claude-3-5-sonnet-20241022',
                         maxTokens: 4096,
                         temperature: 0.7,
@@ -374,7 +375,7 @@ describe('CLI', () => {
                 },
                 ai: {
                     defaultProvider: 'claude-client',
-                    providers: { 'claude-client': { type: 'claude', model: '', maxTokens: 0, temperature: 0, apiKeyEnv: '' } },
+                    providers: { 'claude-client': { type: ProviderType.ANTHROPIC, model: '', maxTokens: 0, temperature: 0, apiKeyEnv: '' } },
                 },
             };
 

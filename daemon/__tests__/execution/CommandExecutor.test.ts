@@ -5,6 +5,7 @@ import type { SparkConfig } from '../../src/types/config.js';
 import type { ParsedCommand } from '../../src/types/parser.js';
 import { ProviderRegistry } from '../../src/providers/ProviderRegistry.js';
 import { ClaudeDirectProvider } from '../../src/providers/ClaudeDirectProvider.js';
+import { ProviderType } from '../../src/types/provider.js';
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -31,7 +32,7 @@ describe('CommandExecutor', () => {
 
         // Register provider
         const registry = ProviderRegistry.getInstance();
-        registry.registerProvider('claude-client', 'claude', (config) => {
+        registry.registerProvider('claude-client', ProviderType.ANTHROPIC, (config) => {
             return new ClaudeDirectProvider(config);
         });
 
@@ -87,7 +88,7 @@ describe('CommandExecutor', () => {
                 defaultProvider: 'claude-client',
                 providers: {
                     'claude-client': {
-                        type: 'claude',
+                        type: ProviderType.ANTHROPIC,
                         model: 'claude-3-5-sonnet-20241022',
                         apiKeyEnv: 'ANTHROPIC_API_KEY',
                         maxTokens: 4096,

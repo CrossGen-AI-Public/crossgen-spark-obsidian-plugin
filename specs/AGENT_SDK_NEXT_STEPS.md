@@ -164,26 +164,27 @@ ProviderRegistry:
 **Global Level (daemon-wide):**
 ```yaml
 ai:
-  default_provider: claude-agent
+  defaultProvider: claude-agent
   providers:
     claude-agent:
-      model: claude-3-5-sonnet-20241022
-      api_key_env: ANTHROPIC_API_KEY
-      max_tokens: 4096
+      type: anthropic
+      model: claude-sonnet-4-5-20250929
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
       temperature: 0.7
-      system_prompt_preset: claude_code  # Use SDK preset
-      settings_sources: [project]  # Don't load user/local by default
     
-    claude-direct:
+    claude-client:
+      type: anthropic
       model: claude-3-5-sonnet-20241022
-      api_key_env: ANTHROPIC_API_KEY
-      max_tokens: 4096
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
       temperature: 0.7
     
     openai:  # Future
+      type: openai
       model: gpt-4-turbo
-      api_key_env: OPENAI_API_KEY
-      max_tokens: 4096
+      apiKeyEnv: OPENAI_API_KEY
+      maxTokens: 4096
       temperature: 0.7
 ```
 
@@ -316,7 +317,7 @@ ai:
   provider: claude-agent
   model: claude-3-opus-20240229
   temperature: 0.3
-  max_tokens: 8192
+  maxTokens: 8192
 ---
 ```
 
@@ -883,7 +884,7 @@ Levels:
 ```yaml
 # Level 1: Global
 ai:
-  default_provider: claude-agent
+  defaultProvider: claude-agent
   default_model: claude-3-5-sonnet-20241022
 
 # Level 2: Provider-specific
@@ -1031,7 +1032,7 @@ SDK has settings.json, we have config.yaml
 
 **Areas of Overlap:**
 - Model selection
-- Temperature, max_tokens
+- Temperature, maxTokens
 - System prompts
 - File operation permissions
 
@@ -1502,7 +1503,7 @@ When an agent with AI config is invoked, the logs show:
 
 [DEBUG] Provider selected {
   provider: 'claude-agent',
-  type: 'claude',
+  type: 'anthropic',
   model: 'claude-sonnet-4-5-20250929',
   hasAgentOverrides: true,
   agentProvider: undefined,

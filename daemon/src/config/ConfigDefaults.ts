@@ -3,6 +3,7 @@
  */
 
 import type { SparkConfig } from '../types/config.js';
+import { ProviderType } from '../types/provider.js';
 
 /**
  * Default Spark configuration
@@ -45,14 +46,14 @@ export const DEFAULT_SPARK_CONFIG: SparkConfig = {
     defaultProvider: 'claude-agent',
     providers: {
       'claude-client': {
-        type: 'claude',
+        type: ProviderType.ANTHROPIC,
         model: 'claude-sonnet-4-5-20250929', // Latest Claude Sonnet 4.5
         apiKeyEnv: 'ANTHROPIC_API_KEY',
         maxTokens: 4096,
         temperature: 0.7,
       },
       'claude-agent': {
-        type: 'claude',
+        type: ProviderType.ANTHROPIC,
         model: 'claude-sonnet-4-5-20250929', // Latest Claude Sonnet 4.5
         apiKeyEnv: 'ANTHROPIC_API_KEY',
         maxTokens: 4096,

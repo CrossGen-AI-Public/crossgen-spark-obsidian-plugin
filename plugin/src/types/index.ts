@@ -1,5 +1,7 @@
 // Spark Assistant Types
 import { Plugin } from 'obsidian';
+import { MentionDecorator } from '../command-palette/MentionDecorator';
+import { ChatManager } from '../chat/ChatManager';
 
 export interface SparkSettings {
 	enablePalette: boolean;
@@ -11,6 +13,8 @@ export interface ISparkPlugin extends Plugin {
 	settings: SparkSettings;
 	loadSettings(): Promise<void>;
 	saveSettings(): Promise<void>;
+	mentionDecorator: MentionDecorator;
+	chatManager: ChatManager;
 }
 
 export interface SparkNotification {

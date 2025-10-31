@@ -7,6 +7,7 @@ import { ProviderRegistry } from '../../src/providers/ProviderRegistry.js';
 import { ClaudeAgentProvider } from '../../src/providers/ClaudeAgentProvider.js';
 import { Logger } from '../../src/logger/Logger.js';
 import type { ProviderConfig } from '../../src/types/provider.js';
+import { ProviderType } from '../../src/types/provider.js';
 
 // Mock the Claude Agent SDK
 jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
@@ -52,7 +53,7 @@ describe('ProviderRegistry', () => {
         it('should register a provider with simplified method', () => {
             const factory = (config: ProviderConfig) => new ClaudeAgentProvider(config);
 
-            registry.registerProvider('test-provider', 'claude', factory);
+            registry.registerProvider('test-provider', ProviderType.ANTHROPIC, factory);
 
             expect(registry.has('test-provider')).toBe(true);
         });
@@ -61,8 +62,8 @@ describe('ProviderRegistry', () => {
             const factory1 = (config: ProviderConfig) => new ClaudeAgentProvider(config);
             const factory2 = (config: ProviderConfig) => new ClaudeAgentProvider(config);
 
-            registry.registerProvider('test-provider', 'claude', factory1);
-            registry.registerProvider('test-provider', 'claude', factory2);
+            registry.registerProvider('test-provider', ProviderType.ANTHROPIC, factory1);
+            registry.registerProvider('test-provider', ProviderType.ANTHROPIC, factory2);
 
             expect(registry.has('test-provider')).toBe(true);
         });
@@ -71,13 +72,13 @@ describe('ProviderRegistry', () => {
     describe('get', () => {
         it('should get registered provider registration', () => {
             const factory = (config: ProviderConfig) => new ClaudeAgentProvider(config);
-            registry.registerProvider('test-provider', 'claude', factory);
+            registry.registerProvider('test-provider', ProviderType.ANTHROPIC, factory);
 
             const registration = registry.get('test-provider');
 
             expect(registration).toBeDefined();
             expect(registration?.name).toBe('test-provider');
-            expect(registration?.type).toBe('claude');
+            expect(registration?.type).toBe(ProviderType.ANTHROPIC);
         });
 
         it('should return null for unregistered provider', () => {
@@ -89,7 +90,7 @@ describe('ProviderRegistry', () => {
     describe('has', () => {
         it('should return true for registered provider', () => {
             const factory = (config: ProviderConfig) => new ClaudeAgentProvider(config);
-            registry.registerProvider('test-provider', 'claude', factory);
+            registry.registerProvider('test-provider', ProviderType.ANTHROPIC, factory);
 
             expect(registry.has('test-provider')).toBe(true);
         });
@@ -104,8 +105,8 @@ describe('ProviderRegistry', () => {
             const factory1 = (config: ProviderConfig) => new ClaudeAgentProvider(config);
             const factory2 = (config: ProviderConfig) => new ClaudeAgentProvider(config);
 
-            registry.registerProvider('provider1', 'claude', factory1);
-            registry.registerProvider('provider2', 'claude', factory2);
+            registry.registerProvider('provider1', ProviderType.ANTHROPIC, factory1);
+            registry.registerProvider('provider2', ProviderType.ANTHROPIC, factory2);
 
             const providers = registry.getProviderNames();
 
@@ -124,24 +125,19 @@ describe('ProviderRegistry', () => {
     describe('getProvidersByType', () => {
         it('should filter providers by type', () => {
             const factory = (config: ProviderConfig) => new ClaudeAgentProvider(config);
-            registry.registerProvider('claude-provider', 'claude', factory);
+            registry.registerProvider('claude-provider', ProviderType.ANTHROPIC, factory);
 
-            const claudeProviders = registry.getProvidersByType('claude');
+            const claudeProviders = registry.getProvidersByType(ProviderType.ANTHROPIC);
 
             expect(claudeProviders.length).toBe(1);
             expect(claudeProviders[0]?.name).toBe('claude-provider');
-        });
-
-        it('should return empty array for type with no providers', () => {
-            const openAIProviders = registry.getProvidersByType('openai');
-            expect(openAIProviders).toEqual([]);
         });
     });
 
     describe('unregister', () => {
         it('should unregister a provider', () => {
             const factory = (config: ProviderConfig) => new ClaudeAgentProvider(config);
-            registry.registerProvider('test-provider', 'claude', factory);
+            registry.registerProvider('test-provider', ProviderType.ANTHROPIC, factory);
 
             const result = registry.unregister('test-provider');
 
@@ -160,8 +156,8 @@ describe('ProviderRegistry', () => {
             const factory1 = (config: ProviderConfig) => new ClaudeAgentProvider(config);
             const factory2 = (config: ProviderConfig) => new ClaudeAgentProvider(config);
 
-            registry.registerProvider('provider1', 'claude', factory1);
-            registry.registerProvider('provider2', 'claude', factory2);
+            registry.registerProvider('provider1', ProviderType.ANTHROPIC, factory1);
+            registry.registerProvider('provider2', ProviderType.ANTHROPIC, factory2);
 
             registry.clear();
 

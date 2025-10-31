@@ -816,8 +816,8 @@ permissions:
     optional: ["docusign"]
   
   ai:
-    max_tokens_per_day: 1000000
-    requires_approval_for_batch: true
+    maxTokensPerDay: 1000000
+    requiresApprovalForBatch: true
 ```
 
 **User sees during installation:**

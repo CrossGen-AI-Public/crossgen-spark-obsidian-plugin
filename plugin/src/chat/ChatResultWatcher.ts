@@ -33,6 +33,9 @@ export class ChatResultWatcher {
 		// Ensure results directory exists
 		await this.ensureResultsDir();
 
+		// Initialize watchedFiles with existing files to prevent reprocessing old results
+		await this.initializeWatchedFiles();
+
 		// Poll for new results every 500ms
 		this.interval = window.setInterval(() => {
 			void this.checkForResults();
@@ -137,6 +140,28 @@ export class ChatResultWatcher {
 		const exists = await this.app.vault.adapter.exists(this.resultsDir);
 		if (!exists) {
 			await this.app.vault.adapter.mkdir(this.resultsDir);
+		}
+	}
+
+	/**
+	 * Initialize watchedFiles map with existing result files
+	 * This prevents reprocessing old results on plugin startup
+	 */
+	private async initializeWatchedFiles(): Promise<void> {
+		try {
+			const files = await this.app.vault.adapter.list(this.resultsDir);
+
+			for (const filePath of files.files) {
+				if (!filePath.endsWith('.jsonl')) continue;
+
+				const stat = await this.app.vault.adapter.stat(filePath);
+				if (stat) {
+					// Mark file as already processed without triggering handlers
+					this.watchedFiles.set(filePath, stat.mtime);
+				}
+			}
+		} catch (error) {
+			console.error('ChatResultWatcher: Error initializing watched files:', error);
 		}
 	}
 

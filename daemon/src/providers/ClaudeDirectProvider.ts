@@ -9,10 +9,11 @@ import type { AICompletionResult } from '../types/ai.js';
 import { ClaudeClient } from '../ai/ClaudeClient.js';
 import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
+import { ProviderType } from '../types/provider.js';
 
 export class ClaudeDirectProvider implements IAIProvider {
   readonly name: string;
-  readonly type = 'claude' as const;
+  readonly type = ProviderType.ANTHROPIC;
 
   private client: ClaudeClient;
   private config: ProviderConfig;

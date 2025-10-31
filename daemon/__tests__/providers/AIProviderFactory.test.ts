@@ -9,6 +9,7 @@ import { ClaudeAgentProvider } from '../../src/providers/ClaudeAgentProvider.js'
 import { ClaudeDirectProvider } from '../../src/providers/ClaudeDirectProvider.js';
 import { Logger } from '../../src/logger/Logger.js';
 import type { AIConfig } from '../../src/types/config.js';
+import { ProviderType } from '../../src/types/provider.js';
 
 // Mock the Claude Agent SDK
 jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
@@ -30,14 +31,14 @@ describe('AIProviderFactory', () => {
         defaultProvider: 'claude-agent',
         providers: {
             'claude-client': {
-                type: 'claude',
+                type: ProviderType.ANTHROPIC,
                 model: 'claude-sonnet-4-5-20250929',
                 apiKeyEnv: 'ANTHROPIC_API_KEY',
                 maxTokens: 4096,
                 temperature: 0.7,
             },
             'claude-agent': {
-                type: 'claude',
+                type: ProviderType.ANTHROPIC,
                 model: 'claude-sonnet-4-5-20250929',
                 apiKeyEnv: 'ANTHROPIC_API_KEY',
                 maxTokens: 4096,
@@ -57,9 +58,9 @@ describe('AIProviderFactory', () => {
 
         // Register providers manually
         const registry = ProviderRegistry.getInstance();
-        registry.registerProvider('claude-agent', 'claude', (config) =>
+        registry.registerProvider('claude-agent', ProviderType.ANTHROPIC, (config) =>
             new ClaudeAgentProvider(config));
-        registry.registerProvider('claude-client', 'claude', (config) =>
+        registry.registerProvider('claude-client', ProviderType.ANTHROPIC, (config) =>
             new ClaudeDirectProvider(config));
 
         factory = new AIProviderFactory('/test/vault');

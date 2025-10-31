@@ -24,11 +24,12 @@ export class ChatMentionHandler {
 
 	constructor(
 		app: App,
+		mentionDecorator: MentionDecorator,
 		plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } }
 	) {
 		this.app = app;
 		this.plugin = plugin;
-		this.mentionDecorator = new MentionDecorator(app);
+		this.mentionDecorator = mentionDecorator;
 		this.paletteView = new PaletteView(app);
 		this.itemLoader = new ItemLoader(app);
 		this.fuzzyMatcher = new FuzzyMatcher();
@@ -36,9 +37,11 @@ export class ChatMentionHandler {
 
 	/**
 	 * Initialize the mention handler
+	 * Note: mentionDecorator should already be initialized by the plugin
 	 */
 	async initialize(): Promise<void> {
-		await this.mentionDecorator.initialize();
+		// mentionDecorator is already initialized by the plugin
+		// No need to initialize again
 	}
 
 	/**

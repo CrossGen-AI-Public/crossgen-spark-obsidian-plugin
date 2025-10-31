@@ -93,11 +93,15 @@ export interface SparkConfig {
     debounce_ms: number;
   };
   ai: {
-    provider: string;
-    claude: {
-      model: string;
-      api_key_env: string;
-      max_tokens: number;
+    defaultProvider: string;
+    providers: {
+      [name: string]: {
+        type: string;
+        model: string;
+        apiKeyEnv: string;
+        maxTokens: number;
+        temperature: number;
+      };
     };
   };
   // ... other config
@@ -617,12 +621,12 @@ export class ClaudeClient {
   
   async complete(prompt: string, options: {
     model?: string;
-    max_tokens?: number;
+    maxTokens?: number;
     temperature?: number;
   } = {}): Promise<string> {
     const response = await this.client.messages.create({
       model: options.model || 'claude-3-5-sonnet-20241022',
-      max_tokens: options.max_tokens || 4096,
+      max_tokens: options.maxTokens || 4096,
       temperature: options.temperature || 0.7,
       messages: [{
         role: 'user',

@@ -24,6 +24,7 @@ import { CommandExecutor } from './execution/CommandExecutor.js';
 import { ChatQueueHandler } from './chat/ChatQueueHandler.js';
 import { VaultInitializer } from './init/VaultInitializer.js';
 import { ProviderRegistry, ClaudeDirectProvider, ClaudeAgentProvider } from './providers/index.js';
+import { ProviderType } from './types/provider.js';
 
 export class SparkDaemon implements ISparkDaemon {
   private vaultPath: string;
@@ -206,12 +207,12 @@ export class SparkDaemon implements ISparkDaemon {
     const registry = ProviderRegistry.getInstance();
 
     // Register Claude Client Provider (Anthropic SDK - direct)
-    registry.registerProvider('claude-client', 'claude', (config) => {
+    registry.registerProvider('claude-client', ProviderType.ANTHROPIC, (config) => {
       return new ClaudeDirectProvider(config);
     });
 
     // Register Claude Agent Provider (Claude Agent SDK - with tools/file operations)
-    registry.registerProvider('claude-agent', 'claude', (config) => {
+    registry.registerProvider('claude-agent', ProviderType.ANTHROPIC, (config) => {
       return new ClaudeAgentProvider(config);
     });
 

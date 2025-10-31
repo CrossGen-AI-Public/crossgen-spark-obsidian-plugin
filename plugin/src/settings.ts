@@ -391,7 +391,36 @@ export class SparkSettingTab extends PluginSettingTab {
         const content = `---\n${yamlStr}---\n\n${agent.instructions}\n`;
 
         const adapter = this.app.vault.adapter;
-        await adapter.write(filePath, content);
+
+        // Check if we need to rename the file
+        const oldFileName = filePath.split('/').pop()?.replace('.md', '') || '';
+        const newFileName = agent.name.toLowerCase().replace(/\s+/g, '-');
+
+        if (oldFileName !== newFileName) {
+            // Rename the file
+            const newPath = `.spark/agents/${newFileName}.md`;
+            await adapter.write(newPath, content);
+            await adapter.remove(filePath);
+
+            // Update all conversations that mention the old agent name
+            const conversationStorage = this.plugin.chatManager.getConversationStorage();
+            await conversationStorage.updateAgentName(oldFileName, newFileName);
+
+            // Refresh the currently open chat if any (to show updated agent names)
+            await this.plugin.chatManager.refreshCurrentChat();
+
+            // Reload agents list to reflect the filename change
+            await this.loadAgents();
+
+            // Refresh mention decorator to pick up the new name
+            await this.plugin.mentionDecorator.refresh();
+        } else {
+            // Just update the existing file
+            await adapter.write(filePath, content);
+
+            // Refresh mention decorator in case agent metadata changed
+            await this.plugin.mentionDecorator.refresh();
+        }
     }
 
     private async addNewAgent() {
@@ -432,6 +461,9 @@ export class SparkSettingTab extends PluginSettingTab {
             // Reload agents list
             await this.loadAgents();
 
+            // Refresh mention decorator to pick up the new agent
+            await this.plugin.mentionDecorator.refresh();
+
         } catch (error) {
             console.error('Error creating agent:', error);
             new Notice(`Error creating agent: ${error.message}`);
@@ -453,6 +485,9 @@ export class SparkSettingTab extends PluginSettingTab {
 
             // Reload agents list
             await this.loadAgents();
+
+            // Refresh mention decorator to remove the deleted agent
+            await this.plugin.mentionDecorator.refresh();
 
         } catch (error) {
             console.error('Error deleting agent:', error);
@@ -534,7 +569,7 @@ export class SparkSettingTab extends PluginSettingTab {
 
             // Provider configurations as nested accordion
             this.configContainer.createEl('h4', { text: 'AI Providers' });
-            const providersDesc = this.configContainer.createEl('div', { 
+            const providersDesc = this.configContainer.createEl('div', {
                 text: 'Configure AI provider settings',
                 cls: 'setting-item-description spark-providers-description'
             });
@@ -556,8 +591,8 @@ export class SparkSettingTab extends PluginSettingTab {
                 arrow.textContent = '▶';
 
                 // Provider name and type
-                const titleEl = titleContainer.createSpan({ 
-                    text: `${providerName} (${getProviderLabel(providerConfig.type)})` 
+                const titleEl = titleContainer.createSpan({
+                    text: `${providerName} (${getProviderLabel(providerConfig.type)})`
                 });
 
                 // Collapsible content (hidden by default)
@@ -691,10 +726,10 @@ export class SparkSettingTab extends PluginSettingTab {
                                 const yamlStr = yaml.dump(result.data, { lineWidth: -1 });
                                 await adapter.write(configPath, yamlStr);
                                 new Notice(`Provider ${providerName} saved`);
-                                
+
                                 // Update header title with new type
                                 titleEl.textContent = `${providerName} (${getProviderLabel(providerConfig.type)})`;
-                                
+
                                 // Close the editor form
                                 providerContent.classList.remove('visible');
                                 arrow.classList.remove('expanded');
@@ -786,6 +821,7 @@ export class SparkSettingTab extends PluginSettingTab {
 class AgentNameModal extends Modal {
     private onSubmit: (name: string | null) => void;
     private nameInput: HTMLInputElement;
+    private submitted = false;
 
     constructor(app: App, onSubmit: (name: string | null) => void) {
         super(app);
@@ -822,12 +858,14 @@ class AgentNameModal extends Modal {
                         this.nameInput.style.borderColor = 'var(--text-error)';
                         return;
                     }
+                    this.submitted = true;
                     this.close();
                     this.onSubmit(name);
                 }))
             .addButton(btn => btn
                 .setButtonText('Cancel')
                 .onClick(() => {
+                    this.submitted = true;
                     this.close();
                     this.onSubmit(null);
                 }));
@@ -836,7 +874,10 @@ class AgentNameModal extends Modal {
     onClose() {
         const { contentEl } = this;
         contentEl.empty();
-        this.onSubmit(null);
+        // Only call onSubmit(null) if user closed modal without clicking a button
+        if (!this.submitted) {
+            this.onSubmit(null);
+        }
     }
 }
 

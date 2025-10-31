@@ -6,6 +6,13 @@
 import type { AICompletionResult } from './ai.js';
 
 /**
+ * Supported AI provider types
+ */
+export enum ProviderType {
+  ANTHROPIC = 'anthropic',
+}
+
+/**
  * Options for provider completion requests
  */
 export interface ProviderCompletionOptions {
@@ -49,7 +56,7 @@ export interface IAIProvider {
   /**
    * Provider type/category
    */
-  readonly type: 'claude' | 'openai' | 'local' | 'other';
+  readonly type: ProviderType | 'other';
 
   /**
    * Complete a prompt with AI
@@ -106,7 +113,7 @@ export interface ProviderConfig {
   /**
    * Provider type
    */
-  type: 'claude' | 'openai' | 'local';
+  type: ProviderType;
 
   /**
    * Model to use
@@ -164,7 +171,7 @@ export type ProviderFactoryFunction = (config: ProviderConfig) => IAIProvider;
  */
 export interface ProviderRegistration {
   name: string;
-  type: 'claude' | 'openai' | 'local';
+  type: ProviderType;
   factory: ProviderFactoryFunction;
   defaultConfig?: Partial<ProviderConfig>;
 }

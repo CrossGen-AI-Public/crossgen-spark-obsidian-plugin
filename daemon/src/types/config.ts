@@ -2,6 +2,8 @@
  * Configuration type definitions
  */
 
+import type { ProviderType } from './provider.js';
+
 /**
  * Main Spark configuration structure
  */
@@ -71,7 +73,7 @@ export interface AIConfig {
   /**
    * Legacy support (deprecated)
    */
-  provider?: 'claude' | 'openai' | 'local';
+  provider?: ProviderType;
   claude?: ClaudeConfig;
   openai?: OpenAIConfig;
   fallback?: FallbackConfig;
@@ -81,7 +83,7 @@ export interface AIConfig {
  * Individual provider configuration
  */
 export interface ProviderConfiguration {
-  type: 'claude' | 'openai' | 'local';
+  type: ProviderType;
   model: string;
   apiKeyEnv?: string;
   maxTokens?: number;
@@ -126,7 +128,7 @@ export interface OpenAIConfig {
  */
 export interface FallbackConfig {
   enabled: boolean;
-  provider: 'claude' | 'openai';
+  provider: ProviderType;
 }
 
 /**

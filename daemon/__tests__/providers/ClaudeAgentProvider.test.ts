@@ -6,6 +6,7 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import { ClaudeAgentProvider } from '../../src/providers/ClaudeAgentProvider.js';
 import type { ProviderConfiguration } from '../../src/types/config.js';
 import { Logger } from '../../src/logger/Logger.js';
+import { ProviderType } from '../../src/types/provider.js';
 
 // Mock the Claude Agent SDK
 jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
@@ -14,7 +15,7 @@ jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
 
 describe('ClaudeAgentProvider', () => {
     const mockConfig: ProviderConfiguration = {
-        type: 'claude',
+        type: ProviderType.ANTHROPIC,
         model: 'claude-3-5-sonnet-20241022',
         apiKeyEnv: 'ANTHROPIC_API_KEY',
         maxTokens: 4096,
@@ -44,7 +45,7 @@ describe('ClaudeAgentProvider', () => {
             const provider = new ClaudeAgentProvider(mockConfig);
 
             expect(provider.name).toBe('claude-agent');
-            expect(provider.type).toBe('claude');
+            expect(provider.type).toBe(ProviderType.ANTHROPIC);
         });
 
         it('should throw error if apiKeyEnv not specified', () => {

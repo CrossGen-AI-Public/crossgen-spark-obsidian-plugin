@@ -601,10 +601,20 @@ daemon:
     max_inline_length: 500  # Move to separate file if longer
 
 ai:
-  provider: claude
-  model: claude-3-5-sonnet-20241022
-  max_tokens: 4096
-  temperature: 0.7
+  defaultProvider: claude-agent
+  providers:
+    claude-agent:
+      type: anthropic
+      model: claude-sonnet-4-5-20250929
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
+    claude-client:
+      type: anthropic
+      model: claude-3-5-sonnet-20241022
+      apiKeyEnv: ANTHROPIC_API_KEY
+      maxTokens: 4096
+      temperature: 0.7
 
 integrations:
   enabled:

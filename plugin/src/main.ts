@@ -8,7 +8,7 @@ import { ChatManager } from './chat/ChatManager';
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
     settings: SparkSettings;
     private commandPaletteManager: CommandPaletteManager;
-    private mentionDecorator: MentionDecorator;
+    mentionDecorator: MentionDecorator;
     chatManager: ChatManager;
 
     async onload() {

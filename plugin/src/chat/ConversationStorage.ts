@@ -119,4 +119,69 @@ export class ConversationStorage {
 		}
 		return 0;
 	}
+
+	/**
+	 * Update agent name across all conversations
+	 * Used when an agent is renamed in settings
+	 * Updates:
+	 * - mentionedAgents array
+	 * - agent field in messages
+	 * - @mentions in message content
+	 */
+	async updateAgentName(oldName: string, newName: string): Promise<void> {
+		try {
+			const conversations = await this.listConversations();
+			let updatedCount = 0;
+
+			for (const conversation of conversations) {
+				let conversationUpdated = false;
+
+				// Update mentionedAgents array
+				if (conversation.mentionedAgents?.includes(oldName)) {
+					conversation.mentionedAgents = conversation.mentionedAgents.map(name =>
+						name === oldName ? newName : name
+					);
+					conversationUpdated = true;
+				}
+
+				// Update agent field in messages and @mentions in content
+				for (const message of conversation.messages) {
+					// Update agent field (the label shown above agent messages)
+					if (message.agent === oldName) {
+						message.agent = newName;
+						conversationUpdated = true;
+					}
+
+					// Update @mentions in content
+					const oldMention = `@${oldName}`;
+					const newMention = `@${newName}`;
+					if (message.content.includes(oldMention)) {
+						// Replace @oldName with @newName
+						// Match @mention followed by non-word character or end of string
+						// This catches spaces, punctuation (including em dash —), or end of line
+						const regex = new RegExp(
+							`@${oldName.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&')}(?=\\W|$)`,
+							'g'
+						);
+						message.content = message.content.replace(regex, newMention);
+						conversationUpdated = true;
+					}
+				}
+
+				// Save updated conversation
+				if (conversationUpdated) {
+					await this.saveConversation(conversation);
+					updatedCount++;
+				}
+			}
+
+			if (updatedCount > 0) {
+				console.log(
+					`ConversationStorage: Updated agent name from "${oldName}" to "${newName}" in ${updatedCount} conversation(s)`
+				);
+			}
+		} catch (error) {
+			console.error('ConversationStorage: Failed to update agent name:', error);
+		}
+	}
 }

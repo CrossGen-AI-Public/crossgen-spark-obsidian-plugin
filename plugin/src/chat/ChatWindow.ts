@@ -29,12 +29,12 @@ export class ChatWindow extends Component {
 		lastMentionedAgent: null,
 	};
 
-	constructor(app: App, plugin: SparkPlugin) {
+	constructor(app: App, plugin: SparkPlugin, conversationStorage: ConversationStorage) {
 		super();
 		this.app = app;
 		this.plugin = plugin;
-		this.conversationStorage = new ConversationStorage(app);
-		this.mentionHandler = new ChatMentionHandler(app, plugin);
+		this.conversationStorage = conversationStorage;
+		this.mentionHandler = new ChatMentionHandler(app, plugin.mentionDecorator, plugin);
 		this.chatQueue = new ChatQueue(app);
 		this.resultWatcher = new ChatResultWatcher(app);
 		this.chatSelector = new ChatSelector(
@@ -1053,6 +1053,50 @@ export class ChatWindow extends Component {
 		this.chatSelector.update(this.state.conversationId);
 		// Save the cleared conversation state
 		void this.saveConversation();
+	}
+
+	/**
+	 * Refresh the currently open chat (reload and sync with storage)
+	 * Used when agent names are updated in settings
+	 *
+	 * Note: We reload from storage to get the updated agent names.
+	 * This runs even if chat is closed to ensure validAgents cache is updated.
+	 */
+	async refreshCurrentChat(): Promise<void> {
+		// Always reload valid agents list (needed for mention decoration)
+		await this.loadValidAgents();
+
+		// If chat is visible and has a conversation, reload and re-render it
+		if (this.state.isVisible && this.state.conversationId) {
+			// Load the updated conversation from storage
+			// This will have the updated agent names from updateAgentName
+			const conversation = await this.conversationStorage.loadConversation(
+				this.state.conversationId
+			);
+			if (conversation) {
+				// Update in-memory state with the updated messages (agent names, mentions)
+				this.state.messages = conversation.messages || [];
+				this.state.mentionedAgents = new Set(conversation.mentionedAgents || []);
+
+				// Update lastMentionedAgent
+				for (let i = this.state.messages.length - 1; i >= 0; i--) {
+					const msg = this.state.messages[i];
+					if (msg.type === 'agent' && msg.agent && msg.agent !== 'Spark Assistant') {
+						this.state.lastMentionedAgent = msg.agent;
+						break;
+					}
+				}
+
+				// Re-render all messages with updated names
+				this.renderAllMessages();
+
+				// Update chat title with current mentioned agents
+				this.updateChatTitle(Array.from(this.state.mentionedAgents));
+			}
+		}
+
+		// Invalidate cache so dropdown shows updated conversation titles
+		this.chatSelector.invalidateCache();
 	}
 
 	private updateChatTitle(agentNames?: string[]) {

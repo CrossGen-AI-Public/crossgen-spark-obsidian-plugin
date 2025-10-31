@@ -12,10 +12,11 @@ import type { AICompletionResult } from '../types/ai.js';
 import type { ProviderConfiguration } from '../types/config.js';
 import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
+import { ProviderType } from '../types/provider.js';
 
 export class ClaudeAgentProvider implements IAIProvider {
   public readonly name: string;
-  public readonly type: 'claude' | 'openai' | 'local' | 'other' = 'claude';
+  public readonly type = ProviderType.ANTHROPIC;
   private config: ProviderConfiguration;
   private logger: Logger;
   private vaultPath: string;
@@ -339,7 +340,7 @@ export class ClaudeAgentProvider implements IAIProvider {
   getConfig(): ProviderConfig {
     return {
       name: this.name,
-      type: this.type as 'claude' | 'openai' | 'local',
+      type: this.type,
       model: this.config.model,
       apiKeyEnv: this.config.apiKeyEnv,
       maxTokens: this.config.maxTokens,

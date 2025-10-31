@@ -10,6 +10,7 @@ import type {
   ProviderFactoryFunction,
   ProviderConfig,
 } from '../types/provider.js';
+import { ProviderType } from '../types/provider.js';
 import { SparkError } from '../types/index.js';
 import { Logger } from '../logger/Logger.js';
 
@@ -61,7 +62,7 @@ export class ProviderRegistry {
    */
   registerProvider(
     name: string,
-    type: 'claude' | 'openai' | 'local',
+    type: ProviderType,
     factory: ProviderFactoryFunction,
     defaultConfig?: Partial<ProviderConfig>
   ): void {
@@ -97,7 +98,7 @@ export class ProviderRegistry {
   /**
    * Get all providers of a specific type
    */
-  getProvidersByType(type: 'claude' | 'openai' | 'local'): ProviderRegistration[] {
+  getProvidersByType(type: ProviderType): ProviderRegistration[] {
     return Array.from(this.providers.values()).filter((reg) => reg.type === type);
   }
 
