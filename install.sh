@@ -254,7 +254,10 @@ chmod +x dist/cli.js
 echo -e "${GREEN}✓ CLI permissions set${NC}"
 
 echo -e "${YELLOW}→ Installing daemon globally...${NC}"
-npm install -g .
+# Use npm pack + install to ensure files are copied, not symlinked
+TARBALL=$(npm pack --silent)
+npm install -g "$TARBALL"
+rm "$TARBALL"
 
 # Add npm global bin to PATH so spark command is immediately available
 # Use the same directory where node is located (most reliable method)
