@@ -95,9 +95,24 @@ if ! command -v node &> /dev/null; then
     # Install nvm
     if [ ! -d "$HOME/.nvm" ]; then
         echo -e "${YELLOW}  Installing nvm...${NC}"
-        # Set METHOD=script to force nvm to download as tarball (avoids git/Xcode popup on macOS)
-        export METHOD=script
-        $DOWNLOAD_CMD https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+        # On macOS without Xcode CLT, nvm installer will exit if it finds /usr/bin/git
+        # Temporarily remove /usr/bin from PATH to hide the git stub
+        if [[ "$OSTYPE" == "darwin"* ]] && [ -f "/usr/bin/git" ] && ! xcode-select -p &> /dev/null; then
+            echo -e "${BLUE}  ℹ  Working around macOS git stub (no Xcode CLT)${NC}"
+            ORIGINAL_PATH="$PATH"
+            PATH=$(echo "$PATH" | tr ':' '\n' | grep -v '^/usr/bin$' | tr '\n' ':' | sed 's/:$//')
+            export PATH
+        fi
+        
+        # Set METHOD=script to force nvm to download as tarball (avoids git entirely)
+        $DOWNLOAD_CMD https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | METHOD=script bash
+        
+        # Restore PATH if we modified it
+        if [ -n "${ORIGINAL_PATH:-}" ]; then
+            PATH="$ORIGINAL_PATH"
+            export PATH
+        fi
+        
         echo -e "${GREEN}  ✓ nvm installed${NC}"
     fi
     
