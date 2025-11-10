@@ -87,6 +87,9 @@ if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}  Installing Node.js LTS...${NC}"
     nvm install --lts 2>&1 | grep -v "^Downloading" | grep -v "^Computing" || true
     nvm use --lts > /dev/null 2>&1
+    
+    # Ensure node is in PATH for current shell
+    export PATH="$NVM_DIR/versions/node/$(nvm current)/bin:$PATH"
     echo -e "${GREEN}  ✓ Node.js $(node -v) installed${NC}"
 fi
 
