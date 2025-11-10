@@ -257,8 +257,20 @@ echo -e "${YELLOW}→ Linking daemon globally...${NC}"
 npm link
 
 # Add npm global bin to PATH so spark command is immediately available
-NPM_BIN=$(npm bin -g 2>/dev/null || echo "$HOME/.nvm/versions/node/$(nvm current)/bin")
-export PATH="$NPM_BIN:$PATH"
+# Try multiple methods to find npm's global bin directory
+if command -v npm &> /dev/null; then
+    NPM_BIN=$(npm bin -g 2>/dev/null || true)
+    if [ -z "$NPM_BIN" ] || [ ! -d "$NPM_BIN" ]; then
+        # Fallback: use npm prefix
+        NPM_PREFIX=$(npm prefix -g 2>/dev/null || true)
+        if [ -n "$NPM_PREFIX" ]; then
+            NPM_BIN="$NPM_PREFIX/bin"
+        fi
+    fi
+    if [ -n "$NPM_BIN" ] && [ -d "$NPM_BIN" ]; then
+        export PATH="$NPM_BIN:$PATH"
+    fi
+fi
 
 echo -e "${GREEN}✓ Daemon linked globally (spark command available)${NC}"
 echo ""
@@ -337,7 +349,7 @@ COMMUNITY_PLUGINS_FILE="$VAULT_PATH/.obsidian/community-plugins.json"
 EXISTING_PLUGINS=""
 if [ -f "$COMMUNITY_PLUGINS_FILE" ]; then
     # Extract plugin names from JSON array (simple grep approach)
-    EXISTING_PLUGINS=$(grep -o '"[^"]*"' "$COMMUNITY_PLUGINS_FILE" | tr -d '"' | grep -v '^\[' | grep -v '^\]')
+    EXISTING_PLUGINS=$(grep -o '"[^"]*"' "$COMMUNITY_PLUGINS_FILE" 2>/dev/null | tr -d '"' | grep -v '^\[' | grep -v '^\]' || true)
 fi
 
 # Build new plugin list
@@ -362,20 +374,19 @@ PLUGINS+=("spark")
 
 # Write JSON file (using compatible array syntax)
 echo "[" > "$COMMUNITY_PLUGINS_FILE"
-PLUGIN_COUNT=0
-for plugin in "${PLUGINS[@]}"; do
-    PLUGIN_COUNT=$((PLUGIN_COUNT + 1))
-done
+PLUGIN_COUNT=${#PLUGINS[@]}
 
-CURRENT_INDEX=0
-for plugin in "${PLUGINS[@]}"; do
-    if [ $CURRENT_INDEX -eq $((PLUGIN_COUNT - 1)) ]; then
-        echo "  \"$plugin\"" >> "$COMMUNITY_PLUGINS_FILE"
-    else
-        echo "  \"$plugin\"," >> "$COMMUNITY_PLUGINS_FILE"
-    fi
-    CURRENT_INDEX=$((CURRENT_INDEX + 1))
-done
+if [ $PLUGIN_COUNT -gt 0 ]; then
+    CURRENT_INDEX=0
+    for plugin in "${PLUGINS[@]}"; do
+        if [ $CURRENT_INDEX -eq $((PLUGIN_COUNT - 1)) ]; then
+            echo "  \"$plugin\"" >> "$COMMUNITY_PLUGINS_FILE"
+        else
+            echo "  \"$plugin\"," >> "$COMMUNITY_PLUGINS_FILE"
+        fi
+        CURRENT_INDEX=$((CURRENT_INDEX + 1))
+    done
+fi
 echo "]" >> "$COMMUNITY_PLUGINS_FILE"
 
 echo -e "${GREEN}✓ Plugins enabled in config${NC}"
