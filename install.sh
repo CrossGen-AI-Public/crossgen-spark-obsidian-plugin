@@ -84,7 +84,8 @@ if ! command -v node &> /dev/null; then
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
     
     # Install Node.js LTS
-    if command -v nvm &> /dev/null; then
+    # Note: nvm is a shell function, not a command, so we check if the function exists
+    if type nvm &> /dev/null; then
         echo -e "${YELLOW}  Installing Node.js LTS...${NC}"
         nvm install --lts
         nvm use --lts
