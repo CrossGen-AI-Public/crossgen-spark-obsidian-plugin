@@ -345,12 +345,18 @@ echo -e "${GREEN}✓ Plugin installed to: $PLUGIN_DIR${NC}"
 echo -e "${YELLOW}→ Enabling plugins in Obsidian config...${NC}"
 COMMUNITY_PLUGINS_FILE="$VAULT_PATH/.obsidian/community-plugins.json"
 
+# Temporarily disable exit on error for this section
+set +e
+
 # Read existing plugins or start with empty list
 EXISTING_PLUGINS=""
 if [ -f "$COMMUNITY_PLUGINS_FILE" ]; then
     # Extract plugin names from JSON array (simple grep approach)
-    EXISTING_PLUGINS=$(grep -o '"[^"]*"' "$COMMUNITY_PLUGINS_FILE" 2>/dev/null | tr -d '"' | grep -v '^\[' | grep -v '^\]' || true)
+    EXISTING_PLUGINS=$(grep -o '"[^"]*"' "$COMMUNITY_PLUGINS_FILE" 2>/dev/null | tr -d '"' | grep -v '^\[' | grep -v '^\]')
 fi
+
+# Re-enable exit on error
+set -e
 
 # Build new plugin list
 PLUGINS=()
