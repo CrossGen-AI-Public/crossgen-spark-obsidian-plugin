@@ -43,13 +43,65 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 
 ### Prerequisites
 
-- **Node.js** 18+ 
-- **Claude API key** (from Anthropic)
-- **Obsidian** (optional - comes with example vault)
+**Minimal requirements for fresh machines:**
+- `curl` or `wget` (for downloading)
+- `bash` (for running the script)
+- `tar` (usually pre-installed)
+
+That's it! No Node.js, npm, git, or other tools needed.
+
+**Everything else is auto-installed:**
+- ✅ Node.js 18+ (via nvm)
+- ✅ npm (comes with Node.js)
+- ✅ Obsidian (optional - example vault included)
+
+**Development features (enable with DEV_MODE=1):**
+- 🔧 Hot Reload plugin (auto-reload on changes)
+- 🔧 GitHub CLI (for contributing)
+
+> **Note:** Claude API key can be configured later in Obsidian plugin settings
 
 ### Installation
 
-**Development Setup (Recommended):**
+**One-Command Install (Easiest):**
+
+Fresh machine? No problem! This installs everything:
+
+```bash
+# Install to example vault (for testing/development)
+curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+
+# Or install to your vault
+curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash -s -- ~/Documents/MyVault
+```
+
+**What it does:**
+- ✅ Installs Node.js via nvm (if needed)
+- ✅ Downloads and builds Spark daemon + plugin
+- ✅ Auto-starts daemon (if ANTHROPIC_API_KEY is set)
+- ✅ Ready for production use
+
+**For developers:**
+```bash
+# Enable development features (hot reload + gh CLI)
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+```
+
+**Environment flags:**
+```bash
+# Development mode (hot reload, gh CLI)
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+
+# Skip Node.js installation (if you have it)
+SKIP_NODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+
+# Skip daemon auto-start
+AUTO_START=0 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+```
+
+---
+
+**Development Setup (Clone First):**
 
 ```bash
 # 1. Clone repository
@@ -68,14 +120,6 @@ export ANTHROPIC_API_KEY=your_key_here
 
 # 5. Start daemon
 spark start example-vault
-```
-
-**Install to Your Vault:**
-
-```bash
-# Same steps, but specify your vault path
-./install.sh ~/Documents/MyVault
-spark start ~/Documents/MyVault
 ```
 
 **Manual Installation:**
