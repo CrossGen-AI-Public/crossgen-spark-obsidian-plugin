@@ -257,21 +257,82 @@ echo -e "${YELLOW}→ Linking daemon globally...${NC}"
 npm link
 
 # Add npm global bin to PATH so spark command is immediately available
-NPM_PREFIX=$(npm prefix -g 2>/dev/null)
-if [ -n "$NPM_PREFIX" ]; then
-    NPM_BIN="$NPM_PREFIX/bin"
-    export PATH="$NPM_BIN:$PATH"
+# Use the same directory where node is located (most reliable method)
+NODE_BIN_DIR=$(dirname "$(which node 2>/dev/null)")
+if [ -n "$NODE_BIN_DIR" ]; then
+    export PATH="$NODE_BIN_DIR:$PATH"
     echo -e "${GREEN}✓ Daemon linked globally${NC}"
-    echo -e "${GREEN}✓ Added $NPM_BIN to PATH${NC}"
+    echo -e "${BLUE}  Node bin dir: $NODE_BIN_DIR${NC}"
+    
+    # Verify spark was linked
+    if [ -f "$NODE_BIN_DIR/spark" ]; then
+        echo -e "${GREEN}✓ spark binary found at $NODE_BIN_DIR/spark${NC}"
+    else
+        echo -e "${YELLOW}⚠ spark not found in $NODE_BIN_DIR${NC}"
+        echo -e "${BLUE}  Checking npm global bin...${NC}"
+        NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
+        if [ -n "$NPM_PREFIX" ]; then
+            echo -e "${BLUE}  npm prefix -g: $NPM_PREFIX${NC}"
+            if [ -f "$NPM_PREFIX/bin/spark" ]; then
+                export PATH="$NPM_PREFIX/bin:$PATH"
+                echo -e "${GREEN}✓ spark found at $NPM_PREFIX/bin/spark${NC}"
+            fi
+        fi
+    fi
 else
-    echo -e "${YELLOW}⚠ Could not detect npm global bin path${NC}"
+    echo -e "${YELLOW}⚠ Could not detect node bin directory${NC}"
 fi
 
-# Verify spark command is available
+# Final verification
+SPARK_PATH=""
 if command -v spark &> /dev/null; then
-    echo -e "${GREEN}✓ spark command is available${NC}"
+    SPARK_PATH=$(which spark)
+    echo -e "${GREEN}✓ spark command is available: $SPARK_PATH${NC}"
 else
-    echo -e "${YELLOW}⚠ spark command not in PATH - you may need to restart your shell${NC}"
+    echo -e "${RED}✗ spark command not available${NC}"
+    echo -e "${YELLOW}  Debug: PATH=$PATH${NC}"
+fi
+
+# Add to shell profile so spark is available permanently
+SHELL_PROFILE=""
+if [ -n "$ZSH_VERSION" ] || [ "$SHELL" = "/bin/zsh" ] || [ "$SHELL" = "/usr/bin/zsh" ]; then
+    SHELL_PROFILE="$HOME/.zshrc"
+elif [ -n "$BASH_VERSION" ] || [ "$SHELL" = "/bin/bash" ] || [ "$SHELL" = "/usr/bin/bash" ]; then
+    SHELL_PROFILE="$HOME/.bashrc"
+fi
+
+if [ -n "$SHELL_PROFILE" ]; then
+    # Check if nvm is already configured (it should be from nvm installation)
+    if grep -q "NVM_DIR" "$SHELL_PROFILE" 2>/dev/null; then
+        echo -e "${GREEN}✓ nvm configured in $SHELL_PROFILE${NC}"
+        echo -e "${GREEN}✓ spark command will be available in new shells${NC}"
+    else
+        # nvm not found - add it manually
+        echo -e "${YELLOW}→ Adding nvm to $SHELL_PROFILE...${NC}"
+        cat >> "$SHELL_PROFILE" << 'EOF'
+
+# nvm configuration (added by Spark installer)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+EOF
+        echo -e "${GREEN}✓ nvm added to $SHELL_PROFILE${NC}"
+    fi
+    
+    # Source the profile to make spark available immediately
+    echo -e "${YELLOW}→ Loading shell configuration...${NC}"
+    set +e
+    if [ -f "$SHELL_PROFILE" ]; then
+        . "$SHELL_PROFILE" 2>/dev/null || true
+    fi
+    set -e
+    
+    # Re-check if spark is now available
+    if command -v spark &> /dev/null; then
+        echo -e "${GREEN}✓ spark command is now available!${NC}"
+    else
+        echo -e "${YELLOW}⚠ spark not immediately available - open a new terminal${NC}"
+    fi
 fi
 echo ""
 
