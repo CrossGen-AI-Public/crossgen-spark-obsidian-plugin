@@ -31,6 +31,7 @@
 - [x] Test curl mode (logic implemented)
 - [x] Test with/without Node.js (flags implemented)
 - [x] Test with/without gh CLI (flags implemented)
+- [x] **End-to-end curl test** (2025-11-10) ✅
 - [ ] Test on Linux (VM/container) - requires actual Linux environment
 
 ### Phase 3: Documentation
@@ -103,7 +104,60 @@ Successfully enhanced `install.sh` to support one-command curl installation on f
 
 ---
 
-## Docker Testing Results
+## End-to-End Testing Results (2025-11-10)
+
+### ✅ macOS Test (with existing Node.js)
+
+Test command:
+```bash
+REPO_URL=https://github.com/iansokolskyi/crossgen-spark-test \
+AUTO_START=0 SKIP_NODE=1 \
+curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash
+```
+
+**Results:**
+- ✅ Downloaded script from raw GitHub URL
+- ✅ Detected curl mode (no .git directory)
+- ✅ Used REPO_URL override to clone test repo
+- ✅ Installed daemon dependencies (477 packages)
+- ✅ Built daemon successfully
+- ✅ Linked `spark` CLI globally
+- ✅ Installed plugin dependencies (456 packages)
+- ✅ Built plugin successfully
+- ✅ Installed plugin to example-vault
+- ✅ Configured Obsidian settings
+- ✅ Set up Cmd+K hotkey
+- ✅ `spark --version` → `0.1.1`
+
+### 🎉 Ubuntu 22.04 Docker Test (Fresh Machine)
+
+Test command:
+```bash
+docker run --rm ubuntu:22.04 bash -c "
+  apt-get update -qq && apt-get install -y -qq curl git tar
+  export REPO_URL=https://github.com/iansokolskyi/crossgen-spark-test AUTO_START=0
+  curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash
+"
+```
+
+**Results:**
+- ✅ Installed prerequisites (curl, git, tar)
+- ✅ Downloaded and ran installation script
+- ✅ Installed nvm automatically
+- ✅ Installed Node.js v24.11.0 (LTS) via nvm
+- ✅ Installed daemon dependencies (511 packages)
+- ✅ Built daemon with TypeScript
+- ✅ Linked daemon globally
+- ✅ Installed plugin dependencies (480 packages)
+- ✅ Built plugin with esbuild
+- ✅ Installed plugin to example-vault
+- ✅ Configured Obsidian (plugins enabled, hotkeys)
+- ✅ Total time: ~51 seconds
+- ✅ Clean, informative output throughout
+
+**Key Fix:** nvm.sh returns non-zero exit code in non-interactive shells - fixed by temporarily disabling `set -e` during sourcing.
+
+## Docker Testing Results (Earlier)
 
 **Tested in Ubuntu 22.04 container:**
 
