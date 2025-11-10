@@ -133,11 +133,21 @@ DEV_MODE=1:
 - [ ] Verify DEV_MODE=1 on macOS
 - [ ] Verify DEV_MODE=1 on Ubuntu
 
-## Testing with Public Test Repo
+## Testing Before Public Release
 
-**Test Repository (Public):**
-- Repo: https://github.com/iansokolskyi/crossgen-spark-test
-- Raw install.sh: https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh
+**While the main repo is private:**
+
+Use `REPO_URL` environment variable to point to a public test repository:
+
+```bash
+# Test with a public fork/test repo
+REPO_URL=https://github.com/YOUR_USERNAME/crossgen-spark-test \
+  curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/crossgen-spark-test/main/install.sh | bash
+
+# Or use local HTTP server for testing
+python3 -m http.server 8000  # Terminal 1
+curl -fsSL http://localhost:8000/install.sh | bash  # Terminal 2
+```
 
 **Production Commands (when main repo is public):**
 ```bash
@@ -149,28 +159,10 @@ DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spar
 
 # Custom vault path
 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash -s -- ~/Documents/MyVault
-```
 
-**Test Commands (using test repo):**
-```bash
-# Basic test (production mode)
-curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash
-
-# Or override repo URL via environment variable
-REPO_URL=https://github.com/iansokolskyi/crossgen-spark-test curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash
-
-# Development mode with test repo
-DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash
-
-# Custom vault path with test repo
-curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash -s -- ~/Documents/TestVault
-```
-
-**Update Test Repo:**
-```bash
-# Push changes to test repo
-cd /Users/ian/Code/crossgen-spark
-git push test main
+# Override repo URL (for testing or mirrors)
+REPO_URL=https://github.com/YOUR_ORG/spark-fork \
+  curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
 ```
 
 ## Notes
