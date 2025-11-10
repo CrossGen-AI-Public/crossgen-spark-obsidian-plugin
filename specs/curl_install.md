@@ -90,9 +90,10 @@ Successfully enhanced `install.sh` to support one-command curl installation on f
 - ✅ Supports both curl and wget
 - ✅ No API key required (configured in plugin settings)
 
-**Prerequisites Minimized:**
-- Only requires: `curl`/`wget`, `bash`, `tar`
-- No longer needs: Node.js, npm, git, API key, Homebrew
+**Prerequisites Minimized (Verified in Docker):**
+- ✅ Only requires: `curl` or `wget`, `bash`, `tar`
+- ❌ No longer needs: Node.js, npm, git, API key, Homebrew
+- Note: `git` is optional - script auto-downloads as tarball if git unavailable
 
 **Production vs Development:**
 - Production: Minimal install, no hot reload, no gh CLI
@@ -129,19 +130,20 @@ curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/ma
 - ✅ Set up Cmd+K hotkey
 - ✅ `spark --version` → `0.1.1`
 
-### 🎉 Ubuntu 22.04 Docker Test (Fresh Machine)
+### 🎉 Ubuntu 22.04 Docker Test (Fresh Machine, No Git)
 
 Test command:
 ```bash
 docker run --rm ubuntu:22.04 bash -c "
-  apt-get update -qq && apt-get install -y -qq curl git tar
+  apt-get update -qq && apt-get install -y -qq curl tar
   export REPO_URL=https://github.com/iansokolskyi/crossgen-spark-test AUTO_START=0
   curl -fsSL https://raw.githubusercontent.com/iansokolskyi/crossgen-spark-test/main/install.sh | bash
 "
 ```
 
 **Results:**
-- ✅ Installed prerequisites (curl, git, tar)
+- ✅ Installed minimal prerequisites (curl, tar) - **no git needed!**
+- ✅ Downloaded repo as tarball (git not available)
 - ✅ Downloaded and ran installation script
 - ✅ Installed nvm automatically
 - ✅ Installed Node.js v24.11.0 (LTS) via nvm
@@ -155,7 +157,11 @@ docker run --rm ubuntu:22.04 bash -c "
 - ✅ Total time: ~51 seconds
 - ✅ Clean, informative output throughout
 
-**Key Fix:** nvm.sh returns non-zero exit code in non-interactive shells - fixed by temporarily disabling `set -e` during sourcing.
+**Key Fixes:**
+1. nvm.sh returns non-zero exit code in non-interactive shells - fixed by temporarily disabling `set -e` during sourcing
+2. Git is optional - script downloads repo as tarball when git is unavailable
+
+**Confirmed:** Installation works on Ubuntu 22.04 with **only curl and tar** installed!
 
 ## Docker Testing Results (Earlier)
 
