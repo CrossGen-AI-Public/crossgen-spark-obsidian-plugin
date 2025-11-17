@@ -4,12 +4,14 @@ import { SparkSettings, ISparkPlugin } from './types';
 import { CommandPaletteManager } from './command-palette/CommandPaletteManager';
 import { MentionDecorator, handleMentionClick } from './command-palette/MentionDecorator';
 import { ChatManager } from './chat/ChatManager';
+import { InlineChatManager } from './inline-chat/InlineChatManager';
 
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
     settings: SparkSettings;
     private commandPaletteManager: CommandPaletteManager;
     mentionDecorator: MentionDecorator;
     chatManager: ChatManager;
+    private inlineChatManager: InlineChatManager;
 
     async onload() {
         console.log('Spark Assistant: Loading plugin...');
@@ -29,6 +31,10 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         // Initialize chat manager
         this.chatManager = new ChatManager(this.app, this);
         this.chatManager.initialize();
+
+        // Initialize inline chat manager
+        this.inlineChatManager = new InlineChatManager(this.app);
+        this.inlineChatManager.initialize();
 
         // Register chat hotkey (Cmd+K)
         this.addCommand({
@@ -78,6 +84,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
     async onunload() {
         this.commandPaletteManager?.unload();
         this.chatManager?.unload();
+        this.inlineChatManager?.cleanup();
         this.mentionDecorator?.stopTableObserver();
         console.log('Spark Assistant: Plugin unloaded');
     }
