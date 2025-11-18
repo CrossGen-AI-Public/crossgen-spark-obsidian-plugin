@@ -84,7 +84,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
     async onunload() {
         this.commandPaletteManager?.unload();
         this.chatManager?.unload();
-        this.inlineChatManager?.cleanup();
+        await this.inlineChatManager?.cleanup();
         this.mentionDecorator?.stopTableObserver();
         console.log('Spark Assistant: Plugin unloaded');
     }

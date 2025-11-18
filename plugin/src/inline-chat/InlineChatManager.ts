@@ -31,6 +31,7 @@ export class InlineChatManager {
 	private fileModifyHandler: ((file: TFile) => void) | null = null;
 	private currentUserMessage: string = ''; // Track current user message for processing display
 	private agentMentionCompleteHandler: EventListener | null = null;
+	private currentFilePath: string = ''; // Track current file with active markers
 
 	constructor(app: App) {
 		this.app = app;
@@ -42,8 +43,6 @@ export class InlineChatManager {
 	 * Call this during plugin load
 	 */
 	initialize(): void {
-		console.log('[Spark Inline Chat] Initialized');
-
 		// Create editor change handler
 		this.editorChangeHandler = (editor: Editor) => {
 			this.handleEditorChange(editor);
@@ -65,6 +64,12 @@ export class InlineChatManager {
 			this.handleAgentMentionComplete(evt.detail);
 		}) as EventListener;
 		document.addEventListener('spark-agent-mention-complete', this.agentMentionCompleteHandler);
+
+		// Clean up any orphaned markers from previous sessions (crashes, force quits, etc.)
+		// Wait for workspace to be ready to ensure vault is fully loaded
+		this.app.workspace.onLayoutReady(() => {
+			void this.cleanupOrphanedMarkers();
+		});
 	}
 
 	/**
@@ -171,6 +176,7 @@ export class InlineChatManager {
 		}
 
 		// Clean up old pending chats (older than 5 minutes)
+		// Also remove markers from files to prevent corruption
 		const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
 		for (const [uuid, chat] of this.pendingChats.entries()) {
 			if (chat.timestamp < fiveMinutesAgo) {
@@ -178,6 +184,10 @@ export class InlineChatManager {
 					uuid,
 					age: Date.now() - chat.timestamp,
 				});
+
+				// Clean up markers from the file
+				void this.cleanupMarkersFromFile(chat.filePath);
+
 				this.pendingChats.delete(uuid);
 			}
 		}
@@ -189,6 +199,12 @@ export class InlineChatManager {
 	private showWidget(editor: Editor, mention: DetectedAgentMention): void {
 		// Hide existing widget if any
 		this.hideWidget();
+
+		// Track current file path
+		const activeFile = this.app.workspace.getActiveFile();
+		if (activeFile) {
+			this.currentFilePath = activeFile.path;
+		}
 
 		// Store original mention text and line number for potential restoration
 		this.mentionLineNumber = mention.line;
@@ -535,13 +551,87 @@ export class InlineChatManager {
 		this.insertedBlankLines = 0;
 		this.markerId = '';
 		this.currentUserMessage = '';
+		this.currentFilePath = '';
+	}
+
+	/**
+	 * Scan all files and clean up orphaned markers from previous sessions
+	 * Called on plugin initialization to handle crashes/force quits
+	 */
+	private async cleanupOrphanedMarkers(): Promise<void> {
+		const markdownFiles = this.app.vault.getMarkdownFiles();
+
+		for (const file of markdownFiles) {
+			try {
+				const content = await this.app.vault.read(file);
+
+				// Check if file has any inline chat markers
+				const hasTempMarkers = /<!--\s*spark-inline-[\w-]+-start\s*-->/.test(content);
+				const hasDaemonMarkers = /<!--\s*spark-inline-chat:pending:/.test(content);
+
+				if (hasTempMarkers || hasDaemonMarkers) {
+					await this.cleanupMarkersFromFile(file.path);
+				}
+			} catch (error) {
+				console.error('[Spark Inline Chat] Error scanning file:', file.path, error);
+			}
+		}
+	}
+
+	/**
+	 * Remove all inline chat markers from a file (both temporary and daemon format)
+	 * This ensures files are never left in a corrupted state
+	 */
+	private async cleanupMarkersFromFile(filePath: string): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!file) {
+			return;
+		}
+
+		try {
+			// Read file content
+			const content = await this.app.vault.read(file as TFile);
+			let modifiedContent = content;
+
+			// Pattern 1: Remove temporary positioning markers and content between them
+			// Format: <!-- spark-inline-{id}-start --> ... <!-- spark-inline-{id}-end -->
+			const tempMarkerPattern =
+				/<!--\s*spark-inline-[\w-]+-start\s*-->\n[\s\S]*?<!--\s*spark-inline-[\w-]+-end\s*-->\n?/g;
+			modifiedContent = modifiedContent.replace(tempMarkerPattern, '');
+
+			// Pattern 2: Remove daemon format markers and content between them
+			// Format: <!-- spark-inline-chat:pending:uuid:agent:message --> ... <!-- /spark-inline-chat -->
+			const daemonMarkerPattern =
+				/<!--\s*spark-inline-chat:pending:[\w-]+:[^>]+\s*-->\n[\s\S]*?<!--\s*\/spark-inline-chat\s*-->\n?/g;
+			modifiedContent = modifiedContent.replace(daemonMarkerPattern, '');
+
+			// Write back if we made changes
+			if (modifiedContent !== content) {
+				await this.app.vault.modify(file as TFile, modifiedContent);
+			}
+		} catch (error) {
+			console.error('[Spark Inline Chat] Error cleaning up markers:', error);
+		}
 	}
 
 	/**
 	 * Cleanup when plugin unloads
+	 * Removes all markers to prevent leaving files in corrupted state
 	 */
-	cleanup(): void {
+	async cleanup(): Promise<void> {
+		// Hide widget first
 		this.hideWidget();
+
+		// Clean up markers from current file if any
+		if (this.currentFilePath) {
+			await this.cleanupMarkersFromFile(this.currentFilePath);
+		}
+
+		// Clean up markers from all pending chat files
+		const pendingFiles = new Set(Array.from(this.pendingChats.values()).map(chat => chat.filePath));
+		for (const filePath of pendingFiles) {
+			await this.cleanupMarkersFromFile(filePath);
+		}
 
 		// Unregister editor change handler
 		if (this.editorChangeHandler) {
@@ -566,7 +656,5 @@ export class InlineChatManager {
 
 		// Clear pending chats
 		this.pendingChats.clear();
-
-		console.log('[Spark Inline Chat] Cleaned up');
 	}
 }

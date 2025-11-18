@@ -179,7 +179,7 @@ export class ChatSelector {
 
 		const dropdownBtn = document.createElement('button');
 		dropdownBtn.className = 'spark-chat-dropdown-btn';
-		dropdownBtn.innerHTML = '▼';
+		dropdownBtn.innerHTML = '☰';
 		dropdownBtn.title = 'Select Conversation';
 		dropdownBtn.onclick = async () => await this.showConversationModal();
 

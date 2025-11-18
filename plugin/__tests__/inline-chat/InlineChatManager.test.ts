@@ -34,13 +34,19 @@ describe('InlineChatManager', () => {
                 path: 'test.md',
                 name: 'test.md',
             }),
+            onLayoutReady: (callback: () => void) => {
+                // Immediately call callback in tests
+                callback();
+            },
         };
 
-        // Create mock vault
+        // Create mock vault with orphaned marker detection support
         const mockVault = {
             on: () => { },
             off: () => { },
             read: async () => '',
+            getAbstractFileByPath: (path: string) => null,
+            getMarkdownFiles: () => [],
         };
 
         // Create mock app
@@ -530,6 +536,283 @@ describe('InlineChatManager', () => {
 
                 const writtenContent = (mockEditor.replaceRange as jest.Mock).mock.calls[0][0];
                 expect(writtenContent).toContain(`<!-- spark-inline-chat:pending:${mockUUID}:betty:test message -->`);
+            });
+        });
+    });
+
+    describe('Marker Cleanup', () => {
+        describe('cleanup() - Plugin unload', () => {
+            it('should remove temporary positioning markers from current file', async () => {
+                manager.initialize();
+
+                const fileContent = [
+                    'Some text',
+                    '<!-- spark-inline-1234-start -->',
+                    '',
+                    '',
+                    '<!-- spark-inline-1234-end -->',
+                    'More text',
+                ].join('\n');
+
+                let modifiedContent: string | null = null;
+                const mockFile = { path: 'test.md' };
+                const mockVault = {
+                    ...mockApp.vault,
+                    getAbstractFileByPath: () => mockFile,
+                    read: async () => fileContent,
+                    modify: async (file: any, content: string) => {
+                        modifiedContent = content;
+                    },
+                };
+                (mockApp as any).vault = mockVault;
+
+                // Set current file path to simulate active inline chat
+                (manager as any).currentFilePath = 'test.md';
+
+                await manager.cleanup();
+
+                expect(modifiedContent).toBe('Some text\nMore text');
+            });
+
+            it('should remove daemon format markers from current file', async () => {
+                manager.initialize();
+
+                const fileContent = [
+                    'Some text',
+                    '<!-- spark-inline-chat:pending:uuid-123:betty:test message -->',
+                    '',
+                    '',
+                    '<!-- /spark-inline-chat -->',
+                    'More text',
+                ].join('\n');
+
+                let modifiedContent: string | null = null;
+                const mockFile = { path: 'test.md' };
+                const mockVault = {
+                    ...mockApp.vault,
+                    getAbstractFileByPath: () => mockFile,
+                    read: async () => fileContent,
+                    modify: async (file: any, content: string) => {
+                        modifiedContent = content;
+                    },
+                };
+                (mockApp as any).vault = mockVault;
+
+                (manager as any).currentFilePath = 'test.md';
+
+                await manager.cleanup();
+
+                expect(modifiedContent).toBe('Some text\nMore text');
+            });
+
+            it('should clean up markers from all pending chat files', async () => {
+                manager.initialize();
+
+                const cleanedFiles: string[] = [];
+                const mockVault = {
+                    ...mockApp.vault,
+                    getAbstractFileByPath: (path: string) => ({ path }),
+                    read: async (file: any) => {
+                        if (file.path === 'file1.md') {
+                            return '<!-- spark-inline-chat:pending:uuid:betty:msg -->\n\n<!-- /spark-inline-chat -->';
+                        }
+                        if (file.path === 'file2.md') {
+                            return '<!-- spark-inline-1234-start -->\n\n<!-- spark-inline-1234-end -->';
+                        }
+                        return '';
+                    },
+                    modify: async (file: any, content: string) => {
+                        cleanedFiles.push(file.path);
+                    },
+                };
+                (mockApp as any).vault = mockVault;
+
+                // Add pending chats for multiple files
+                (manager as any).pendingChats.set('uuid1', {
+                    uuid: 'uuid1',
+                    filePath: 'file1.md',
+                    agentName: 'betty',
+                    timestamp: Date.now(),
+                });
+                (manager as any).pendingChats.set('uuid2', {
+                    uuid: 'uuid2',
+                    filePath: 'file2.md',
+                    agentName: 'alice',
+                    timestamp: Date.now(),
+                });
+
+                await manager.cleanup();
+
+                expect(cleanedFiles).toContain('file1.md');
+                expect(cleanedFiles).toContain('file2.md');
+            });
+
+            it('should not fail if file does not exist', async () => {
+                manager.initialize();
+
+                const mockVault = {
+                    ...mockApp.vault,
+                    getAbstractFileByPath: () => null,
+                    read: async () => '',
+                    modify: async () => { },
+                };
+                (mockApp as any).vault = mockVault;
+
+                (manager as any).currentFilePath = 'nonexistent.md';
+
+                // Should not throw
+                await expect(manager.cleanup()).resolves.not.toThrow();
+            });
+
+            it('should clear all state after cleanup', async () => {
+                manager.initialize();
+
+                (manager as any).currentFilePath = 'test.md';
+                (manager as any).pendingChats.set('uuid1', {
+                    uuid: 'uuid1',
+                    filePath: 'test.md',
+                    agentName: 'betty',
+                    timestamp: Date.now(),
+                });
+
+                await manager.cleanup();
+
+                expect((manager as any).pendingChats.size).toBe(0);
+                expect((manager as any).editorChangeHandler).toBeNull();
+                expect((manager as any).fileModifyHandler).toBeNull();
+                expect((manager as any).agentMentionCompleteHandler).toBeNull();
+            });
+        });
+
+        describe('cleanupOrphanedMarkers() - Plugin initialization', () => {
+            it('should scan and clean orphaned markers on startup', async () => {
+                const cleanedFiles: string[] = [];
+
+                const mockFiles = [
+                    {
+                        path: 'file1.md',
+                        basename: 'file1',
+                        extension: 'md',
+                    },
+                    {
+                        path: 'file2.md',
+                        basename: 'file2',
+                        extension: 'md',
+                    },
+                ];
+
+                const mockVault = {
+                    ...mockApp.vault,
+                    getMarkdownFiles: () => mockFiles,
+                    getAbstractFileByPath: (path: string) => mockFiles.find(f => f.path === path),
+                    read: async (file: any) => {
+                        if (file.path === 'file1.md') {
+                            return 'Text\n<!-- spark-inline-1234-start -->\n\n<!-- spark-inline-1234-end -->\nMore';
+                        }
+                        if (file.path === 'file2.md') {
+                            return 'Clean file with no markers';
+                        }
+                        return '';
+                    },
+                    modify: async (file: any, content: string) => {
+                        cleanedFiles.push(file.path);
+                    },
+                };
+                (mockApp as any).vault = mockVault;
+
+                await (manager as any).cleanupOrphanedMarkers();
+
+                expect(cleanedFiles).toContain('file1.md');
+                expect(cleanedFiles).not.toContain('file2.md');
+            });
+
+            it('should handle both marker types during orphan cleanup', async () => {
+                const cleanedFiles: string[] = [];
+
+                const mockFiles = [
+                    { path: 'temp-markers.md', basename: 'temp-markers', extension: 'md' },
+                    { path: 'daemon-markers.md', basename: 'daemon-markers', extension: 'md' },
+                ];
+
+                const mockVault = {
+                    ...mockApp.vault,
+                    getMarkdownFiles: () => mockFiles,
+                    getAbstractFileByPath: (path: string) => mockFiles.find(f => f.path === path),
+                    read: async (file: any) => {
+                        if (file.path === 'temp-markers.md') {
+                            return '<!-- spark-inline-abc-start -->\n\n<!-- spark-inline-abc-end -->';
+                        }
+                        if (file.path === 'daemon-markers.md') {
+                            return '<!-- spark-inline-chat:pending:uuid:agent:msg -->\n\n<!-- /spark-inline-chat -->';
+                        }
+                        return '';
+                    },
+                    modify: async (file: any, content: string) => {
+                        cleanedFiles.push(file.path);
+                    },
+                };
+                (mockApp as any).vault = mockVault;
+
+                await (manager as any).cleanupOrphanedMarkers();
+
+                expect(cleanedFiles).toContain('temp-markers.md');
+                expect(cleanedFiles).toContain('daemon-markers.md');
+            });
+
+            it('should not fail if a file cannot be read', async () => {
+                const mockFiles = [
+                    { path: 'good.md', basename: 'good', extension: 'md' },
+                    { path: 'bad.md', basename: 'bad', extension: 'md' },
+                ];
+
+                const mockVault = {
+                    ...mockApp.vault,
+                    getMarkdownFiles: () => mockFiles,
+                    getAbstractFileByPath: (path: string) => mockFiles.find(f => f.path === path),
+                    read: async (file: any) => {
+                        if (file.path === 'bad.md') {
+                            throw new Error('Cannot read file');
+                        }
+                        return 'Clean content';
+                    },
+                    modify: async () => { },
+                };
+                (mockApp as any).vault = mockVault;
+
+                // Should not throw
+                await expect((manager as any).cleanupOrphanedMarkers()).resolves.not.toThrow();
+            });
+        });
+
+        describe('Stale chat timeout cleanup', () => {
+            it('should clean up markers from file', async () => {
+                let modifiedContent: string | null = null;
+                const mockFile = {
+                    path: 'stale.md',
+                    basename: 'stale',
+                    extension: 'md',
+                };
+
+                const fileContent = '<!-- spark-inline-chat:pending:uuid:betty:msg -->\n\n<!-- /spark-inline-chat -->';
+
+                // Set up vault with cleanup support
+                (mockApp as any).vault = {
+                    on: () => { },
+                    off: () => { },
+                    getAbstractFileByPath: (path: string) => (path === 'stale.md' ? mockFile : null),
+                    getMarkdownFiles: () => [],
+                    read: async (file: any) => fileContent,
+                    modify: async (file: any, content: string) => {
+                        modifiedContent = content;
+                    },
+                };
+
+                manager.initialize();
+
+                // Directly call cleanup method to test marker removal
+                await (manager as any).cleanupMarkersFromFile('stale.md');
+
+                expect(modifiedContent).toBe('');
             });
         });
     });
