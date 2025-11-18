@@ -9,7 +9,11 @@ export const DEFAULT_SETTINGS: SparkSettings = {
     enablePalette: true,
     chatHotkey: 'Mod+K',
     vaultPath: '',
-    apiKeys: {}
+    apiKeys: {},
+    chatWindowWidth: 400,
+    chatWindowHeight: 650,
+    chatWindowRight: 0,
+    chatWindowBottom: 30
 };
 
 interface AgentConfig {

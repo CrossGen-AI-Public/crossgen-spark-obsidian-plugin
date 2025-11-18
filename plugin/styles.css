@@ -157,7 +157,10 @@
     right: 20px;
     width: 400px;
     height: 500px;
+    min-width: 300px;
+    min-height: 300px;
     max-height: 90vh;
+    max-width: 90vw;
     background: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 8px;
@@ -166,6 +169,162 @@
     flex-direction: column;
     z-index: 1000;
     font-family: var(--font-interface);
+}
+
+.spark-chat-window.spark-chat-resizing {
+    user-select: none;
+}
+
+.spark-chat-resize-handle {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    z-index: 1001;
+}
+
+.spark-chat-resize-handle::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+
+.spark-chat-resize-handle:hover::after {
+    opacity: 0.7;
+}
+
+/* Bottom-right corner */
+.spark-chat-resize-bottom-right {
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+}
+
+.spark-chat-resize-bottom-right::after {
+    bottom: 2px;
+    right: 2px;
+    background: linear-gradient(135deg,
+            transparent 0%,
+            transparent 46%,
+            var(--background-modifier-border) 46%,
+            var(--background-modifier-border) 54%,
+            transparent 54%,
+            transparent 100%),
+        linear-gradient(135deg,
+            transparent 0%,
+            transparent 31%,
+            var(--background-modifier-border) 31%,
+            var(--background-modifier-border) 39%,
+            transparent 39%,
+            transparent 100%),
+        linear-gradient(135deg,
+            transparent 0%,
+            transparent 61%,
+            var(--background-modifier-border) 61%,
+            var(--background-modifier-border) 69%,
+            transparent 69%,
+            transparent 100%);
+}
+
+/* Bottom-left corner */
+.spark-chat-resize-bottom-left {
+    bottom: 0;
+    left: 0;
+    cursor: nesw-resize;
+}
+
+.spark-chat-resize-bottom-left::after {
+    bottom: 2px;
+    left: 2px;
+    background: linear-gradient(45deg,
+            transparent 0%,
+            transparent 46%,
+            var(--background-modifier-border) 46%,
+            var(--background-modifier-border) 54%,
+            transparent 54%,
+            transparent 100%),
+        linear-gradient(45deg,
+            transparent 0%,
+            transparent 31%,
+            var(--background-modifier-border) 31%,
+            var(--background-modifier-border) 39%,
+            transparent 39%,
+            transparent 100%),
+        linear-gradient(45deg,
+            transparent 0%,
+            transparent 61%,
+            var(--background-modifier-border) 61%,
+            var(--background-modifier-border) 69%,
+            transparent 69%,
+            transparent 100%);
+}
+
+/* Top-right corner */
+.spark-chat-resize-top-right {
+    top: 0;
+    right: 0;
+    cursor: nesw-resize;
+}
+
+.spark-chat-resize-top-right::after {
+    top: 2px;
+    right: 2px;
+    background: linear-gradient(45deg,
+            transparent 0%,
+            transparent 46%,
+            var(--background-modifier-border) 46%,
+            var(--background-modifier-border) 54%,
+            transparent 54%,
+            transparent 100%),
+        linear-gradient(45deg,
+            transparent 0%,
+            transparent 31%,
+            var(--background-modifier-border) 31%,
+            var(--background-modifier-border) 39%,
+            transparent 39%,
+            transparent 100%),
+        linear-gradient(45deg,
+            transparent 0%,
+            transparent 61%,
+            var(--background-modifier-border) 61%,
+            var(--background-modifier-border) 69%,
+            transparent 69%,
+            transparent 100%);
+}
+
+/* Top-left corner */
+.spark-chat-resize-top-left {
+    top: 0;
+    left: 0;
+    cursor: nwse-resize;
+}
+
+.spark-chat-resize-top-left::after {
+    top: 2px;
+    left: 2px;
+    background: linear-gradient(135deg,
+            transparent 0%,
+            transparent 46%,
+            var(--background-modifier-border) 46%,
+            var(--background-modifier-border) 54%,
+            transparent 54%,
+            transparent 100%),
+        linear-gradient(135deg,
+            transparent 0%,
+            transparent 31%,
+            var(--background-modifier-border) 31%,
+            var(--background-modifier-border) 39%,
+            transparent 39%,
+            transparent 100%),
+        linear-gradient(135deg,
+            transparent 0%,
+            transparent 61%,
+            var(--background-modifier-border) 61%,
+            var(--background-modifier-border) 69%,
+            transparent 69%,
+            transparent 100%);
 }
 
 .spark-chat-header {

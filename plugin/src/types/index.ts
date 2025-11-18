@@ -8,6 +8,10 @@ export interface SparkSettings {
 	chatHotkey: string;
 	vaultPath: string;
 	apiKeys?: Record<string, string>; // Provider name -> API key
+	chatWindowWidth?: number; // Chat window width in pixels
+	chatWindowHeight?: number; // Chat window height in pixels
+	chatWindowRight?: number; // Chat window position from right edge in pixels
+	chatWindowBottom?: number; // Chat window position from bottom edge in pixels
 }
 
 export interface ISparkPlugin extends Plugin {

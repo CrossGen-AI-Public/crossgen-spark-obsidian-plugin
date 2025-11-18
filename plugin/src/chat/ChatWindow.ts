@@ -20,6 +20,15 @@ export class ChatWindow extends Component {
 	private chatQueue: ChatQueue;
 	private resultWatcher: ChatResultWatcher;
 	private validAgents: Set<string> = new Set();
+	private resizeHandles: Map<string, HTMLElement> = new Map();
+	private isResizing = false;
+	private resizeStartX = 0;
+	private resizeStartY = 0;
+	private resizeStartWidth = 0;
+	private resizeStartHeight = 0;
+	private resizeStartRight = 0;
+	private resizeStartBottom = 0;
+	private currentResizeCorner: string | null = null;
 	private state: ChatState = {
 		isVisible: false,
 		conversationId: null,
@@ -189,15 +198,160 @@ export class ChatWindow extends Component {
 		inputWrapperEl.appendChild(sendBtn);
 		inputContainerEl.appendChild(inputWrapperEl);
 
+		// Create resize handles for all 4 corners
+		const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+		corners.forEach(corner => {
+			const handle = document.createElement('div');
+			handle.className = `spark-chat-resize-handle spark-chat-resize-${corner}`;
+			handle.setAttribute('aria-label', `Resize from ${corner}`);
+			handle.dataset.corner = corner;
+			this.resizeHandles.set(corner, handle);
+			this.containerEl.appendChild(handle);
+		});
+
 		// Assemble window
 		this.containerEl.appendChild(headerEl);
 		this.containerEl.appendChild(this.messagesEl);
 		this.containerEl.appendChild(inputContainerEl);
 
+		// Setup resize functionality
+		this.setupResize();
+
 		// Add to document
 		document.body.appendChild(this.containerEl);
 		this.register(() => {
 			document.body.removeChild(this.containerEl);
+		});
+	}
+
+	/**
+	 * Setup resize functionality for chat window
+	 */
+	private setupResize() {
+		const handleMouseDown = (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			const corner = target.dataset.corner;
+			if (!corner) return;
+
+			e.preventDefault();
+			this.isResizing = true;
+			this.currentResizeCorner = corner;
+			this.resizeStartX = e.clientX;
+			this.resizeStartY = e.clientY;
+			this.resizeStartWidth = this.containerEl.offsetWidth;
+			this.resizeStartHeight = this.containerEl.offsetHeight;
+
+			// Get current position and convert to right/bottom positioning
+			const rect = this.containerEl.getBoundingClientRect();
+			this.resizeStartRight = window.innerWidth - rect.right;
+			this.resizeStartBottom = window.innerHeight - rect.bottom;
+
+			// Force right/bottom positioning (in case window was dragged using left/top)
+			this.containerEl.style.right = `${this.resizeStartRight}px`;
+			this.containerEl.style.bottom = `${this.resizeStartBottom}px`;
+			this.containerEl.style.left = 'auto';
+			this.containerEl.style.top = 'auto';
+
+			// Add resizing class for visual feedback
+			this.containerEl.classList.add('spark-chat-resizing');
+		};
+
+		const handleMouseMove = (e: MouseEvent) => {
+			if (!this.isResizing || !this.currentResizeCorner) return;
+
+			const deltaX = e.clientX - this.resizeStartX;
+			const deltaY = e.clientY - this.resizeStartY;
+
+			let newWidth = this.resizeStartWidth;
+			let newHeight = this.resizeStartHeight;
+			let newRight = this.resizeStartRight;
+			let newBottom = this.resizeStartBottom;
+
+			// Window is positioned with right/bottom, so:
+			// - Changing width alone moves the LEFT edge
+			// - Changing height alone moves the TOP edge
+			// - To move RIGHT edge, adjust 'right' position
+			// - To move BOTTOM edge, adjust 'bottom' position
+
+			switch (this.currentResizeCorner) {
+				case 'bottom-right':
+					// Bottom-right corner follows cursor, top-left stays fixed
+					newWidth = Math.max(300, this.resizeStartWidth + deltaX);
+					newHeight = Math.max(300, this.resizeStartHeight + deltaY);
+					// Right edge should move with cursor (decrease 'right' value as cursor moves right)
+					newRight = Math.max(0, this.resizeStartRight - deltaX);
+					// Bottom edge should move with cursor (decrease 'bottom' value as cursor moves down)
+					newBottom = Math.max(0, this.resizeStartBottom - deltaY);
+					break;
+
+				case 'bottom-left':
+					// Bottom-left corner follows cursor, top-right stays fixed
+					newWidth = Math.max(300, this.resizeStartWidth - deltaX);
+					newHeight = Math.max(300, this.resizeStartHeight + deltaY);
+					// Left edge moves with cursor naturally by changing width
+					// Right position stays the same (top-right corner fixed)
+					newRight = this.resizeStartRight;
+					// Bottom edge should move with cursor
+					newBottom = Math.max(0, this.resizeStartBottom - deltaY);
+					break;
+
+				case 'top-right':
+					// Top-right corner follows cursor, bottom-left stays fixed
+					newWidth = Math.max(300, this.resizeStartWidth + deltaX);
+					newHeight = Math.max(300, this.resizeStartHeight - deltaY);
+					// Right edge should move with cursor
+					newRight = Math.max(0, this.resizeStartRight - deltaX);
+					// Top edge moves with cursor naturally by changing height
+					// Bottom position stays the same (bottom-left corner fixed)
+					newBottom = this.resizeStartBottom;
+					break;
+
+				case 'top-left':
+					// Top-left corner follows cursor, bottom-right stays fixed
+					newWidth = Math.max(300, this.resizeStartWidth - deltaX);
+					newHeight = Math.max(300, this.resizeStartHeight - deltaY);
+					// Both left and top edges move naturally by changing width/height
+					// Right and bottom positions stay the same (bottom-right corner fixed)
+					newRight = this.resizeStartRight;
+					newBottom = this.resizeStartBottom;
+					break;
+			}
+
+			// Apply new dimensions and position
+			this.containerEl.style.width = `${newWidth}px`;
+			this.containerEl.style.height = `${newHeight}px`;
+			this.containerEl.style.right = `${newRight}px`;
+			this.containerEl.style.bottom = `${newBottom}px`;
+		};
+
+		const handleMouseUp = async () => {
+			if (!this.isResizing) return;
+
+			this.isResizing = false;
+			this.currentResizeCorner = null;
+			this.containerEl.classList.remove('spark-chat-resizing');
+
+			// Save dimensions to settings (position is not saved, always defaults to bottom-right)
+			const width = this.containerEl.offsetWidth;
+			const height = this.containerEl.offsetHeight;
+
+			this.plugin.settings.chatWindowWidth = width;
+			this.plugin.settings.chatWindowHeight = height;
+			await this.plugin.saveSettings();
+		};
+
+		// Attach mousedown to all resize handles
+		this.resizeHandles.forEach(handle => {
+			handle.addEventListener('mousedown', handleMouseDown);
+		});
+
+		document.addEventListener('mousemove', handleMouseMove);
+		document.addEventListener('mouseup', handleMouseUp);
+
+		// Cleanup listeners on unload
+		this.register(() => {
+			document.removeEventListener('mousemove', handleMouseMove);
+			document.removeEventListener('mouseup', handleMouseUp);
 		});
 	}
 
@@ -304,8 +458,24 @@ export class ChatWindow extends Component {
 			if (isDragging) {
 				const deltaX = e.clientX - startX;
 				const deltaY = e.clientY - startY;
-				const newLeft = initialLeft + deltaX;
-				const newTop = initialTop + deltaY;
+				let newLeft = initialLeft + deltaX;
+				let newTop = initialTop + deltaY;
+
+				// Apply boundary constraints to keep window accessible
+				const windowWidth = this.containerEl.offsetWidth;
+				const viewportWidth = window.innerWidth;
+				const viewportHeight = window.innerHeight;
+				const minVisibleWidth = 100; // Minimum pixels visible on horizontal edges
+				const minVisibleTop = 50; // Minimum pixels visible at top (header height)
+
+				// Constrain horizontal position (keep at least minVisibleWidth on screen)
+				const maxLeft = viewportWidth - minVisibleWidth;
+				const minLeft = -(windowWidth - minVisibleWidth);
+				newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+
+				// Constrain vertical position (keep header visible)
+				const maxTop = viewportHeight - minVisibleTop;
+				newTop = Math.max(0, Math.min(newTop, maxTop));
 
 				this.containerEl.style.left = newLeft + 'px';
 				this.containerEl.style.top = newTop + 'px';
@@ -314,15 +484,36 @@ export class ChatWindow extends Component {
 			}
 		});
 
-		document.addEventListener('mouseup', () => {
+		document.addEventListener('mouseup', async () => {
 			if (isDragging) {
 				isDragging = false;
 				headerEl.style.cursor = 'move';
+
+				// Save position to settings
+				// Window is positioned using left/top after dragging, convert to right/bottom
+				const rect = this.containerEl.getBoundingClientRect();
+				const right = window.innerWidth - rect.right;
+				const bottom = window.innerHeight - rect.bottom;
+
+				this.plugin.settings.chatWindowRight = right;
+				this.plugin.settings.chatWindowBottom = bottom;
+				await this.plugin.saveSettings();
 			}
 		});
 	}
 
 	show() {
+		// Apply saved dimensions and position
+		const width = this.plugin.settings.chatWindowWidth || 400;
+		const height = this.plugin.settings.chatWindowHeight || 500;
+		const right = this.plugin.settings.chatWindowRight ?? 20;
+		const bottom = this.plugin.settings.chatWindowBottom ?? 20;
+
+		this.containerEl.style.width = `${width}px`;
+		this.containerEl.style.height = `${height}px`;
+		this.containerEl.style.right = `${right}px`;
+		this.containerEl.style.bottom = `${bottom}px`;
+
 		this.containerEl.style.display = 'flex';
 		this.state.isVisible = true;
 		this.inputEl.focus();
