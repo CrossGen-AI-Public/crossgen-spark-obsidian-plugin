@@ -709,6 +709,21 @@ export class ChatMentionHandler {
 	 * Handle clicks on mentions
 	 */
 	private handleClick(event: MouseEvent): void {
+		const target = event.target as HTMLElement;
+		const tokenElement = target.closest('.spark-token');
+
+		if (!tokenElement) return;
+
+		// Check if clicked element is an agent mention
+		if (tokenElement.getAttribute('data-type') === 'agent') {
+			// Stop propagation to prevent global listener from firing
+			// We want to do NOTHING when clicking an agent mention in the input
+			// (just allow default cursor placement)
+			event.stopPropagation();
+			event.preventDefault();
+			return;
+		}
+
 		// Handle click on decorated mentions
 		this.mentionDecorator.handleMentionClick(event);
 	}

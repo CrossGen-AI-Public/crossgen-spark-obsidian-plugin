@@ -694,17 +694,11 @@ export class ChatWindow extends Component {
 		} else if (message.type === 'agent') {
 			// Render agent responses as markdown
 			void this.renderMarkdown(message.content, contentEl);
-			// Add click handler for mentions in agent responses
-			contentEl.addEventListener('click', (e: MouseEvent) => {
-				this.mentionDecorator.handleMentionClick(e);
-			});
+			// Note: Global listener in main.ts handles clicks
 		} else {
 			// User messages with mention decoration
 			contentEl.innerHTML = this.mentionDecorator.decorateText(message.content);
-			// Add click handler for mentions in user messages
-			contentEl.addEventListener('click', (e: MouseEvent) => {
-				this.mentionDecorator.handleMentionClick(e);
-			});
+			// Note: Global listener in main.ts handles clicks
 		}
 
 		messageEl.appendChild(contentEl);
@@ -746,11 +740,7 @@ export class ChatWindow extends Component {
 		// Fallback to simple markdown-like rendering
 		containerEl.innerHTML = this.simpleMarkdownToHtml(content);
 		// After rendering, decorate mentions in the HTML
-		// Decorate mentions and add click handler
 		this.mentionDecorator.decorateElement(containerEl);
-		containerEl.addEventListener('click', (e: MouseEvent) => {
-			this.mentionDecorator.handleMentionClick(e);
-		});
 	}
 
 	private simpleMarkdownToHtml(markdown: string): string {
