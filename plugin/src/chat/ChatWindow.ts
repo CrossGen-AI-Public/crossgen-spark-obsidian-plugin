@@ -450,7 +450,8 @@ export class ChatWindow extends Component {
 
 		this.containerEl.style.display = 'flex';
 		this.state.isVisible = true;
-		this.mentionInput?.focus();
+		// Position cursor at end (important for inputs with mentions/styled content)
+		this.mentionInput?.focusEnd();
 		// Initialize conversation if needed
 		void this.initializeConversation();
 		// Preload conversations for instant dropdown response
@@ -492,15 +493,15 @@ export class ChatWindow extends Component {
 		// Get current content and trim trailing spaces
 		const currentText = this.mentionInput.getText().trimEnd();
 
-		// Add space before mention if content exists
-		const prefix = currentText.length > 0 ? ' ' : '';
+		// Add space before mention if content exists (use non-breaking space to preserve in HTML)
+		const prefix = currentText.length > 0 ? '\u00A0' : '';
 
-		// Build new content with mention and trailing space
-		const newContent = `${currentText}${prefix}@${agentName} `;
+		// Build new content with mention and trailing non-breaking space (so it's preserved in HTML)
+		const newContent = `${currentText}${prefix}@${agentName}\u00A0`;
 		this.mentionInput.setText(newContent);
 
-		// Focus at end
-		this.mentionInput.focus();
+		// Focus at end with cursor positioned after the mention
+		this.mentionInput.focusEnd();
 	}
 
 	/**
@@ -514,9 +515,12 @@ export class ChatWindow extends Component {
 		// Create NEW conversation (clears everything)
 		this.createNewChat();
 
-		// Pre-fill input with agent mention and trailing space
-		const mention = `@${agentName} `;
+		// Pre-fill input with agent mention and trailing non-breaking space (so it's preserved in HTML)
+		const mention = `@${agentName}\u00A0`;
 		this.mentionInput?.setText(mention);
+
+		// Focus at end with cursor positioned after the mention
+		this.mentionInput?.focusEnd();
 
 		// Update state
 		this.state.lastMentionedAgent = agentName;
@@ -524,11 +528,6 @@ export class ChatWindow extends Component {
 
 		// Update title
 		this.updateChatTitle([agentName]);
-
-		// Focus at end
-		window.setTimeout(() => {
-			this.mentionInput?.focus();
-		}, 50);
 	}
 
 	private async initializeConversation() {

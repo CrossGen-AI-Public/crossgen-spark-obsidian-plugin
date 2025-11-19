@@ -197,6 +197,25 @@ export class MentionInput {
 	}
 
 	/**
+	 * Focus and position cursor at the end
+	 */
+	focusEnd(): void {
+		if (!this.inputEl) return;
+
+		this.inputEl.focus();
+
+		// Position cursor at the end
+		const selection = window.getSelection();
+		if (!selection) return;
+
+		const range = document.createRange();
+		range.selectNodeContents(this.inputEl);
+		range.collapse(false); // false = collapse to end
+		selection.removeAllRanges();
+		selection.addRange(range);
+	}
+
+	/**
 	 * Get the input element
 	 */
 	getElement(): HTMLDivElement | null {

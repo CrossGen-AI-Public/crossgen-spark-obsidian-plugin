@@ -151,7 +151,8 @@ export class ChatMentionHandler {
 		}
 		const prefix = item.type === 'command' ? '/' : '@';
 		const suffix = item.type === 'folder' ? '/' : '';
-		const replacement = `${prefix}${itemName}${suffix} `;
+		// Use non-breaking space (\u00A0) so it's preserved in HTML rendering
+		const replacement = `${prefix}${itemName}${suffix}\u00A0`;
 
 		// Replace text (preserving newlines)
 		const before = text.substring(0, triggerPos);
