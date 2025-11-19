@@ -19,6 +19,10 @@ export class PromptBuilder implements IPromptBuilder {
       '- Reference folders with trailing slash: @folder/',
       '- This ensures proper decoration and clickability in the UI',
       'Examples: @review-q4-finances, @tasks/, @invoices/',
+      '',
+      "Important: Files mentioned with @ in the user's message (like @filename) are automatically loaded",
+      'into the context below. Do NOT use tools to read these files - their contents are already provided',
+      'in the <context priority="high"> section.',
       '</system>',
       ''
     );
