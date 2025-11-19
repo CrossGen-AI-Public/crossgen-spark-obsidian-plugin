@@ -183,7 +183,7 @@ export class ChatWindow extends Component {
 			this.app,
 			this.plugin.mentionDecorator,
 			{
-				placeholder: 'Type your message... (use @ to mention agents/files)',
+				placeholder: 'Type your message...',
 				multiLine: true,
 				enableMentionClick: true, // Enable click-to-open in main chat
 				onSubmit: () => this.sendMessage(),
