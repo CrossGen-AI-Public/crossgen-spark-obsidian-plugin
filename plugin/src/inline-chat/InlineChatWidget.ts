@@ -234,7 +234,7 @@ export class InlineChatWidget {
 			onSubmit: () => this.handleSend(),
 			onEscape: () => this.options.onCancel(),
 			onChange: () => this.updateSendButtonState(),
-			paletteContainer: this.containerEl || undefined,
+			paletteContainer: container,
 		});
 
 		const inputEl = this.mentionInput.create();

@@ -38,6 +38,67 @@
     z-index: 100;
 }
 
+/* Inline chat palette specific styles */
+.spark-palette-inline {
+    position: absolute !important;
+    left: -1px !important;
+    right: -1px !important;
+    width: auto !important;
+    max-height: 200px;
+    min-width: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    margin: 0 !important;
+    /* Restore borders */
+    border-left: 1px solid var(--background-modifier-border);
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+/* Widget styling when palette is open */
+.spark-inline-chat-widget.spark-palette-open-above {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.spark-inline-chat-widget.spark-palette-open-below {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Opening downwards (default) - remove top corners */
+.spark-palette-inline:not(.spark-palette-above) {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-top: none;
+    margin-top: -1px;
+    /* Overlap border */
+}
+
+/* Opening upwards - remove bottom corners */
+.spark-palette-inline.spark-palette-above {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom: none;
+    margin-bottom: -1px;
+    /* Overlap border */
+}
+
+/* Compact items for inline palette */
+.spark-palette-inline .spark-palette-item {
+    padding: 4px 8px;
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+.spark-palette-inline .spark-palette-icon {
+    font-size: 14px;
+    width: 20px;
+}
+
 .spark-palette-item {
     padding: 8px 12px;
     cursor: pointer;

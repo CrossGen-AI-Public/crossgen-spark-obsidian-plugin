@@ -17,6 +17,7 @@ export class PaletteView {
 	private containerEl: HTMLElement | null = null;
 	private selectedIndex: number = 0;
 	private items: PaletteItem[] = [];
+	private activeChatContainer: HTMLElement | null = null;
 
 	constructor(app: App) {
 		this.app = app;
@@ -34,6 +35,7 @@ export class PaletteView {
 		this.hide();
 		this.items = items;
 		this.selectedIndex = 0;
+		this.activeChatContainer = chatContainer || null;
 
 		this.containerEl = this.createContainer(cursorCoords, positionAbove, chatContainer);
 		this.renderItems();
@@ -51,7 +53,33 @@ export class PaletteView {
 		if (chatContainer) {
 			const container = chatContainer.createDiv('spark-palette spark-palette-chat');
 
-			// Calculate input section height dynamically to avoid overlap
+			// Check for inline chat input wrapper first
+			const inlineInputWrapper = chatContainer.querySelector('.spark-inline-chat-input-wrapper');
+			if (inlineInputWrapper) {
+				// Get widget position relative to viewport
+				const rect = chatContainer.getBoundingClientRect();
+				const spaceBelow = window.innerHeight - rect.bottom;
+				const paletteHeight = 300; // Max height
+
+				container.addClass('spark-palette-inline');
+
+				if (spaceBelow >= paletteHeight) {
+					// Enough space below - open downwards
+					container.style.top = '100%';
+					container.style.bottom = 'auto';
+					chatContainer.addClass('spark-palette-open-below');
+				} else {
+					// Not enough space below - open upwards
+					container.style.bottom = '100%';
+					container.style.top = 'auto';
+					container.addClass('spark-palette-above');
+					chatContainer.addClass('spark-palette-open-above');
+				}
+
+				return container;
+			}
+
+			// Calculate input section height dynamically to avoid overlap (Main Chat)
 			const inputContainer = chatContainer.querySelector('.spark-chat-input-container');
 			if (inputContainer) {
 				const inputHeight = (inputContainer as HTMLElement).offsetHeight;
@@ -240,6 +268,12 @@ export class PaletteView {
 		this.containerEl = null;
 		this.items = [];
 		this.selectedIndex = 0;
+
+		if (this.activeChatContainer) {
+			this.activeChatContainer.removeClass('spark-palette-open-above');
+			this.activeChatContainer.removeClass('spark-palette-open-below');
+			this.activeChatContainer = null;
+		}
 	}
 
 	/**
