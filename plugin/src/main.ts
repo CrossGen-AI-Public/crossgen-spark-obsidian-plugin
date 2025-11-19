@@ -33,7 +33,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
         this.chatManager.initialize();
 
         // Initialize inline chat manager
-        this.inlineChatManager = new InlineChatManager(this.app);
+        this.inlineChatManager = new InlineChatManager(this.app, this.mentionDecorator);
         this.inlineChatManager.initialize();
 
         // Register chat hotkey (Cmd+K)

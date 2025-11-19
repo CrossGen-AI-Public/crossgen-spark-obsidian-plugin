@@ -1,23 +1,31 @@
 // Mock CodeMirror for testing
 
 export const EditorView = {
-	theme: jest.fn(),
-	decorations: jest.fn(),
+	theme: () => { },
+	decorations: () => { },
 };
 
 export const EditorState = {
-	create: jest.fn(),
+	create: () => { },
 };
 
 export const StateField = {
-	define: jest.fn(),
+	define: () => { },
 };
 
 export const Decoration = {
-	mark: jest.fn(),
-	widget: jest.fn(),
+	mark: () => { },
+	widget: () => { },
 };
 
 export const ViewPlugin = {
-	define: jest.fn(),
+	define: () => { },
+	fromClass: () => { },
 };
+
+export class RangeSetBuilder {
+	add() { }
+	finish() {
+		return () => { };
+	}
+}

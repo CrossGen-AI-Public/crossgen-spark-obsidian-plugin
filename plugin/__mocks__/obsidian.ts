@@ -31,6 +31,14 @@ export class Modal {
 	onClose(): void { }
 }
 
+export abstract class SuggestModal<T> extends Modal {
+	getSuggestions(_query: string): T[] | Promise<T[]> {
+		return [];
+	}
+	renderSuggestion(_value: T, _el: HTMLElement): void { }
+	onChooseSuggestion(_item: T, _evt: MouseEvent | KeyboardEvent): void { }
+}
+
 // Notice class - uses globalThis mock if available (for testing)
 export class Notice {
 	constructor(message: string, timeout?: number) {

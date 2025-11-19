@@ -1,5 +1,6 @@
 import { InlineChatManager } from '../../src/inline-chat/InlineChatManager';
 import type { App, Editor } from 'obsidian';
+import type { MentionDecorator } from '../../src/command-palette/MentionDecorator';
 
 // Mock window.crypto.randomUUID
 const mockUUID = '123e4567-e89b-12d3-a456-426614174000';
@@ -24,6 +25,7 @@ describe('InlineChatManager', () => {
     let mockApp: App;
     let mockEditor: Editor;
     let mockWorkspace: any;
+    let mockMentionDecorator: MentionDecorator;
 
     beforeEach(() => {
         // Create mock workspace
@@ -55,6 +57,12 @@ describe('InlineChatManager', () => {
             vault: mockVault,
         } as any;
 
+        // Create mock mention decorator
+        mockMentionDecorator = {
+            initialize: async () => { },
+            refresh: async () => { },
+        } as any;
+
         // Create mock editor
         mockEditor = createMockEditor();
 
@@ -62,7 +70,7 @@ describe('InlineChatManager', () => {
         mockNoticeConstructor.length = 0;
 
         // Create manager
-        manager = new InlineChatManager(mockApp);
+        manager = new InlineChatManager(mockApp, mockMentionDecorator);
     });
 
     afterEach(() => {

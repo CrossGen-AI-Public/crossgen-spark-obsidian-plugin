@@ -515,6 +515,29 @@
     border-color: var(--interactive-accent);
 }
 
+/* Shared mention input styling (used in both chat and inline chat) */
+.spark-mention-input {
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-y: auto;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    user-select: text;
+}
+
+/* Placeholder for mention input */
+.spark-mention-input[data-empty="true"]::before {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Focus state for mention input */
+.spark-mention-input:focus {
+    outline: none;
+}
+
 .spark-chat-loading-dots {
     display: inline-block;
     min-width: 50px;
@@ -921,12 +944,13 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     gap: 10px;
 }
 
-/* Input wrapper for textarea */
+/* Input wrapper */
 .spark-inline-chat-input-wrapper {
     display: block;
 }
 
-.spark-inline-chat-textarea {
+/* Inline chat input (contenteditable with mention support) */
+.spark-inline-chat-input {
     width: 100%;
     min-height: 40px;
     max-height: 200px;
@@ -937,19 +961,15 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     color: var(--text-normal);
     font-family: inherit;
     font-size: 14px;
-    line-height: 1.5;
-    resize: none;
+    line-height: 1.4;
+    overflow-y: auto;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.spark-inline-chat-textarea:focus {
+.spark-inline-chat-input:focus {
     outline: none;
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
-}
-
-.spark-inline-chat-textarea::placeholder {
-    color: var(--text-faint);
 }
 
 /* Send button at bottom right corner of widget */

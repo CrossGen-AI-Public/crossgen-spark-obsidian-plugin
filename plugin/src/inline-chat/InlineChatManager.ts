@@ -8,6 +8,7 @@ import { Notice } from 'obsidian';
 import { InlineChatDetector } from './InlineChatDetector';
 import { InlineChatWidget } from './InlineChatWidget';
 import type { DetectedAgentMention } from './types';
+import type { MentionDecorator } from '../command-palette/MentionDecorator';
 
 interface PendingChat {
 	uuid: string;
@@ -18,6 +19,7 @@ interface PendingChat {
 
 export class InlineChatManager {
 	private app: App;
+	private mentionDecorator: MentionDecorator;
 	private detector: InlineChatDetector;
 	private activeWidget: InlineChatWidget | null = null;
 	private currentMention: DetectedAgentMention | null = null;
@@ -33,8 +35,9 @@ export class InlineChatManager {
 	private agentMentionCompleteHandler: EventListener | null = null;
 	private currentFilePath: string = ''; // Track current file with active markers
 
-	constructor(app: App) {
+	constructor(app: App, mentionDecorator: MentionDecorator) {
 		this.app = app;
+		this.mentionDecorator = mentionDecorator;
 		this.detector = new InlineChatDetector();
 	}
 
@@ -246,6 +249,7 @@ export class InlineChatManager {
 				top: position.top,
 				left: position.left,
 				parentElement: position.parentElement,
+				mentionDecorator: this.mentionDecorator,
 			});
 
 			this.activeWidget.show();

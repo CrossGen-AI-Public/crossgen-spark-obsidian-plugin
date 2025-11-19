@@ -2,7 +2,7 @@ import { App, Component } from 'obsidian';
 import { ChatMessage, ChatState } from './types';
 import SparkPlugin from '../main';
 import { ConversationStorage } from './ConversationStorage';
-import { ChatMentionHandler } from './ChatMentionHandler';
+import { MentionInput } from './MentionInput';
 import { ChatSelector } from './ChatSelector';
 import { ChatQueue } from './ChatQueue';
 import { ChatResultWatcher, ChatResult } from './ChatResultWatcher';
@@ -12,10 +12,10 @@ export class ChatWindow extends Component {
 	private plugin: SparkPlugin;
 	private containerEl: HTMLElement;
 	private messagesEl: HTMLElement;
-	private inputEl: HTMLDivElement;
+	private inputEl: HTMLDivElement | null = null;
 	private titleEl: HTMLElement;
 	private conversationStorage: ConversationStorage;
-	private mentionHandler: ChatMentionHandler;
+	private mentionInput: MentionInput | null = null;
 	private chatSelector: ChatSelector;
 	private chatQueue: ChatQueue;
 	private resultWatcher: ChatResultWatcher;
@@ -43,7 +43,6 @@ export class ChatWindow extends Component {
 		this.app = app;
 		this.plugin = plugin;
 		this.conversationStorage = conversationStorage;
-		this.mentionHandler = new ChatMentionHandler(app, plugin.mentionDecorator, plugin);
 		this.chatQueue = new ChatQueue(app);
 		this.resultWatcher = new ChatResultWatcher(app);
 		this.chatSelector = new ChatSelector(
@@ -55,7 +54,6 @@ export class ChatWindow extends Component {
 	}
 
 	async onload() {
-		await this.mentionHandler.initialize();
 		await this.loadValidAgents();
 		this.createChatWindow();
 		this.setupEventListeners();
@@ -117,6 +115,7 @@ export class ChatWindow extends Component {
 
 	onunload() {
 		this.resultWatcher.stop();
+		this.mentionInput?.destroy();
 	}
 
 	private setupResultWatcher() {
@@ -179,14 +178,23 @@ export class ChatWindow extends Component {
 		const inputWrapperEl = document.createElement('div');
 		inputWrapperEl.className = 'spark-chat-input-wrapper';
 
-		this.inputEl = document.createElement('div');
-		this.inputEl.className = 'spark-chat-input';
-		this.inputEl.contentEditable = 'true';
-		this.inputEl.setAttribute(
-			'data-placeholder',
-			'Type your message... (use @ to mention agents/files)'
+		// Create mention input with full capabilities
+		this.mentionInput = new MentionInput(
+			this.app,
+			this.plugin.mentionDecorator,
+			{
+				placeholder: 'Type your message... (use @ to mention agents/files)',
+				multiLine: true,
+				enableMentionClick: true, // Enable click-to-open in main chat
+				onSubmit: () => this.sendMessage(),
+				onChange: () => this.adjustInputHeight(),
+				paletteContainer: this.containerEl,
+			},
+			this.plugin
 		);
-		this.inputEl.setAttribute('data-empty', 'true'); // Initially empty
+
+		this.inputEl = this.mentionInput.create();
+		this.inputEl.className = 'spark-chat-input';
 
 		const sendBtn = document.createElement('button');
 		sendBtn.className = 'spark-chat-send-btn';
@@ -356,82 +364,8 @@ export class ChatWindow extends Component {
 	}
 
 	private setupEventListeners() {
-		// Attach mention handler to input with chat container reference
-		this.mentionHandler.attachToInput(this.inputEl, this.containerEl);
-
-		// Handle input changes for auto-height and placeholder
-		this.inputEl.addEventListener('input', () => {
-			// Check if input is truly empty (filter out zero-width spaces, BRs)
-			const text = this.inputEl.textContent?.replace(/\u200B/g, '').trim() || '';
-			const isEmpty = text.length === 0;
-
-			// If empty, clear the input completely for proper placeholder display
-			// This removes leftover BR elements, zero-width spaces, or empty text nodes
-			if (isEmpty && this.inputEl.innerHTML !== '') {
-				this.inputEl.innerHTML = '';
-			}
-
-			this.inputEl.setAttribute('data-empty', isEmpty ? 'true' : 'false');
-
-			// Adjust height
-			this.adjustInputHeight();
-		});
-
-		// Handle keyboard shortcuts
-		this.inputEl.addEventListener('keydown', e => {
-			// Let mention handler deal with palette first
-			if (e.defaultPrevented) return;
-
-			if (e.key === 'Enter') {
-				if (e.shiftKey) {
-					// Shift+Enter adds new line
-					e.preventDefault();
-					const selection = window.getSelection();
-					if (selection && selection.rangeCount > 0) {
-						const range = selection.getRangeAt(0);
-						range.deleteContents();
-
-						// Insert <br>
-						const br = document.createElement('br');
-						range.insertNode(br);
-
-						// Insert zero-width space after BR to anchor cursor
-						const zwsp = document.createTextNode('\u200B');
-						if (br.nextSibling) {
-							br.parentNode?.insertBefore(zwsp, br.nextSibling);
-						} else {
-							br.parentNode?.appendChild(zwsp);
-						}
-
-						// Position cursor at START of zero-width space (offset 0)
-						// This allows typing to appear at correct position
-						// When deleting, user deletes content first, then BR (zwsp is filtered in calculations)
-						const newRange = document.createRange();
-						newRange.setStart(zwsp, 0);
-						newRange.setEnd(zwsp, 0);
-						selection.removeAllRanges();
-						selection.addRange(newRange);
-
-						// Manually adjust height instead of triggering input event
-						// (to avoid mention handler reprocessing and losing cursor position)
-						this.adjustInputHeight();
-					}
-				} else {
-					// Enter sends message
-					e.preventDefault();
-					this.sendMessage();
-				}
-			}
-		});
-
-		// Handle paste to strip formatting
-		this.inputEl.addEventListener('paste', e => {
-			e.preventDefault();
-			const text = e.clipboardData?.getData('text/plain') || '';
-			document.execCommand('insertText', false, text);
-		});
-
-		// Make window draggable
+		// MentionInput already handles all input events
+		// Just make window draggable
 		this.makeDraggable();
 	}
 
@@ -516,7 +450,7 @@ export class ChatWindow extends Component {
 
 		this.containerEl.style.display = 'flex';
 		this.state.isVisible = true;
-		this.inputEl.focus();
+		this.mentionInput?.focus();
 		// Initialize conversation if needed
 		void this.initializeConversation();
 		// Preload conversations for instant dropdown response
@@ -553,36 +487,20 @@ export class ChatWindow extends Component {
 	 * Insert agent mention into current chat input
 	 */
 	private insertAgentMention(agentName: string): void {
-		// Get current content and trim trailing spaces to avoid double spaces
-		const currentText = (this.inputEl.textContent || '').trimEnd();
+		if (!this.mentionInput) return;
 
-		// Add space before mention only if content exists (since we trimmed, it won't end with space)
+		// Get current content and trim trailing spaces
+		const currentText = this.mentionInput.getText().trimEnd();
+
+		// Add space before mention if content exists
 		const prefix = currentText.length > 0 ? ' ' : '';
 
-		// Build new content with mention (no trailing space yet - will add after decoration)
-		const newContent = `${currentText}${prefix}@${agentName}`;
-		this.inputEl.textContent = newContent;
+		// Build new content with mention and trailing space
+		const newContent = `${currentText}${prefix}@${agentName} `;
+		this.mentionInput.setText(newContent);
 
-		// Remove placeholder state
-		this.inputEl.setAttribute('data-empty', 'false');
-
-		// Focus input first (before processContent, so focus event's processContent runs first)
-		this.inputEl.focus();
-
-		// Process content to apply mention decoration
-		this.mentionHandler.processContent();
-
-		// Now append a space AFTER decoration (as a non-breaking space to ensure it's visible)
-		const spaceText = document.createTextNode('\u00A0'); // Non-breaking space
-		this.inputEl.appendChild(spaceText);
-
-		// Set cursor after the space
-		const range = document.createRange();
-		const selection = window.getSelection();
-		range.setStartAfter(spaceText);
-		range.collapse(true);
-		selection?.removeAllRanges();
-		selection?.addRange(range);
+		// Focus at end
+		this.mentionInput.focus();
 	}
 
 	/**
@@ -596,13 +514,9 @@ export class ChatWindow extends Component {
 		// Create NEW conversation (clears everything)
 		this.createNewChat();
 
-		// Pre-fill input with agent mention (no trailing space yet - will add after decoration)
-		const mention = `@${agentName}`;
-		this.inputEl.innerHTML = ''; // Clear any existing content
-		this.inputEl.textContent = mention;
-
-		// Remove placeholder state
-		this.inputEl.setAttribute('data-empty', 'false');
+		// Pre-fill input with agent mention and trailing space
+		const mention = `@${agentName} `;
+		this.mentionInput?.setText(mention);
 
 		// Update state
 		this.state.lastMentionedAgent = agentName;
@@ -611,28 +525,10 @@ export class ChatWindow extends Component {
 		// Update title
 		this.updateChatTitle([agentName]);
 
-		// Process content to apply mention decoration
-		this.mentionHandler.processContent();
-
-		// Now append a space AFTER decoration (as a non-breaking space to ensure it's visible)
-		const spaceText = document.createTextNode('\u00A0'); // Non-breaking space
-		this.inputEl.appendChild(spaceText);
-
-		// Wait for next tick to ensure DOM is ready, then focus and position cursor
+		// Focus at end
 		window.setTimeout(() => {
-			this.inputEl.focus();
-
-			// Position cursor at the very end of the input (after all content)
-			const range = document.createRange();
-			const selection = window.getSelection();
-
-			// Select the entire content and collapse to end
-			range.selectNodeContents(this.inputEl);
-			range.collapse(false); // false = collapse to end
-
-			selection?.removeAllRanges();
-			selection?.addRange(range);
-		}, 50); // 50ms to ensure everything is settled
+			this.mentionInput?.focus();
+		}, 50);
 	}
 
 	private async initializeConversation() {
@@ -760,16 +656,17 @@ export class ChatWindow extends Component {
 	}
 
 	private getInputText(): string {
-		return this.inputEl.textContent || '';
+		return this.mentionInput?.getText() || '';
 	}
 
 	private clearInput(): void {
-		this.inputEl.innerHTML = '';
-		this.inputEl.setAttribute('data-empty', 'true');
+		this.mentionInput?.clear();
 		this.adjustInputHeight();
 	}
 
 	private adjustInputHeight(): void {
+		if (!this.inputEl) return;
+
 		// Reset height to auto to recalculate
 		this.inputEl.style.height = 'auto';
 
@@ -1256,6 +1153,9 @@ export class ChatWindow extends Component {
 	async refreshCurrentChat(): Promise<void> {
 		// Always reload valid agents list (needed for mention decoration)
 		await this.loadValidAgents();
+
+		// Refresh mention input to pick up new agents
+		await this.mentionInput?.refresh();
 
 		// If chat is visible and has a conversation, reload and re-render it
 		if (this.state.isVisible && this.state.conversationId) {

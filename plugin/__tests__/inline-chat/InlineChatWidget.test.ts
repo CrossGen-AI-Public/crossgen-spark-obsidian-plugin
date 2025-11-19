@@ -1,12 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { InlineChatWidget } from '../../src/inline-chat/InlineChatWidget';
 import type { App } from 'obsidian';
+import type { MentionDecorator } from '../../src/command-palette/MentionDecorator';
 
 // Mock App with necessary methods
 const createMockApp = (): App => {
     return {
         // Add any necessary app methods here
-    } as App;
+        vault: {
+            getMarkdownFiles: () => [],
+        },
+    } as any;
+};
+
+// Mock MentionDecorator
+const createMockMentionDecorator = (): MentionDecorator => {
+    return {
+        initialize: async () => { },
+        refresh: async () => { },
+    } as any;
 };
 
 // Mock DOM element
@@ -20,6 +32,7 @@ const createMockElement = (): HTMLElement => {
 
 describe('InlineChatWidget', () => {
     let mockApp: App;
+    let mockMentionDecorator: MentionDecorator;
     let parentElement: HTMLElement;
 
     beforeEach(() => {
@@ -76,6 +89,7 @@ describe('InlineChatWidget', () => {
         };
 
         mockApp = createMockApp();
+        mockMentionDecorator = createMockMentionDecorator();
         parentElement = createMockElement();
         document.body.appendChild(parentElement);
     });
@@ -97,6 +111,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -112,6 +127,7 @@ describe('InlineChatWidget', () => {
 
         it('should position widget correctly', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'bob',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -128,8 +144,9 @@ describe('InlineChatWidget', () => {
             expect(container?.style.left).toBe('100px');
         });
 
-        it('should create textarea for input', () => {
+        it('should create mention input for input', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -140,12 +157,13 @@ describe('InlineChatWidget', () => {
 
             widget.show();
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea');
-            expect(textarea).not.toBeNull();
+            const mentionInput = parentElement.querySelector('.spark-mention-input');
+            expect(mentionInput).not.toBeNull();
         });
 
         it('should create send button', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -164,6 +182,7 @@ describe('InlineChatWidget', () => {
 
         it('should create close button', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -187,6 +206,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -197,12 +217,12 @@ describe('InlineChatWidget', () => {
 
             widget.show();
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea') as HTMLTextAreaElement;
+            const mentionInput = parentElement.querySelector('.spark-mention-input') as HTMLDivElement;
             const sendButton = parentElement.querySelector('.spark-inline-chat-send-btn') as HTMLButtonElement;
 
-            textarea.value = 'test message';
+            mentionInput.textContent = 'test message';
             // Trigger input event to enable button
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            mentionInput.dispatchEvent(new Event('input', { bubbles: true }));
             sendButton.click();
 
             expect(onSend).toHaveBeenCalledWith('test message');
@@ -213,6 +233,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -234,6 +255,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -255,6 +277,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -265,11 +288,11 @@ describe('InlineChatWidget', () => {
 
             widget.show();
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea') as HTMLTextAreaElement;
-            textarea.value = 'test message';
+            const mentionInput = parentElement.querySelector('.spark-mention-input') as HTMLDivElement;
+            mentionInput.textContent = 'test message';
 
             const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
-            textarea.dispatchEvent(enterEvent);
+            mentionInput.dispatchEvent(enterEvent);
 
             expect(onSend).toHaveBeenCalledWith('test message');
         });
@@ -279,6 +302,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -289,11 +313,11 @@ describe('InlineChatWidget', () => {
 
             widget.show();
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea') as HTMLTextAreaElement;
-            textarea.value = 'test message';
+            const mentionInput = parentElement.querySelector('.spark-mention-input') as HTMLDivElement;
+            mentionInput.textContent = 'test message';
 
             const shiftEnterEvent = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true });
-            textarea.dispatchEvent(shiftEnterEvent);
+            mentionInput.dispatchEvent(shiftEnterEvent);
 
             expect(onSend).not.toHaveBeenCalled();
         });
@@ -303,6 +327,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -313,10 +338,10 @@ describe('InlineChatWidget', () => {
 
             widget.show();
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea') as HTMLTextAreaElement;
+            const mentionInput = parentElement.querySelector('.spark-mention-input') as HTMLDivElement;
 
             const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
-            textarea.dispatchEvent(escapeEvent);
+            mentionInput.dispatchEvent(escapeEvent);
 
             expect(onCancel).toHaveBeenCalled();
         });
@@ -326,6 +351,7 @@ describe('InlineChatWidget', () => {
             const onCancel = jest.fn();
 
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend,
                 onCancel,
@@ -336,11 +362,11 @@ describe('InlineChatWidget', () => {
 
             widget.show();
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea') as HTMLTextAreaElement;
+            const mentionInput = parentElement.querySelector('.spark-mention-input') as HTMLDivElement;
             const sendButton = parentElement.querySelector('.spark-inline-chat-send-btn') as HTMLButtonElement;
 
-            textarea.value = '   '; // Only whitespace
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            mentionInput.textContent = '   '; // Only whitespace
+            mentionInput.dispatchEvent(new Event('input', { bubbles: true }));
             sendButton.click();
 
             expect(onSend).not.toHaveBeenCalled();
@@ -352,6 +378,7 @@ describe('InlineChatWidget', () => {
     describe('Processing State', () => {
         it('should transform to processing state', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -374,6 +401,7 @@ describe('InlineChatWidget', () => {
 
         it('should show status messages in processing state', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -389,8 +417,9 @@ describe('InlineChatWidget', () => {
             expect(statusMessage?.textContent).toBeTruthy();
         });
 
-        it('should not show textarea in processing state', () => {
+        it('should not show mention input in processing state', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -402,14 +431,15 @@ describe('InlineChatWidget', () => {
             widget.show();
             widget.transformToProcessing('test message');
 
-            const textarea = parentElement.querySelector('.spark-inline-chat-textarea');
-            expect(textarea).toBeNull();
+            const mentionInput = parentElement.querySelector('.spark-mention-input');
+            expect(mentionInput).toBeNull();
         });
     });
 
     describe('Widget Visibility', () => {
         it('should be visible after show()', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -425,6 +455,7 @@ describe('InlineChatWidget', () => {
 
         it('should not be visible after hide()', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -441,6 +472,7 @@ describe('InlineChatWidget', () => {
 
         it('should remove DOM elements on hide()', () => {
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -458,8 +490,11 @@ describe('InlineChatWidget', () => {
     });
 
     describe('Focus Management', () => {
-        it('should focus textarea on show', (done) => {
+        it('should focus mention input on show', (done) => {
+            const focusSpy = jest.spyOn(HTMLDivElement.prototype, 'focus');
+
             const widget = new InlineChatWidget(mockApp, {
+                mentionDecorator: mockMentionDecorator,
                 agentName: 'alice',
                 onSend: jest.fn(),
                 onCancel: jest.fn(),
@@ -472,8 +507,9 @@ describe('InlineChatWidget', () => {
 
             // Focus happens in setTimeout
             setTimeout(() => {
-                const textarea = parentElement.querySelector('.spark-inline-chat-textarea') as HTMLTextAreaElement;
-                expect(document.activeElement).toBe(textarea);
+                // In jsdom, contenteditable focus doesn't fully work, so we just verify focus() was called
+                expect(focusSpy).toHaveBeenCalled();
+                focusSpy.mockRestore();
                 done();
             }, 100);
         });

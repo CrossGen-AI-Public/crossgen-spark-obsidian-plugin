@@ -4,6 +4,8 @@
 
 import type { App } from 'obsidian';
 import type { WidgetMode } from './types';
+import { MentionInput } from '../chat/MentionInput';
+import type { MentionDecorator } from '../command-palette/MentionDecorator';
 
 export interface InlineChatWidgetOptions {
 	/** Agent name to display */
@@ -20,6 +22,8 @@ export interface InlineChatWidgetOptions {
 	left: number;
 	/** Parent element to attach widget to (for proper scrolling) */
 	parentElement?: HTMLElement;
+	/** Mention decorator for mention handling */
+	mentionDecorator: MentionDecorator;
 }
 
 /**
@@ -41,7 +45,7 @@ const STATUS_MESSAGES = [
 export class InlineChatWidget {
 	private app: App;
 	private containerEl: HTMLElement | null = null;
-	private textareaEl: HTMLTextAreaElement | null = null;
+	private mentionInput: MentionInput | null = null;
 	private sendButtonEl: HTMLButtonElement | null = null;
 	private options: InlineChatWidgetOptions;
 	private mode: WidgetMode = 'input';
@@ -112,17 +116,13 @@ export class InlineChatWidget {
 		parent.appendChild(this.containerEl);
 
 		// Set initial message if provided
-		if (this.textareaEl && this.options.initialMessage) {
-			this.textareaEl.value = this.options.initialMessage;
-			// Move cursor to end
-			this.textareaEl.selectionStart = this.textareaEl.value.length;
-			this.textareaEl.selectionEnd = this.textareaEl.value.length;
+		if (this.mentionInput && this.options.initialMessage) {
+			this.mentionInput.setText(this.options.initialMessage);
 		}
 
-		// Focus textarea after a brief delay to ensure DOM is ready
+		// Focus input after a brief delay to ensure DOM is ready
 		window.setTimeout(() => {
-			this.textareaEl?.focus();
-			this.autoResizeTextarea();
+			this.mentionInput?.focus();
 		}, 10);
 	}
 
@@ -131,10 +131,13 @@ export class InlineChatWidget {
 	 */
 	hide(): void {
 		this.stopStatusRotation();
+		if (this.mentionInput) {
+			this.mentionInput.destroy();
+			this.mentionInput = null;
+		}
 		if (this.containerEl) {
 			this.containerEl.remove();
 			this.containerEl = null;
-			this.textareaEl = null;
 			this.sendButtonEl = null;
 			this.statusMessageEl = null;
 		}
@@ -205,7 +208,7 @@ export class InlineChatWidget {
 		container.style.top = `${this.options.top}px`;
 		container.style.left = `${this.options.left}px`;
 
-		// Main content area with textarea and buttons in one container
+		// Main content area with input and buttons in one container
 		const mainContent = container.createDiv('spark-inline-chat-content');
 
 		// Close button at top right
@@ -223,41 +226,27 @@ export class InlineChatWidget {
 			this.options.onCancel();
 		});
 
-		// Textarea with agent mention pre-populated
-		this.textareaEl = document.createElement('textarea');
-		this.textareaEl.addClass('spark-inline-chat-textarea');
-		this.textareaEl.setAttribute('placeholder', `Ask @${this.options.agentName}...`);
-		this.textareaEl.setAttribute('rows', '1');
-
-		// Handle Enter key (Enter to send, Shift+Enter for newline)
-		this.textareaEl.addEventListener('keydown', (e: KeyboardEvent) => {
-			if (e.key === 'Enter' && !e.shiftKey) {
-				e.preventDefault();
-				e.stopPropagation();
-				console.log('[InlineChatWidget] Enter pressed, sending...');
-				this.handleSend();
-			} else if (e.key === 'Escape') {
-				e.preventDefault();
-				e.stopPropagation();
-				console.log('[InlineChatWidget] Escape pressed, cancelling...');
-				this.options.onCancel();
-			}
-			// Shift+Enter is allowed through for newlines (default textarea behavior)
+		// Create mention input (contenteditable with full mention support)
+		this.mentionInput = new MentionInput(this.app, this.options.mentionDecorator, {
+			placeholder: `Ask @${this.options.agentName}...`,
+			multiLine: true,
+			enableMentionClick: false, // Disable click-to-open in inline chat
+			onSubmit: () => this.handleSend(),
+			onEscape: () => this.options.onCancel(),
+			onChange: () => this.updateSendButtonState(),
+			paletteContainer: this.containerEl || undefined,
 		});
 
-		// Auto-resize textarea as user types
-		this.textareaEl.addEventListener('input', () => {
-			this.autoResizeTextarea();
-			this.updateSendButtonState();
-		});
+		const inputEl = this.mentionInput.create();
+		inputEl.addClass('spark-inline-chat-input');
 
-		// Input wrapper with textarea only
+		// Input wrapper
 		const inputWrapper = mainContent.createDiv('spark-inline-chat-input-wrapper');
-		inputWrapper.appendChild(this.textareaEl);
+		inputWrapper.appendChild(inputEl);
 
 		// Helper text below input
 		const helperText = mainContent.createDiv('spark-inline-chat-helper');
-		helperText.setText('↵ to send, ⇧↵ for newline, Esc to cancel');
+		helperText.setText('↵ to send, ⇧↵ for newline, Esc to cancel, @ for mentions');
 
 		// Send button at bottom right corner of widget
 		this.sendButtonEl = mainContent.createEl('button', {
@@ -297,12 +286,12 @@ export class InlineChatWidget {
 	 */
 	private handleSend(): void {
 		console.log('[InlineChatWidget] handleSend called');
-		if (!this.textareaEl) {
-			console.log('[InlineChatWidget] No textarea element');
+		if (!this.mentionInput) {
+			console.log('[InlineChatWidget] No mention input');
 			return;
 		}
 
-		const message = this.textareaEl.value.trim();
+		const message = this.mentionInput.getText().trim();
 		console.log('[InlineChatWidget] Message:', message);
 
 		if (message.length === 0) {
@@ -315,28 +304,14 @@ export class InlineChatWidget {
 	}
 
 	/**
-	 * Auto-resize textarea based on content
-	 */
-	private autoResizeTextarea(): void {
-		if (!this.textareaEl) return;
-
-		// Reset height to recalculate
-		this.textareaEl.style.height = 'auto';
-
-		// Set to scroll height (content height)
-		const newHeight = Math.min(this.textareaEl.scrollHeight, 200); // Max 200px
-		this.textareaEl.style.height = `${newHeight}px`;
-	}
-
-	/**
 	 * Update send button disabled state based on input
 	 */
 	private updateSendButtonState(): void {
-		if (!this.sendButtonEl || !this.textareaEl) {
+		if (!this.sendButtonEl || !this.mentionInput) {
 			return;
 		}
 
-		const isEmpty = this.textareaEl.value.trim().length === 0;
+		const isEmpty = this.mentionInput.getText().trim().length === 0;
 		this.sendButtonEl.disabled = isEmpty;
 	}
 
