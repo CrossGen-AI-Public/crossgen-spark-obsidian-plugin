@@ -82,9 +82,15 @@ export class ResultWriter {
 			linesNeeded,
 		});
 
+		// Check if there's content after the end marker
+		const hasContentAfter =
+			endLine + 1 < lineCount && editor.getLine(endLine + 1).trim().length > 0;
+
 		// Replace all lines between start and end (inclusive) with final format
+		// Add extra newline if there's content after to ensure separation
+		const trailingNewlines = hasContentAfter ? '\n\n' : '\n';
 		editor.replaceRange(
-			finalContent + '\n',
+			finalContent + trailingNewlines,
 			{ line: startLine, ch: 0 },
 			{ line: endLine + 1, ch: 0 }
 		);

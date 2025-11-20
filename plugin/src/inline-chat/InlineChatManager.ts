@@ -37,6 +37,7 @@ export class InlineChatManager {
 	private fileModifyHandler: ((file: TFile) => void) | null = null;
 	private agentMentionCompleteHandler: EventListener | null = null;
 	private currentFilePath: string = ''; // Track current file with active markers
+	private isAdjustingContent: boolean = false; // Track when we're programmatically modifying content
 
 	private constructor(app: App, mentionDecorator: MentionDecorator) {
 		this.app = app;
@@ -90,6 +91,11 @@ export class InlineChatManager {
 	 * Call this from plugin's EditorChange event
 	 */
 	handleEditorChange(editor: Editor): void {
+		// Ignore changes we're making ourselves (adjusting blank lines, inserting markers, etc.)
+		if (this.isAdjustingContent) {
+			return;
+		}
+
 		// Check if widget should be hidden (no mention and no pending chats)
 		const mention = this.detector.detectAgentMention(editor);
 		if (!mention && this.activeWidget?.isVisible() && this.pendingChats.size === 0) {
@@ -222,20 +228,26 @@ export class InlineChatManager {
 		// Generate unique marker ID
 		this.markerId = `spark-inline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+		// Set flag to ignore editor change events from our modifications
+		this.isAdjustingContent = true;
+
 		// Remove @agent from the file
 		const lineContent = editor.getLine(mention.line);
 		const agentPattern = new RegExp(`@${mention.agentName}\\s*`);
 		const cleanedLine = lineContent.replace(agentPattern, '').trim();
 		editor.setLine(mention.line, cleanedLine);
 
-		// Insert markers and blank lines to create space for the widget
+		// Insert markers with minimal blank lines (will be adjusted based on widget height)
 		const insertPosition = { line: mention.line + 1, ch: 0 };
 		const markerStart = `<!-- ${this.markerId}-start -->\n`;
-		const blankLines = '\n\n\n\n\n\n\n'; // 7 blank lines for widget space (~210px)
+		const blankLines = '\n\n\n'; // 3 blank lines initially (will be adjusted dynamically)
 		const markerEnd = `<!-- ${this.markerId}-end -->`;
 		const insertText = markerStart + blankLines + markerEnd + '\n';
 
 		editor.replaceRange(insertText, insertPosition);
+
+		// Track if the line was empty after removing mention (for positioning adjustment)
+		const lineWasEmpty = cleanedLine.length === 0;
 
 		// Wait for DOM to update, then position widget
 		window.setTimeout(() => {
@@ -246,31 +258,112 @@ export class InlineChatManager {
 				return;
 			}
 
+			// If the line was empty, adjust position up by one line height (21px)
+			// so widget appears at the empty line, not below it
+			const adjustedTop = lineWasEmpty ? position.top - 21 : position.top;
+
 			// Create and show widget (no initial message, agent is stored separately)
 			this.activeWidget = new InlineChatWidget(this.app, {
 				agentName: mention.agentName,
 				onSend: message => this.handleSend(message),
 				onCancel: () => this.handleCancel(),
-				top: position.top,
+				onHeightChange: height => this.adjustBlankLines(height),
+				top: adjustedTop,
 				left: position.left,
 				parentElement: position.parentElement,
 				mentionDecorator: this.mentionDecorator,
 			});
 
 			this.activeWidget.show();
+
+			// Reset flag after widget is shown and initial height adjustment is done
+			// Widget calls notifyHeightChange after 10ms, so wait a bit longer
+			window.setTimeout(() => {
+				this.isAdjustingContent = false;
+			}, 100);
 		}, 50);
 	}
 
 	/**
-	 * Hide the widget without cleaning up (used when switching to new mention)
+	 * Hide the widget and clean up temporary markers
 	 */
 	private hideWidget(): void {
-		// Just hide the widget, don't clean up markers/blank lines
-		// Cleanup is handled by handleCancel() or handleSend()
 		if (this.activeWidget) {
 			this.activeWidget.hide();
 			this.activeWidget = null;
 		}
+
+		// Clean up temporary markers if we have them
+		// Note: After sending, these markers are already replaced with final format,
+		// so cleanupMarkers will just do nothing (no markers found)
+		if (this.currentEditor && this.markerId) {
+			this.cleanupMarkers(this.currentEditor);
+		}
+	}
+
+	/**
+	 * Adjust blank lines between markers to match widget height
+	 */
+	private adjustBlankLines(widgetHeight: number): void {
+		if (!this.currentEditor || !this.markerId) {
+			return;
+		}
+
+		// Calculate needed lines (font-size: 14px * line-height: 1.5 = 21px per line)
+		// Subtract 1 because we need one less line than the height suggests
+		const linesNeeded = Math.ceil(widgetHeight / 21) - 1;
+
+		// Find the marker positions in the document
+		const content = this.currentEditor.getValue();
+		const startMarker = `<!-- ${this.markerId}-start -->`;
+		const endMarker = `<!-- ${this.markerId}-end -->`;
+
+		const startIndex = content.indexOf(startMarker);
+		const endIndex = content.indexOf(endMarker);
+
+		if (startIndex === -1 || endIndex === -1) {
+			return; // Markers not found
+		}
+
+		// Find line numbers for markers
+		let startLine = 0;
+		let endLine = 0;
+		let charCount = 0;
+
+		const lines = content.split('\n');
+		for (let i = 0; i < lines.length; i++) {
+			const lineLength = lines[i].length + 1; // +1 for newline
+
+			if (charCount + lineLength > startIndex && startLine === 0) {
+				startLine = i;
+			}
+			if (charCount + lineLength > endIndex && endLine === 0) {
+				endLine = i;
+				break;
+			}
+
+			charCount += lineLength;
+		}
+
+		// Replace content between markers with correct number of blank lines
+		const newBlankLines = '\n'.repeat(linesNeeded);
+		const from = { line: startLine + 1, ch: 0 };
+		const to = { line: endLine, ch: 0 };
+
+		// Set flag to ignore editor change events from this modification
+		this.isAdjustingContent = true;
+		this.currentEditor.replaceRange(newBlankLines, from, to);
+		// Reset flag after a brief delay to ensure the change event has been processed
+		window.setTimeout(() => {
+			this.isAdjustingContent = false;
+		}, 50);
+
+		console.log('[Spark Inline Chat] Adjusted blank lines:', {
+			widgetHeight,
+			linesNeeded,
+			startLine,
+			endLine,
+		});
 	}
 
 	/**
@@ -397,8 +490,9 @@ export class InlineChatManager {
 				if (this.activeWidget && this.currentEditor) {
 					// Get widget height and calculate lines needed
 					const widgetHeight = this.activeWidget.getHeight();
-					// Assume ~22px per line in editor (typical line height)
-					const linesNeeded = Math.ceil(widgetHeight / 22);
+					// font-size: 14px * line-height: 1.5 = 21px per line
+					// Subtract 1 because we need one less line than the height suggests
+					const linesNeeded = Math.ceil(widgetHeight / 21);
 
 					// Replace markers with calculated newlines
 					ResultWriter.getInstance(this.app).replaceMarkersWithFinalFormat(

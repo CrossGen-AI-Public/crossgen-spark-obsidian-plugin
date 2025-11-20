@@ -5,6 +5,7 @@ import * as yaml from 'js-yaml';
 import { AgentConfigSchema, SparkConfigSchema, type SparkConfig } from './validation';
 import { ALL_MODELS, getModelLabel, ProviderType, getProviderLabel, getModelsByProvider } from './models';
 import { encryptSecrets, decryptSecrets, isEncrypted } from './crypto/index';
+import { DEFAULT_CHAT_WIDTH, DEFAULT_CHAT_HEIGHT, DEFAULT_CHAT_RIGHT, DEFAULT_CHAT_BOTTOM } from './constants';
 import { homedir } from 'os';
 import { join } from 'path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'fs';
@@ -13,11 +14,10 @@ export const DEFAULT_SETTINGS: SparkSettings = {
     enablePalette: true,
     chatHotkey: 'Mod+K',
     vaultPath: '',
-    // apiKeys intentionally omitted - stored in encrypted ~/.spark/secrets.yaml only
-    chatWindowWidth: 400,
-    chatWindowHeight: 650,
-    chatWindowRight: 0,
-    chatWindowBottom: 30
+    chatWindowWidth: DEFAULT_CHAT_WIDTH,
+    chatWindowHeight: DEFAULT_CHAT_HEIGHT,
+    chatWindowRight: DEFAULT_CHAT_RIGHT,
+    chatWindowBottom: DEFAULT_CHAT_BOTTOM
 };
 
 interface AgentConfig {

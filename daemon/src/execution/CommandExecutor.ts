@@ -29,6 +29,13 @@ export class CommandExecutor {
   }
 
   /**
+   * Get provider factory (for ChatNameGenerator and other services)
+   */
+  getProviderFactory(): AIProviderFactory {
+    return this.providerFactory;
+  }
+
+  /**
    * Core AI execution - returns AI response without writing to files
    */
   // eslint-disable-next-line complexity

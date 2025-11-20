@@ -46,13 +46,23 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 		// Create container for suggestion content
 		const contentEl = el.createDiv({ cls: 'spark-conversation-suggestion-content' });
 
-		// Date and title section
+		// Title section - show generated name if available, otherwise date
 		const titleEl = contentEl.createDiv({ cls: 'suggestion-title' });
-		titleEl.createSpan({ text: date });
+		if (conversation.name) {
+			// Show generated name as primary text
+			titleEl.setText(conversation.name);
+		} else {
+			// Fallback to date if no name
+			titleEl.setText(date);
+		}
 
-		// Message preview
+		// Message preview or date (secondary info)
 		const noteEl = contentEl.createDiv({ cls: 'suggestion-note' });
-		if (firstMessage) {
+		if (conversation.name) {
+			// If we have a name, show date as secondary info
+			noteEl.setText(date);
+		} else if (firstMessage) {
+			// Otherwise show message preview
 			const preview =
 				firstMessage.content.length > 50
 					? firstMessage.content.substring(0, 50) + '...'

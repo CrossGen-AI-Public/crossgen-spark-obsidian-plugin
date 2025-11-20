@@ -1,4 +1,4 @@
-import { App, Component } from 'obsidian';
+import { App, Component, MarkdownRenderer } from 'obsidian';
 import { ChatMessage, ChatState } from './types';
 import SparkPlugin from '../main';
 import { ConversationStorage } from './ConversationStorage';
@@ -7,7 +7,13 @@ import { ChatSelector } from './ChatSelector';
 import { ChatQueue } from './ChatQueue';
 import { ChatResultWatcher, ChatResult } from './ChatResultWatcher';
 import { ResourceService } from '../services/ResourceService';
-import { MENTION_REGEX } from '../constants';
+import {
+	MENTION_REGEX,
+	DEFAULT_CHAT_WIDTH,
+	DEFAULT_CHAT_HEIGHT,
+	DEFAULT_CHAT_RIGHT,
+	DEFAULT_CHAT_BOTTOM,
+} from '../constants';
 import { MentionDecorator } from '../mention/MentionDecorator';
 
 export class ChatWindow extends Component {
@@ -40,6 +46,7 @@ export class ChatWindow extends Component {
 		isProcessing: false,
 		mentionedAgents: new Set(),
 		lastMentionedAgent: null,
+		conversationName: null, // Auto-generated name from daemon
 	};
 
 	constructor(app: App, plugin: SparkPlugin, conversationStorage: ConversationStorage) {
@@ -84,6 +91,7 @@ export class ChatWindow extends Component {
 			// Clear messages first to prevent re-saving the deleted conversation
 			this.state.messages = [];
 			this.state.mentionedAgents.clear();
+			this.state.conversationName = null; // Reset name
 			this.state.conversationId = this.generateConversationId();
 			this.messagesEl.innerHTML = '';
 			this.updateChatTitle();
@@ -139,7 +147,11 @@ export class ChatWindow extends Component {
 		const closeBtn = document.createElement('button');
 		closeBtn.innerHTML = '×';
 		closeBtn.className = 'spark-chat-close-btn';
-		closeBtn.onclick = () => this.hide();
+		closeBtn.onclick = (e: MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.hide();
+		};
 
 		headerRightEl.appendChild(closeBtn);
 
@@ -261,47 +273,102 @@ export class ChatWindow extends Component {
 			// - To move BOTTOM edge, adjust 'bottom' position
 
 			switch (this.currentResizeCorner) {
-				case 'bottom-right':
+				case 'bottom-right': {
 					// Bottom-right corner follows cursor, top-left stays fixed
 					newWidth = Math.max(300, this.resizeStartWidth + deltaX);
-					newHeight = Math.max(300, this.resizeStartHeight + deltaY);
-					// Right edge should move with cursor (decrease 'right' value as cursor moves right)
-					newRight = Math.max(0, this.resizeStartRight - deltaX);
-					// Bottom edge should move with cursor (decrease 'bottom' value as cursor moves down)
-					newBottom = Math.max(0, this.resizeStartBottom - deltaY);
-					break;
 
-				case 'bottom-left':
+					// Calculate desired height
+					const desiredHeight = Math.max(300, this.resizeStartHeight + deltaY);
+					const desiredHeightChange = desiredHeight - this.resizeStartHeight;
+					const desiredBottom = this.resizeStartBottom - desiredHeightChange;
+
+					// If bottom edge would hit viewport edge (bottom <= 0), cap the height
+					if (desiredBottom <= 0) {
+						// Maximum height that keeps bottom at viewport edge
+						newHeight = this.resizeStartHeight + this.resizeStartBottom;
+						newBottom = 0;
+					} else {
+						newHeight = desiredHeight;
+						newBottom = desiredBottom;
+					}
+
+					// Adjust right position based on actual width change
+					const actualWidthChange = newWidth - this.resizeStartWidth;
+					newRight = Math.max(0, this.resizeStartRight - actualWidthChange);
+					break;
+				}
+
+				case 'bottom-left': {
 					// Bottom-left corner follows cursor, top-right stays fixed
 					newWidth = Math.max(300, this.resizeStartWidth - deltaX);
-					newHeight = Math.max(300, this.resizeStartHeight + deltaY);
-					// Left edge moves with cursor naturally by changing width
+
+					// Calculate desired height
+					const desiredHeight = Math.max(300, this.resizeStartHeight + deltaY);
+					const desiredHeightChange = desiredHeight - this.resizeStartHeight;
+					const desiredBottom = this.resizeStartBottom - desiredHeightChange;
+
+					// If bottom edge would hit viewport edge (bottom <= 0), cap the height
+					if (desiredBottom <= 0) {
+						// Maximum height that keeps bottom at viewport edge
+						newHeight = this.resizeStartHeight + this.resizeStartBottom;
+						newBottom = 0;
+					} else {
+						newHeight = desiredHeight;
+						newBottom = desiredBottom;
+					}
+
 					// Right position stays the same (top-right corner fixed)
 					newRight = this.resizeStartRight;
-					// Bottom edge should move with cursor
-					newBottom = Math.max(0, this.resizeStartBottom - deltaY);
 					break;
+				}
 
-				case 'top-right':
+				case 'top-right': {
 					// Top-right corner follows cursor, bottom-left stays fixed
 					newWidth = Math.max(300, this.resizeStartWidth + deltaX);
-					newHeight = Math.max(300, this.resizeStartHeight - deltaY);
-					// Right edge should move with cursor
-					newRight = Math.max(0, this.resizeStartRight - deltaX);
-					// Top edge moves with cursor naturally by changing height
+
+					// Calculate desired height
+					const desiredHeight = Math.max(300, this.resizeStartHeight - deltaY);
+					// Top edge position is: window.innerHeight - bottom - height
+					const desiredTopPosition = window.innerHeight - this.resizeStartBottom - desiredHeight;
+
+					// If top edge would hit viewport edge (top <= 0), cap the height
+					if (desiredTopPosition <= 0) {
+						// Maximum height that keeps top at viewport edge
+						newHeight = window.innerHeight - this.resizeStartBottom;
+					} else {
+						newHeight = desiredHeight;
+					}
+
+					// Adjust right position based on actual width change
+					const actualWidthChangeTR = newWidth - this.resizeStartWidth;
+					newRight = Math.max(0, this.resizeStartRight - actualWidthChangeTR);
 					// Bottom position stays the same (bottom-left corner fixed)
 					newBottom = this.resizeStartBottom;
 					break;
+				}
 
-				case 'top-left':
+				case 'top-left': {
 					// Top-left corner follows cursor, bottom-right stays fixed
 					newWidth = Math.max(300, this.resizeStartWidth - deltaX);
-					newHeight = Math.max(300, this.resizeStartHeight - deltaY);
-					// Both left and top edges move naturally by changing width/height
+
+					// Calculate desired height
+					const desiredHeight = Math.max(300, this.resizeStartHeight - deltaY);
+					// Top edge position is: window.innerHeight - bottom - height
+					const desiredTopPosition = window.innerHeight - this.resizeStartBottom - desiredHeight;
+
+					// If top edge would hit viewport edge (top <= 0), cap the height
+					if (desiredTopPosition <= 0) {
+						// Maximum height that keeps top at viewport edge
+						newHeight = window.innerHeight - this.resizeStartBottom;
+					} else {
+						newHeight = desiredHeight;
+					}
+
 					// Right and bottom positions stay the same (bottom-right corner fixed)
 					newRight = this.resizeStartRight;
 					newBottom = this.resizeStartBottom;
 					break;
+				}
 			}
 
 			// Apply new dimensions and position
@@ -367,6 +434,26 @@ export class ChatWindow extends Component {
 			}
 		});
 
+		// Doubleclick to reset to default position and size
+		headerEl.addEventListener('dblclick', async () => {
+			// Reset to default position (bottom-right corner)
+			this.containerEl.style.left = 'auto';
+			this.containerEl.style.top = 'auto';
+			this.containerEl.style.right = `${DEFAULT_CHAT_RIGHT}px`;
+			this.containerEl.style.bottom = `${DEFAULT_CHAT_BOTTOM}px`;
+
+			// Reset to default size
+			this.containerEl.style.width = `${DEFAULT_CHAT_WIDTH}px`;
+			this.containerEl.style.height = `${DEFAULT_CHAT_HEIGHT}px`;
+
+			// Save defaults to settings
+			this.plugin.settings.chatWindowWidth = DEFAULT_CHAT_WIDTH;
+			this.plugin.settings.chatWindowHeight = DEFAULT_CHAT_HEIGHT;
+			this.plugin.settings.chatWindowRight = 20;
+			this.plugin.settings.chatWindowBottom = 20;
+			await this.plugin.saveSettings();
+		});
+
 		document.addEventListener('mousemove', e => {
 			if (isDragging) {
 				const deltaX = e.clientX - startX;
@@ -417,8 +504,8 @@ export class ChatWindow extends Component {
 
 	show() {
 		// Apply saved dimensions and position
-		const width = this.plugin.settings.chatWindowWidth || 400;
-		const height = this.plugin.settings.chatWindowHeight || 500;
+		const width = this.plugin.settings.chatWindowWidth || DEFAULT_CHAT_WIDTH;
+		const height = this.plugin.settings.chatWindowHeight || DEFAULT_CHAT_HEIGHT;
 		const right = this.plugin.settings.chatWindowRight ?? 20;
 		const bottom = this.plugin.settings.chatWindowBottom ?? 20;
 
@@ -556,6 +643,7 @@ export class ChatWindow extends Component {
 			if (conversation) {
 				this.state.messages = conversation.messages || [];
 				this.state.mentionedAgents = new Set(conversation.mentionedAgents || []);
+				this.state.conversationName = conversation.name || null;
 
 				// Restore lastMentionedAgent from message history
 				// Find the most recent agent message (excluding "Spark Assistant")
@@ -592,12 +680,16 @@ export class ChatWindow extends Component {
 			return;
 		}
 
+		// Load existing conversation to get created timestamp, but use current state for everything else
+		const existing = await this.conversationStorage.loadConversation(this.state.conversationId);
+
 		const conversationData = {
 			id: this.state.conversationId,
-			created: new Date().toISOString(),
+			created: existing?.created || new Date().toISOString(),
 			updated: new Date().toISOString(),
 			messages: this.state.messages,
 			mentionedAgents: Array.from(this.state.mentionedAgents),
+			name: this.state.conversationName || undefined, // Use current state, not preserved from storage
 		};
 
 		try {
@@ -737,42 +829,12 @@ export class ChatWindow extends Component {
 	}
 
 	private async renderMarkdown(content: string, containerEl: HTMLElement): Promise<void> {
-		// Fallback to simple markdown-like rendering
-		containerEl.innerHTML = this.simpleMarkdownToHtml(content);
-		// After rendering, decorate mentions in the HTML
-		this.mentionDecorator.decorateElement(containerEl);
-	}
-
-	private simpleMarkdownToHtml(markdown: string): string {
-		// Simple markdown conversion for basic formatting
-		let html = markdown
-			// Escape HTML first
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			// Code blocks (```)
-			.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-				return `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`;
-			})
-			// Inline code (`)
-			.replace(/`([^`]+)`/g, '<code>$1</code>')
-			// Bold (**text** or __text__)
-			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-			.replace(/__([^_]+)__/g, '<strong>$1</strong>')
-			// Italic (*text* or _text_)
-			.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-			.replace(/_([^_]+)_/g, '<em>$1</em>')
-			// Lists (- item or * item)
-			.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
-			// Newlines
-			.replace(/\n/g, '<br>');
-
-		// Wrap list items in ul
-		html = html.replace(/(<li>.*<\/li>(?:<br>)?)+/g, match => {
-			return '<ul>' + match.replace(/<br>/g, '') + '</ul>';
-		});
-
-		return html;
+		// Clear container
+		containerEl.empty();
+		// Use Obsidian's native markdown renderer
+		await MarkdownRenderer.render(this.app, content, containerEl, '', this);
+		// After rendering, decorate mentions in the HTML (preserving HTML structure)
+		this.mentionDecorator.decorateMentionsInElement(containerEl);
 	}
 
 	private scrollToBottom() {
@@ -809,6 +871,7 @@ export class ChatWindow extends Component {
 		this.state.messages = [];
 		this.state.mentionedAgents.clear();
 		this.state.conversationId = this.generateConversationId();
+		this.state.conversationName = null; // Clear name for new chat
 		this.messagesEl.innerHTML = '';
 		this.updateChatTitle();
 		this.chatSelector.update(this.state.conversationId);
@@ -907,7 +970,40 @@ export class ChatWindow extends Component {
 		this.chatSelector.invalidateCache();
 	}
 
+	/**
+	 * Update conversation name from daemon result
+	 */
+	private async updateConversationName(name: string): Promise<void> {
+		if (!this.state.conversationId) return;
+
+		try {
+			// Update in-memory state
+			this.state.conversationName = name;
+
+			// Update chat title display
+			this.titleEl.textContent = name;
+
+			// Save the conversation (persists current messages + new name)
+			await this.saveConversation();
+
+			console.log('Chat name updated:', name);
+		} catch (error) {
+			console.error('Failed to update conversation name:', error);
+		}
+	}
+
 	private updateChatTitle(agentNames?: string[]) {
+		// Priority 1: Use in-memory conversation name if available (avoids async race conditions)
+		if (this.state.conversationName) {
+			this.titleEl.textContent = this.state.conversationName;
+			return;
+		}
+
+		// Priority 2: Use agent-based title
+		this.setAgentBasedTitle(agentNames);
+	}
+
+	private setAgentBasedTitle(agentNames?: string[]): void {
 		if (!agentNames || agentNames.length === 0) {
 			this.titleEl.textContent = 'Spark Chat';
 			return;
@@ -1023,9 +1119,13 @@ export class ChatWindow extends Component {
 
 		if (isActiveConversation) {
 			// Active conversation - update UI directly
-			// Remove loading message
-			const loadingMessages = this.state.messages.filter(msg => msg.type === 'loading');
-			loadingMessages.forEach(msg => this.removeMessage(msg.id));
+
+			// Only remove loading messages if we have content or error (final result)
+			// If it's just a name update (intermediate result), keep loading
+			if (result.content || result.error) {
+				const loadingMessages = this.state.messages.filter(msg => msg.type === 'loading');
+				loadingMessages.forEach(msg => this.removeMessage(msg.id));
+			}
 
 			// Add agent response
 			if (result.error) {
@@ -1037,7 +1137,7 @@ export class ChatWindow extends Component {
 					agent: result.agent || 'Spark Assistant',
 				};
 				this.addMessage(errorMessage);
-			} else {
+			} else if (result.content) {
 				const response: ChatMessage = {
 					id: this.generateId(),
 					timestamp: new Date(result.timestamp).toISOString(),
@@ -1062,13 +1162,22 @@ export class ChatWindow extends Component {
 			}
 
 			this.state.isProcessing = false;
+
+			// Update conversation name if provided by daemon
+			if (result.conversationName) {
+				void this.updateConversationName(result.conversationName);
+			}
 		} else {
 			// Non-active conversation - update conversation file directly
 			void this.updateBackgroundConversation(result);
 		}
 
-		// Clean up queue file
-		void this.chatQueue.dequeue(result.queueId);
+		// Clean up queue file only if it's a final result (has content or error)
+		// Intermediate results (like name updates) should not remove the queue file
+		// as the daemon is still processing the main response
+		if (result.content || result.error) {
+			void this.chatQueue.dequeue(result.queueId);
+		}
 	}
 
 	/**
@@ -1080,7 +1189,7 @@ export class ChatWindow extends Component {
 			const conversation = await this.conversationStorage.loadConversation(result.conversationId);
 			if (!conversation) {
 				console.warn(
-					'ChatWindow: Cannot update background conversation - not found:',
+					'ChatWindow: Conversation not found for background update:',
 					result.conversationId
 				);
 				return;
@@ -1120,8 +1229,15 @@ export class ChatWindow extends Component {
 				}
 			}
 
+			// Update conversation name if provided by daemon
+			if (result.conversationName) {
+				conversation.name = result.conversationName;
+			}
+
 			// Save updated conversation
+			conversation.updated = new Date().toISOString();
 			await this.conversationStorage.saveConversation(conversation);
+			this.chatSelector.invalidateCache();
 		} catch (error) {
 			console.error('ChatWindow: Failed to update background conversation:', error);
 		}

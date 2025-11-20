@@ -5,7 +5,6 @@
 Spark Assistant enables "markdown files triggering AI agents" - turning your Obsidian vault into a living, automated workspace where notes become actions, and simple text triggers complex workflows.
 
 
-
 ## 📑 Table of Contents
 
 - [🎯 What is Spark?](#-what-is-spark)
@@ -22,7 +21,8 @@ Spark Assistant enables "markdown files triggering AI agents" - turning your Obs
 - [🙏 Acknowledgments](#-acknowledgments)
 - [📧 Contact](#-contact)
 
----
+--- 
+
 
 ## 🎯 What is Spark?
 

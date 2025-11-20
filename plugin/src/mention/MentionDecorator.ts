@@ -95,6 +95,106 @@ export class MentionDecorator {
 	}
 
 	/**
+	 * Decorate mentions in an HTML element using TreeWalker to preserve HTML structure
+	 * Public API for decorating rendered HTML content where structure must be preserved
+	 */
+	public decorateMentionsInElement(element: HTMLElement): void {
+		const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+		const nodesToProcess: { node: Text; parent: Node }[] = [];
+
+		// Collect text nodes that might contain mentions
+		let currentNode = walker.nextNode();
+		while (currentNode) {
+			if (currentNode.textContent && currentNode.parentNode) {
+				const text = currentNode.textContent;
+				// Only process if contains potential mentions
+				if (text.includes('@')) {
+					nodesToProcess.push({
+						node: currentNode as Text,
+						parent: currentNode.parentNode,
+					});
+				}
+			}
+			currentNode = walker.nextNode();
+		}
+
+		// Process collected nodes (done separately to avoid modifying while iterating)
+		for (const { node, parent } of nodesToProcess) {
+			this.decorateTextNode(node, parent);
+		}
+	}
+
+	/**
+	 * Decorate mentions in a single text node
+	 */
+	private decorateTextNode(textNode: Text, parent: Node): void {
+		const text = textNode.textContent || '';
+
+		// Find all mentions
+		const replacements: Array<{
+			start: number;
+			end: number;
+			text: string;
+			type: string;
+		}> = [];
+
+		const mentionRegex = new RegExp(MENTION_REGEX);
+		let match;
+		while ((match = mentionRegex.exec(text)) !== null) {
+			const prefix = match[1] || '';
+			const mention = match[2];
+			const mentionStart = match.index + prefix.length;
+
+			const type = this.validateMention(mention);
+
+			// Only add if it's a valid mention
+			if (type) {
+				replacements.push({
+					start: mentionStart,
+					end: mentionStart + mention.length,
+					text: mention,
+					type,
+				});
+			}
+		}
+
+		if (replacements.length === 0) {
+			return;
+		}
+
+		// Sort by position and create fragments
+		replacements.sort((a, b) => a.start - b.start);
+
+		const fragment = document.createDocumentFragment();
+		let lastIndex = 0;
+
+		for (const replacement of replacements) {
+			// Add text before the mention
+			if (replacement.start > lastIndex) {
+				fragment.appendChild(document.createTextNode(text.substring(lastIndex, replacement.start)));
+			}
+
+			// Add the mention span
+			const span = document.createElement('span');
+			span.className = `spark-token spark-token-${replacement.type}`;
+			span.setAttribute('data-token', replacement.text);
+			span.setAttribute('data-type', replacement.type);
+			span.textContent = replacement.text;
+			fragment.appendChild(span);
+
+			lastIndex = replacement.end;
+		}
+
+		// Add any remaining text
+		if (lastIndex < text.length) {
+			fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+		}
+
+		// Replace the text node with the fragment
+		parent.replaceChild(fragment, textNode);
+	}
+
+	/**
 	 * Force all open markdown editors to update their decorations
 	 */
 	private forceEditorUpdates(): void {

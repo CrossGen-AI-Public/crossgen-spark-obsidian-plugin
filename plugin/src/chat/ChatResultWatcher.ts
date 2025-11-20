@@ -8,6 +8,7 @@ export interface ChatResult {
 	content: string;
 	filesModified?: string[];
 	error?: string;
+	conversationName?: string; // Generated chat name from daemon
 }
 
 /**

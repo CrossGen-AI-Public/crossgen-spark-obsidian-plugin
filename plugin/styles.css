@@ -216,12 +216,10 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 400px;
-    height: 500px;
+    width: 512px;
+    height: 682px;
     min-width: 300px;
     min-height: 300px;
-    max-height: 90vh;
-    max-width: 90vw;
     background: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 8px;
@@ -425,6 +423,7 @@
     border-radius: 3px;
     font-family: var(--font-monospace);
     font-size: 0.9em;
+    margin-bottom: 16px;
 }
 
 .spark-chat-message-content pre {
@@ -432,13 +431,36 @@
     padding: 8px;
     border-radius: 4px;
     overflow-x: auto;
-    margin: 4px 0;
+    margin-bottom: 16px;
+    position: relative;
 }
 
 .spark-chat-message-content pre code {
     background: none;
     padding: 0;
     font-size: 0.85em;
+    margin-bottom: 16px;
+}
+
+/* Copy code button positioning and styling */
+.spark-chat-message-content .copy-code-button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    padding: 2px;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.spark-chat-message-content pre:hover .copy-code-button {
+    opacity: 1;
+}
+
+.spark-chat-message-content .copy-code-button svg {
+    width: 16px;
+    height: 16px;
 }
 
 .spark-chat-message-content ul {
@@ -456,6 +478,54 @@
 
 .spark-chat-message-content em {
     font-style: italic;
+}
+
+/* Tables */
+.spark-chat-message-content .table-wrapper {
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.spark-chat-message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9em;
+    margin-bottom: 16px;
+}
+
+.spark-chat-message-content th,
+.spark-chat-message-content td {
+    border: 1px solid var(--background-modifier-border);
+    padding: 6px 12px;
+}
+
+.spark-chat-message-content th {
+    background-color: var(--background-secondary);
+    font-weight: 600;
+}
+
+.spark-chat-message-content tr:nth-child(even) {
+    background-color: var(--background-primary-alt);
+}
+
+/* Horizontal Rule */
+.spark-chat-message-content hr {
+    border: none;
+    border-top: 1px solid var(--background-modifier-border);
+    margin: 24px 0;
+}
+
+/* Task Lists */
+.spark-chat-message-content .task-list-item {
+    list-style-type: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 4px 0;
+}
+
+.spark-chat-message-content .task-list-item input[type="checkbox"] {
+    margin-top: 4px;
 }
 
 .spark-chat-user {
@@ -1022,7 +1092,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     color: var(--text-normal);
     font-family: inherit;
     font-size: 14px;
-    line-height: 1.4;
+    line-height: var(--line-height-normal);
     overflow-y: auto;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }

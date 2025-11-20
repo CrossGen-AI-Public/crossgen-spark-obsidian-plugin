@@ -199,6 +199,26 @@ export class AIProviderFactory {
     let apiKey: string | undefined;
     if (this.secretsLoader) {
       apiKey = this.secretsLoader.getApiKey(name);
+
+      // Fallback for Anthropic providers: try shared keys
+      if (!apiKey && name.startsWith('claude-')) {
+        // Try generic 'anthropic' key
+        apiKey = this.secretsLoader.getApiKey('anthropic');
+
+        // If still no key, try other known Anthropic provider keys
+        if (!apiKey) {
+          const anthropicProviders = ['claude-agent', 'claude-client', 'claude-code'];
+          for (const provider of anthropicProviders) {
+            if (provider !== name) {
+              apiKey = this.secretsLoader.getApiKey(provider);
+              if (apiKey) {
+                this.logger.debug(`Using shared API key from ${provider} for ${name}`);
+                break;
+              }
+            }
+          }
+        }
+      }
     }
 
     return {

@@ -9,17 +9,21 @@ import type { Logger } from '../logger/Logger.js';
 import type { CommandExecutor } from '../execution/CommandExecutor.js';
 import type { MentionParser } from '../parser/MentionParser.js';
 import type { ParsedCommand, ParsedMention } from '../types/parser.js';
+import type { ChatNameGenerator } from './ChatNameGenerator.js';
 import { ErrorWriter } from '../results/ErrorWriter.js';
 import { ErrorHandler } from '../errors/ErrorHandler.js';
 
 export class ChatQueueHandler {
   private errorWriter: ErrorWriter;
+  private processingFiles: Set<string> = new Set();
+  private recentlyProcessed: Set<string> = new Set();
 
   constructor(
     private vaultPath: string,
     private commandExecutor: CommandExecutor,
     private mentionParser: MentionParser,
-    private logger: Logger
+    private logger: Logger,
+    private chatNameGenerator?: ChatNameGenerator
   ) {
     this.errorWriter = new ErrorWriter(vaultPath);
   }
@@ -35,11 +39,36 @@ export class ChatQueueHandler {
    * Process a chat queue file
    */
   async process(relativePath: string): Promise<void> {
+    // Prevent concurrent processing of the same file
+    if (this.processingFiles.has(relativePath)) {
+      this.logger.debug('File already being processed, skipping', { path: relativePath });
+      return;
+    }
+
+    // Prevent processing of recently processed files (debounce/deduplication)
+    if (this.recentlyProcessed.has(relativePath)) {
+      this.logger.debug('File recently processed, skipping', { path: relativePath });
+      return;
+    }
+
+    this.processingFiles.add(relativePath);
     const fullPath = join(this.vaultPath, relativePath);
     const queueId = basename(relativePath, '.md');
 
     try {
-      const content = readFileSync(fullPath, 'utf-8');
+      let content: string;
+      try {
+        content = readFileSync(fullPath, 'utf-8');
+      } catch (readError) {
+        // If file doesn't exist (ENOENT), it was likely processed by another worker
+        // despite our processingFiles check (race condition during check/add)
+        if ((readError as NodeJS.ErrnoException).code === 'ENOENT') {
+          this.logger.debug('Queue file not found (already processed)', { path: relativePath });
+          return;
+        }
+        throw readError;
+      }
+
       const parsed = this.parseQueueFile(content);
 
       this.logger.debug('Parsed chat message', {
@@ -88,10 +117,46 @@ export class ChatQueueHandler {
         contextPath,
       });
 
-      // Reuse CommandExecutor for AI processing (without writing to queue file)
-      const aiResponse = await this.commandExecutor.executeAndReturn(command, contextPath);
+      // Check if this is the first message (no context or only 1 previous message)
+      const isFirstMessage = !parsed.context || parsed.context.trim().length === 0;
 
-      // Write result to JSONL
+      // Start name generation in parallel if applicable
+      let nameGenerationPromise: Promise<string | null> = Promise.resolve(null);
+      if (isFirstMessage && this.chatNameGenerator) {
+        this.logger.debug('Starting parallel chat name generation', {
+          conversationId: parsed.conversationId,
+        });
+        // Generate name from user message only (faster, parallel)
+        nameGenerationPromise = this.chatNameGenerator.generate(parsed.userMessage);
+      }
+
+      // Execute AI processing
+      const aiResponsePromise = this.commandExecutor.executeAndReturn(command, contextPath);
+
+      // Handle name generation result as soon as it's ready
+      void nameGenerationPromise.then((name) => {
+        if (name) {
+          this.logger.debug('Chat name generated (parallel)', {
+            conversationId: parsed.conversationId,
+            name,
+          });
+          // Write intermediate result with just the name
+          this.writeResult({
+            conversationId: parsed.conversationId,
+            queueId: parsed.queueId,
+            timestamp: Date.now(),
+            agent: this.extractAgentName(mentions, parsed.primaryAgent),
+            content: '', // Empty content for name update
+            conversationName: name,
+          });
+        }
+      });
+
+      // Wait for AI response
+      const aiResponse = await aiResponsePromise;
+
+      // Write final result (name might have been written already, but we can include it again or not)
+      // We don't need to include conversationName here as it was handled by the parallel promise
       this.writeResult({
         conversationId: parsed.conversationId,
         queueId: parsed.queueId,
@@ -99,8 +164,17 @@ export class ChatQueueHandler {
         agent: this.extractAgentName(mentions, parsed.primaryAgent),
         content: aiResponse,
       });
-
-      unlinkSync(fullPath);
+      try {
+        if (existsSync(fullPath)) {
+          unlinkSync(fullPath);
+        }
+      } catch (unlinkError) {
+        // Ignore unlink errors (file might be gone)
+        this.logger.debug('Failed to unlink queue file (might be gone)', {
+          path: relativePath,
+          error: unlinkError,
+        });
+      }
       this.logger.debug('Queue file processed', { path: relativePath });
     } catch (error) {
       this.logger.error('Chat queue processing failed', {
@@ -156,6 +230,14 @@ export class ChatQueueHandler {
       if (existsSync(fullPath)) {
         unlinkSync(fullPath);
       }
+    } finally {
+      this.processingFiles.delete(relativePath);
+
+      // Add to recently processed to prevent immediate reprocessing (race condition fix)
+      this.recentlyProcessed.add(relativePath);
+      setTimeout(() => {
+        this.recentlyProcessed.delete(relativePath);
+      }, 2000); // Keep in cache for 2 seconds
     }
   }
 
@@ -212,6 +294,7 @@ export class ChatQueueHandler {
     content: string;
     filesModified?: string[];
     error?: string;
+    conversationName?: string;
   }): void {
     const resultsDir = join(this.vaultPath, '.spark', 'chat-results');
 

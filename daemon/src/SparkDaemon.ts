@@ -22,6 +22,7 @@ import { ContextLoader } from './context/ContextLoader.js';
 import { ResultWriter } from './results/ResultWriter.js';
 import { CommandExecutor } from './execution/CommandExecutor.js';
 import { ChatQueueHandler } from './chat/ChatQueueHandler.js';
+import { ChatNameGenerator } from './chat/ChatNameGenerator.js';
 import { VaultInitializer } from './init/VaultInitializer.js';
 import {
   ProviderRegistry,
@@ -109,11 +110,19 @@ export class SparkDaemon implements ISparkDaemon {
         this.config,
         this.vaultPath
       );
+
+      // Create chat name generator
+      const chatNameGenerator = new ChatNameGenerator(
+        this.commandExecutor.getProviderFactory(),
+        this.config.ai
+      );
+
       this.chatQueueHandler = new ChatQueueHandler(
         this.vaultPath,
         this.commandExecutor,
         this.mentionParser,
-        this.logger
+        this.logger,
+        chatNameGenerator
       );
       this.logger.debug('AI components initialized');
 
@@ -271,11 +280,17 @@ export class SparkDaemon implements ISparkDaemon {
 
         // Recreate chat queue handler with new command executor
         // This ensures chat commands use the new config
+        const chatNameGenerator = new ChatNameGenerator(
+          this.commandExecutor.getProviderFactory(),
+          this.config.ai
+        );
+
         this.chatQueueHandler = new ChatQueueHandler(
           this.vaultPath,
           this.commandExecutor,
           this.mentionParser,
-          this.logger
+          this.logger,
+          chatNameGenerator
         );
 
         this.logger.info('AI components reinitialized with new config');

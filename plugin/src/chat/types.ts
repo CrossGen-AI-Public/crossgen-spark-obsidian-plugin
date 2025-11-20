@@ -13,6 +13,7 @@ export interface ChatConversation {
 	updated: string;
 	messages: ChatMessage[];
 	mentionedAgents?: string[];
+	name?: string; // Auto-generated chat name
 }
 
 export interface ChatState {
@@ -22,4 +23,5 @@ export interface ChatState {
 	isProcessing: boolean;
 	mentionedAgents: Set<string>;
 	lastMentionedAgent: string | null; // Most recently mentioned agent (for conversation continuity)
+	conversationName: string | null; // Auto-generated name from daemon
 }

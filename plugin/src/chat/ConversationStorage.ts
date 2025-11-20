@@ -54,10 +54,16 @@ export class ConversationStorage {
 				}
 			}
 
-			// Sort by creation date (newest first)
-			return conversations.sort(
-				(a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()
-			);
+			// Sort by latest message timestamp (or creation date if no messages)
+			return conversations.sort((a, b) => {
+				const getLastTime = (conv: ChatConversation) => {
+					if (conv.messages && conv.messages.length > 0) {
+						return new Date(conv.messages[conv.messages.length - 1].timestamp).getTime();
+					}
+					return new Date(conv.created).getTime();
+				};
+				return getLastTime(b) - getLastTime(a);
+			});
 		} catch (error) {
 			console.error('ConversationStorage: Failed to list conversations:', error);
 			return [];

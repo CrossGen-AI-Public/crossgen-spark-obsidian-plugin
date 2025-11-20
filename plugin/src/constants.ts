@@ -59,3 +59,11 @@ export const TEMP_MARKER_BLOCK_REGEX = /<!--\s*spark-inline-[\w-]+-start\s*-->\n
  * Regex for matching daemon marker block (pending to end)
  */
 export const DAEMON_MARKER_BLOCK_REGEX = /<!--\s*spark-inline-chat:pending:[\w-]+:[^>]+\s*-->\n[\s\S]*?<!--\s*\/spark-inline-chat\s*-->\n?/g;
+
+/**
+ * Default chat window dimensions
+ */
+export const DEFAULT_CHAT_WIDTH = 512;
+export const DEFAULT_CHAT_HEIGHT = 682;
+export const DEFAULT_CHAT_RIGHT = 0;
+export const DEFAULT_CHAT_BOTTOM = 27;

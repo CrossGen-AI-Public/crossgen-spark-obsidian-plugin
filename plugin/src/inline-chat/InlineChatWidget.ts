@@ -16,6 +16,8 @@ export interface InlineChatWidgetOptions {
 	onSend: (message: string) => void;
 	/** Callback when user clicks cancel or dismisses */
 	onCancel: () => void;
+	/** Callback when widget height changes */
+	onHeightChange?: (height: number) => void;
 	/** Top position in pixels */
 	top: number;
 	/** Left position in pixels */
@@ -120,8 +122,9 @@ export class InlineChatWidget {
 			this.mentionInput.setText(this.options.initialMessage);
 		}
 
-		// Focus input after a brief delay to ensure DOM is ready
+		// Notify initial height after DOM renders
 		window.setTimeout(() => {
+			this.notifyHeightChange();
 			this.mentionInput?.focus();
 		}, 10);
 	}
@@ -266,18 +269,6 @@ export class InlineChatWidget {
 		// Set initial button state
 		this.updateSendButtonState();
 
-		// Click outside to close
-		window.setTimeout(() => {
-			const handleClickOutside = (e: MouseEvent) => {
-				if (this.containerEl && !this.containerEl.contains(e.target as Node)) {
-					console.log('[InlineChatWidget] Clicked outside, cancelling...');
-					this.options.onCancel();
-					document.removeEventListener('mousedown', handleClickOutside);
-				}
-			};
-			document.addEventListener('mousedown', handleClickOutside);
-		}, 100);
-
 		return container;
 	}
 
@@ -313,6 +304,19 @@ export class InlineChatWidget {
 
 		const isEmpty = this.mentionInput.getText().trim().length === 0;
 		this.sendButtonEl.disabled = isEmpty;
+
+		// Also notify height change when input changes (debounced)
+		this.notifyHeightChange();
+	}
+
+	/**
+	 * Notify parent about height change
+	 */
+	private notifyHeightChange(): void {
+		if (this.options.onHeightChange && this.containerEl) {
+			const height = this.containerEl.offsetHeight;
+			this.options.onHeightChange(height);
+		}
 	}
 
 	/**
