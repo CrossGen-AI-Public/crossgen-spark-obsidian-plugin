@@ -123,18 +123,18 @@ curl -fsSL http://localhost:8000/install.sh | bash  # Terminal 2
 
 **Production Commands (when main repo is public):**
 ```bash
-# Basic install (defaults to automazeio/crossgen-spark)
-curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+# Basic install (defaults to CrossGen-AI-Public/crossgen-spark-obsidian-plugin)
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 
 # Development mode (hot reload + gh CLI)
-DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 
 # Custom vault path
-curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash -s -- ~/Documents/MyVault
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash -s -- ~/Documents/MyVault
 
 # Override repo URL (for testing or mirrors)
 REPO_URL=https://github.com/YOUR_ORG/spark-fork \
-  curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 ```
 
 ## Notes

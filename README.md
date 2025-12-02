@@ -1,7 +1,7 @@
 # Spark Assistant
 
-[![Daemon CI](https://github.com/automazeio/crossgen-spark/actions/workflows/daemon-ci.yml/badge.svg)](https://github.com/automazeio/crossgen-spark/actions/workflows/daemon-ci.yml)
-[![Plugin CI](https://github.com/automazeio/crossgen-spark/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/automazeio/crossgen-spark/actions/workflows/plugin-ci.yml)
+[![Daemon CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml)
+[![Plugin CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml)
 
 **Transform Obsidian into an intelligent business operating system powered by AI.**
 
@@ -69,10 +69,10 @@ Fresh machine? No problem! This installs everything:
 
 ```bash
 # Install to example vault (for testing/development)
-curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 
 # Or install to your vault
-curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash -s -- ~/Documents/MyVault
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash -s -- ~/Documents/MyVault
 ```
 
 **What it does:**
@@ -84,19 +84,19 @@ curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/inst
 **For developers:**
 ```bash
 # Enable development features (hot reload + gh CLI)
-DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 ```
 
 **Environment flags:**
 ```bash
 # Development mode (hot reload, gh CLI)
-DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 
 # Skip Node.js installation (if you have it)
-SKIP_NODE=1 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+SKIP_NODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 
 # Skip daemon auto-start
-AUTO_START=0 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-spark/main/install.sh | bash
+AUTO_START=0 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 ```
 
 ---
@@ -105,7 +105,7 @@ AUTO_START=0 curl -fsSL https://raw.githubusercontent.com/automazeio/crossgen-sp
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/automazeio/crossgen-spark.git
+git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd crossgen-spark
 
 # 2. Run installer (sets up example-vault with hot reload)
@@ -127,7 +127,7 @@ spark start example-vault
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/automazeio/crossgen-spark.git
+git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd spark
 
 # 2. Install and build daemon
@@ -556,7 +556,7 @@ triggers:
 
 **Quick setup for development:**
 ```bash
-git clone https://github.com/automazeio/crossgen-spark.git
+git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd spark
 
 # Install everything (daemon + plugin)

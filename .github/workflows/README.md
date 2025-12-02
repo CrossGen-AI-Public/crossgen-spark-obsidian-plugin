@@ -63,8 +63,8 @@ The workflows will run automatically on your next push to `main` or when you cre
 Dynamic workflow badges in the main README:
 
 ```markdown
-[![Daemon CI](https://github.com/automazeio/crossgen-spark/actions/workflows/daemon-ci.yml/badge.svg)](...)
-[![Plugin CI](https://github.com/automazeio/crossgen-spark/actions/workflows/plugin-ci.yml/badge.svg)](...)
+[![Daemon CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml/badge.svg)](...)
+[![Plugin CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml/badge.svg)](...)
 ```
 
 Benefits:

@@ -48,7 +48,7 @@ The README uses **dynamic GitHub Actions workflow badges**:
 
 ### 1. Daemon CI Badge
 ```markdown
-[![Daemon CI](https://github.com/automazeio/crossgen-spark/actions/workflows/daemon-ci.yml/badge.svg)](...)
+[![Daemon CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml/badge.svg)](...)
 ```
 - ✅ **Auto-updates**: Shows real-time pass/fail status
 - **Clickable**: Links to latest workflow run
@@ -56,7 +56,7 @@ The README uses **dynamic GitHub Actions workflow badges**:
 
 ### 2. Plugin CI Badge
 ```markdown
-[![Plugin CI](https://github.com/automazeio/crossgen-spark/actions/workflows/plugin-ci.yml/badge.svg)](...)
+[![Plugin CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml/badge.svg)](...)
 ```
 - ✅ **Auto-updates**: Shows build pass/fail status
 - **Clickable**: Links to latest build
@@ -82,7 +82,7 @@ For **private repositories**, GitHub Actions badges are the best solution:
 Badges automatically work when you fork! If needed, update the org name in `README.md`:
 
 ```markdown
-<!-- Replace 'automazeio' with your org/username -->
+<!-- Replace 'CrossGen-AI-Public' with your org/username -->
 [![Daemon CI](https://github.com/YOUR_ORG/crossgen-spark/actions/workflows/daemon-ci.yml/badge.svg)](...)
 ```
 

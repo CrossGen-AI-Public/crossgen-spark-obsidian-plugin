@@ -41,7 +41,7 @@ if [ ! -d "$SCRIPT_DIR/.git" ]; then
     cd "$TEMP_DIR"
     
     # Use REPO_URL environment variable or default to main repo
-    REPO_URL="${REPO_URL:-https://github.com/automazeio/crossgen-spark}"
+    REPO_URL="${REPO_URL:-https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin}"
     REPO_NAME=$(basename "$REPO_URL" .git)
     
     # Check if git is actually usable (not just the macOS Xcode stub)
