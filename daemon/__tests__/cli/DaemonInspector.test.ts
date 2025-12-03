@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { DaemonInspector } from '../../src/cli/DaemonInspector.js';
-import { SparkDaemon } from '../../src/SparkDaemon.js';
+import { SparkDaemon } from '../../src/main.js';
 import { TestVault } from '../utils/TestVault.js';
 
 // Mock Anthropic SDK to prevent actual API calls

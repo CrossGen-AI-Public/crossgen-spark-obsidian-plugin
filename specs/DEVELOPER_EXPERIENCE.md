@@ -1194,7 +1194,7 @@ describe('MyFeatureClass', () => {
 
 ### 4. Integrate
 ```typescript
-// src/SparkDaemon.ts
+// src/main.ts
 private myFeature: MyFeatureClass;
 ```
 

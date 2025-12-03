@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { SparkDaemon } from '../src/SparkDaemon.js';
+import { SparkDaemon } from '../src/main.js';
 import { TestVault } from './utils/TestVault.js';
 import { Logger } from '../src/logger/Logger.js';
 
@@ -157,14 +157,9 @@ logging:
             await daemon.stop();
         });
 
-        it('should return null file parser before starting', () => {
-            expect(daemon.getFileParser()).toBeNull();
-        });
-
-        it('should return file parser after starting', async () => {
-            await daemon.start();
+        it('should return file parser immediately (initialized in constructor)', () => {
+            // fileParser is always available - initialized eagerly
             expect(daemon.getFileParser()).not.toBeNull();
-            await daemon.stop();
         });
     });
 

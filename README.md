@@ -271,7 +271,7 @@ spark/
 └── daemon/                            # Node.js daemon (intelligence layer)
     ├── src/
     │   ├── cli.ts                     # CLI entry point
-    │   ├── SparkDaemon.ts             # Main orchestrator
+    │   ├── main.ts             # Main orchestrator
     │   ├── cli/                       # CLI utilities (registry, inspector)
     │   ├── config/                    # Configuration management
     │   ├── watcher/                   # File system watching

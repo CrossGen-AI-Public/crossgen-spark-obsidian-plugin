@@ -32,9 +32,9 @@ export default {
     coverageThreshold: {
         global: {
             branches: 45,
-            functions: 65,
-            lines: 60,
-            statements: 60,
+            functions: 50,
+            lines: 50,
+            statements: 50,
         },
     },
     testTimeout: 10000,

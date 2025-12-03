@@ -147,7 +147,7 @@ daemon/
 │   │   ├── PathResolver.ts
 │   │   ├── ProximityCalculator.ts
 │   │   └── ContextLoader.ts
-│   ├── SparkDaemon.ts      # Main orchestrator
+│   ├── main.ts      # Main orchestrator
 │   └── index.ts            # Entry point
 ├── dist/                   # Compiled JavaScript
 ├── package.json

@@ -4,7 +4,7 @@
  */
 
 // Export core daemon
-export { SparkDaemon } from './SparkDaemon.js';
+export { SparkDaemon } from './main.js';
 
 // Export all types
 export * from './types/index.js';

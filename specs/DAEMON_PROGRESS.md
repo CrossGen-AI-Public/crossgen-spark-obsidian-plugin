@@ -45,7 +45,7 @@ The daemon is the intelligence layer of Spark. It watches files, parses syntax, 
 daemon/
 ├── src/
 │   ├── index.ts                    # Entry point
-│   ├── SparkDaemon.ts              # Main daemon class
+│   ├── main.ts              # Main daemon class
 │   ├── types/                      # All TypeScript types
 │   │   ├── index.ts                # Core types
 │   │   ├── config.ts               # Configuration types
@@ -112,7 +112,7 @@ daemon/
 - `PathMatcher.ts` - Matches glob patterns
 
 **Core** (src/)
-- `SparkDaemon.ts` - Main orchestrator class
+- `main.ts` - Main orchestrator class
 - `index.ts` - Entry point with graceful shutdown
 - `logger/Logger.ts` - Singleton logger with levels
 

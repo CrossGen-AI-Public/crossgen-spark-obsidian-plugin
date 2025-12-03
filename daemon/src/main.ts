@@ -33,36 +33,43 @@ import {
 import { ProviderType } from './types/provider.js';
 
 export class SparkDaemon implements ISparkDaemon {
-  private vaultPath: string;
-  private config: SparkConfig | null;
-  private watcher: FileWatcher | null;
-  private configWatcher: FSWatcher | null;
-  private logger: Logger | null;
-  private fileParser: FileParser | null;
-  private inspector: DaemonInspector | null;
-  private contextLoader: ContextLoader | null;
-  private resultWriter: ResultWriter | null;
-  private commandExecutor: CommandExecutor | null;
-  private mentionParser: MentionParser | null;
-  private chatQueueHandler: ChatQueueHandler | null;
-  private state: DaemonState;
-  private providersRegistered: boolean;
+  private readonly vaultPath: string;
+  private state: DaemonState = 'stopped';
+  private providersRegistered = false;
+
+  // Stateless - initialized eagerly in constructor
+  private readonly logger: Logger;
+  private readonly fileParser: FileParser;
+  private readonly inspector: DaemonInspector;
+  private readonly contextLoader: ContextLoader;
+  private readonly resultWriter: ResultWriter;
+  private readonly mentionParser: MentionParser;
+
+  // Config-dependent - initialized in start()
+  private config: SparkConfig | null = null;
+  private watcher: FileWatcher | null = null;
+  private configWatcher: FSWatcher | null = null;
+  private commandExecutor: CommandExecutor | null = null;
+  private chatQueueHandler: ChatQueueHandler | null = null;
+
+  /**
+   * Get command executor (only valid after start())
+   */
+  private get executor(): CommandExecutor {
+    if (!this.commandExecutor) {
+      throw new Error('CommandExecutor not initialized - daemon not started');
+    }
+    return this.commandExecutor;
+  }
 
   constructor(vaultPath: string) {
     this.vaultPath = vaultPath;
-    this.config = null;
-    this.watcher = null;
-    this.configWatcher = null;
-    this.logger = null;
-    this.fileParser = null;
-    this.inspector = null;
-    this.contextLoader = null;
-    this.resultWriter = null;
-    this.commandExecutor = null;
-    this.mentionParser = null;
-    this.chatQueueHandler = null;
-    this.state = 'stopped';
-    this.providersRegistered = false;
+    this.logger = Logger.getInstance();
+    this.fileParser = new FileParser();
+    this.inspector = new DaemonInspector(this);
+    this.contextLoader = new ContextLoader(vaultPath);
+    this.resultWriter = new ResultWriter();
+    this.mentionParser = new MentionParser();
   }
 
   public async start(): Promise<void> {
@@ -81,8 +88,8 @@ export class SparkDaemon implements ISparkDaemon {
       const configLoader = new ConfigLoader();
       this.config = await configLoader.load(this.vaultPath);
 
-      // Initialize logger
-      this.logger = Logger.getInstance(this.config.logging);
+      // Update logger with config (logger was created in constructor with defaults)
+      this.logger.updateConfig(this.config.logging);
       this.logger.info('Starting Spark daemon', { vaultPath: this.vaultPath });
       this.logger.debug('Configuration loaded', {
         logLevel: this.config.logging.level,
@@ -90,20 +97,13 @@ export class SparkDaemon implements ISparkDaemon {
         debounceMs: this.config.daemon.debounce_ms,
       });
 
-      // Initialize parsers
-      this.fileParser = new FileParser();
-      this.mentionParser = new MentionParser();
-      this.logger.debug('Parsers initialized');
-
       // Register AI providers (only once)
       if (!this.providersRegistered) {
         this.registerProviders();
         this.providersRegistered = true;
       }
 
-      // Initialize AI components
-      this.contextLoader = new ContextLoader(this.vaultPath);
-      this.resultWriter = new ResultWriter();
+      // Initialize command executor (needs config)
       this.commandExecutor = new CommandExecutor(
         this.contextLoader,
         this.resultWriter,
@@ -145,7 +145,7 @@ export class SparkDaemon implements ISparkDaemon {
 
       // Handle fatal watcher errors (e.g., EMFILE)
       this.watcher.on('fatal-error', (error: unknown) => {
-        this.logger?.error('Fatal file watcher error - stopping daemon', error);
+        this.logger.error('Fatal file watcher error - stopping daemon', error);
         this.state = 'error';
         void this.stop();
         process.exit(1);
@@ -158,8 +158,7 @@ export class SparkDaemon implements ISparkDaemon {
       // Watch config file for changes
       this.startConfigWatcher();
 
-      // Initialize inspector
-      this.inspector = new DaemonInspector(this);
+      // Record daemon start in inspector
       this.inspector.recordStart();
 
       this.state = 'running';
@@ -184,15 +183,8 @@ export class SparkDaemon implements ISparkDaemon {
     }
 
     this.state = 'stopping';
-
-    if (this.logger) {
-      this.logger.info('Stopping Spark daemon');
-    }
-
-    // Record stop in inspector
-    if (this.inspector) {
-      this.inspector.recordStop();
-    }
+    this.logger.info('Stopping Spark daemon');
+    this.inspector.recordStop();
 
     // Stop config watcher
     if (this.configWatcher) {
@@ -207,10 +199,7 @@ export class SparkDaemon implements ISparkDaemon {
     }
 
     this.state = 'stopped';
-
-    if (this.logger) {
-      this.logger.info('Spark daemon stopped');
-    }
+    this.logger.info('Spark daemon stopped');
   }
 
   /**
@@ -235,11 +224,9 @@ export class SparkDaemon implements ISparkDaemon {
       return new ClaudeCodeProvider(config);
     });
 
-    if (this.logger) {
-      this.logger.debug('AI providers registered', {
-        providers: registry.getProviderNames(),
-      });
-    }
+    this.logger.debug('AI providers registered', {
+      providers: registry.getProviderNames(),
+    });
   }
 
   /**
@@ -251,9 +238,7 @@ export class SparkDaemon implements ISparkDaemon {
       throw new SparkError('Cannot reload config: daemon is not running', 'NOT_RUNNING');
     }
 
-    if (this.logger) {
-      this.logger.info('Reloading configuration...');
-    }
+    this.logger.info('Reloading configuration...');
 
     try {
       // Load new configuration with retry logic
@@ -263,70 +248,55 @@ export class SparkDaemon implements ISparkDaemon {
       // Update config
       this.config = newConfig;
 
-      // Reinitialize AI components with new config
-      if (this.commandExecutor && this.mentionParser && this.logger) {
-        // Recreate context loader and result writer
-        this.contextLoader = new ContextLoader(this.vaultPath);
-        this.resultWriter = new ResultWriter();
+      // Recreate command executor with new config
+      this.commandExecutor = new CommandExecutor(
+        this.contextLoader,
+        this.resultWriter,
+        this.config,
+        this.vaultPath
+      );
 
-        // Recreate command executor with new config
-        // This creates a new AIProviderFactory instance with fresh cache
-        this.commandExecutor = new CommandExecutor(
-          this.contextLoader,
-          this.resultWriter,
-          this.config,
-          this.vaultPath
-        );
+      const chatNameGenerator = new ChatNameGenerator(
+        this.commandExecutor.getProviderFactory(),
+        this.config.ai
+      );
 
-        // Recreate chat queue handler with new command executor
-        // This ensures chat commands use the new config
-        const chatNameGenerator = new ChatNameGenerator(
-          this.commandExecutor.getProviderFactory(),
-          this.config.ai
-        );
+      this.chatQueueHandler = new ChatQueueHandler(
+        this.vaultPath,
+        this.commandExecutor,
+        this.mentionParser,
+        this.logger,
+        chatNameGenerator
+      );
 
-        this.chatQueueHandler = new ChatQueueHandler(
-          this.vaultPath,
-          this.commandExecutor,
-          this.mentionParser,
-          this.logger,
-          chatNameGenerator
-        );
+      this.logger.info('AI components reinitialized with new config');
 
-        this.logger.info('AI components reinitialized with new config');
-        this.logger.debug('Provider cache cleared, will use new config for future requests');
-      }
-
-      // Update logger with new config (singleton pattern - don't recreate)
-      if (this.logger) {
-        this.logger.updateConfig(newConfig.logging);
-        this.logger.info('Configuration reloaded successfully', {
-          logLevel: newConfig.logging.level,
-        });
-      }
+      // Update logger with new config
+      this.logger.updateConfig(newConfig.logging);
+      this.logger.info('Configuration reloaded successfully', {
+        logLevel: newConfig.logging.level,
+      });
 
       // Write success status for CLI feedback
       this.writeReloadStatus('success', 'Configuration reloaded successfully');
 
       // Restart watcher with new configuration
-      if (this.watcher && this.logger) {
-        this.logger.info('Restarting file watcher with new configuration...');
-        await this.watcher.stop();
+      this.logger.info('Restarting file watcher with new configuration...');
+      await this.watcher!.stop();
 
-        this.watcher = new FileWatcher({
-          vaultPath: this.vaultPath,
-          patterns: newConfig.daemon.watch.patterns,
-          ignore: newConfig.daemon.watch.ignore,
-          debounceMs: newConfig.daemon.debounce_ms,
-        });
+      this.watcher = new FileWatcher({
+        vaultPath: this.vaultPath,
+        patterns: newConfig.daemon.watch.patterns,
+        ignore: newConfig.daemon.watch.ignore,
+        debounceMs: newConfig.daemon.debounce_ms,
+      });
 
-        this.watcher.on('change', (change) => {
-          void this.handleFileChange(change);
-        });
+      this.watcher.on('change', (change) => {
+        void this.handleFileChange(change);
+      });
 
-        await this.watcher.start();
-        this.logger.info('File watcher restarted successfully');
-      }
+      await this.watcher.start();
+      this.logger.info('File watcher restarted successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
 
@@ -334,14 +304,9 @@ export class SparkDaemon implements ISparkDaemon {
       this.writeReloadStatus('error', message);
 
       // Log warning but don't crash - keep using current config
-      if (this.logger) {
-        this.logger.warn('Config reload failed after retries, keeping current config', {
-          error: message,
-        });
-      }
-
-      // Don't throw - just keep current config
-      return;
+      this.logger.warn('Config reload failed after retries, keeping current config', {
+        error: message,
+      });
     }
   }
 
@@ -358,12 +323,10 @@ export class SparkDaemon implements ISparkDaemon {
       };
       writeFileSync(statusFile, JSON.stringify(statusData, null, 2));
     } catch (error) {
-      // Reload still works, just no CLI feedback - log at debug level
-      if (this.logger) {
-        this.logger.debug('Failed to write reload status file for CLI feedback', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+      // Reload still works, just no CLI feedback
+      this.logger.debug('Failed to write reload status file for CLI feedback', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -377,27 +340,21 @@ export class SparkDaemon implements ISparkDaemon {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
-        stabilityThreshold: 200, // Initial wait before first attempt
+        stabilityThreshold: 200,
         pollInterval: 50,
       },
     });
 
     this.configWatcher.on('change', () => {
-      if (this.logger) {
-        this.logger.info('Config file changed, reloading...');
-      }
+      this.logger.info('Config file changed, reloading...');
       void this.reloadConfig();
     });
 
     this.configWatcher.on('error', (error) => {
-      if (this.logger) {
-        this.logger.error('Config watcher error:', { error });
-      }
+      this.logger.error('Config watcher error:', { error });
     });
 
-    if (this.logger) {
-      this.logger.debug('Watching config file for changes', { configPath });
-    }
+    this.logger.debug('Watching config file for changes', { configPath });
   }
 
   public isRunning(): boolean {
@@ -435,26 +392,20 @@ export class SparkDaemon implements ISparkDaemon {
   /**
    * Get file parser (for inspection/debugging)
    */
-  public getFileParser(): FileParser | null {
+  public getFileParser(): FileParser {
     return this.fileParser;
   }
 
   /**
    * Get inspector (for inspection/debugging)
    */
-  public getInspector(): DaemonInspector | null {
+  public getInspector(): DaemonInspector {
     return this.inspector;
   }
 
   private async handleFileChange(change: FileChange): Promise<void> {
-    if (!this.logger || !this.fileParser) {
-      return;
-    }
-
     // Record file change in inspector
-    if (this.inspector) {
-      this.inspector.recordFileChange(change);
-    }
+    this.inspector.recordFileChange(change);
 
     this.logger.info('File changed', {
       path: change.path,
@@ -500,7 +451,7 @@ export class SparkDaemon implements ISparkDaemon {
       });
 
       // Record error in inspector
-      if (this.inspector && error instanceof Error) {
+      if (error instanceof Error) {
         this.inspector.recordError(error, { path: change.path });
       }
     }
@@ -513,7 +464,7 @@ export class SparkDaemon implements ISparkDaemon {
       return;
     }
 
-    this.logger!.info(`Found ${pendingCommands.length} pending command(s)`, {
+    this.logger.info(`Found ${pendingCommands.length} pending command(s)`, {
       file: relativePath,
       commands: pendingCommands.map((c) => c.raw),
     });
@@ -521,27 +472,25 @@ export class SparkDaemon implements ISparkDaemon {
     // Execute commands
     for (const command of pendingCommands) {
       // Check if command should be executed
-      if (!this.commandExecutor!.shouldExecute(command)) {
+      if (!this.executor.shouldExecute(command)) {
         continue;
       }
 
-      this.logger!.debug('Command detected', {
+      this.logger.debug('Command detected', {
         line: command.line,
         type: command.type,
         command: command.command || 'mention-chain',
         mentions: command.mentions?.map((m: ParsedMention) => m.raw),
       });
 
-      if (this.inspector) {
-        this.inspector.recordCommandDetected(relativePath, command.command || 'mention-chain', {
-          line: command.line,
-          type: command.type,
-          mentions: command.mentions?.length || 0,
-        });
-      }
+      this.inspector.recordCommandDetected(relativePath, command.command || 'mention-chain', {
+        line: command.line,
+        type: command.type,
+        mentions: command.mentions?.length || 0,
+      });
 
-      void this.commandExecutor!.execute(command, fullPath).catch((error) => {
-        this.logger!.error('Command execution failed', {
+      void this.executor.execute(command, fullPath).catch((error) => {
+        this.logger.error('Command execution failed', {
           error: error instanceof Error ? error.message : String(error),
           command: command.raw,
         });
@@ -560,30 +509,28 @@ export class SparkDaemon implements ISparkDaemon {
       return;
     }
 
-    this.logger!.info(`Found ${pendingChats.length} pending inline chat(s)`, {
+    this.logger.info(`Found ${pendingChats.length} pending inline chat(s)`, {
       file: relativePath,
       chats: pendingChats.map((c) => ({ id: c.id, message: c.userMessage.substring(0, 50) })),
     });
 
     // Execute inline chats
     for (const chat of pendingChats) {
-      this.logger!.debug('Inline chat detected', {
+      this.logger.debug('Inline chat detected', {
         id: chat.id,
         startLine: chat.startLine,
         endLine: chat.endLine,
         userMessage: chat.userMessage.substring(0, 100),
       });
 
-      if (this.inspector) {
-        this.inspector.recordCommandDetected(relativePath, 'inline-chat', {
-          line: chat.startLine,
-          type: 'inline-chat',
-          mentions: 0,
-        });
-      }
+      this.inspector.recordCommandDetected(relativePath, 'inline-chat', {
+        line: chat.startLine,
+        type: 'inline-chat',
+        mentions: 0,
+      });
 
-      void this.commandExecutor!.executeInlineChat(chat, fullPath).catch((error) => {
-        this.logger!.error('Inline chat execution failed', {
+      void this.executor.executeInlineChat(chat, fullPath).catch((error) => {
+        this.logger.error('Inline chat execution failed', {
           error: error instanceof Error ? error.message : String(error),
           chatId: chat.id,
         });
@@ -592,16 +539,15 @@ export class SparkDaemon implements ISparkDaemon {
   }
 
   private processFrontmatterChanges(fullPath: string, relativePath: string, content: string): void {
-    const frontmatterChanges = this.fileParser!.getFrontmatterParser().detectChanges(
-      fullPath,
-      content
-    );
+    const frontmatterChanges = this.fileParser
+      .getFrontmatterParser()
+      .detectChanges(fullPath, content);
 
     if (frontmatterChanges.length === 0) {
       return;
     }
 
-    this.logger!.info(`Found ${frontmatterChanges.length} frontmatter change(s)`, {
+    this.logger.info(`Found ${frontmatterChanges.length} frontmatter change(s)`, {
       file: relativePath,
       changes: frontmatterChanges.map((c) => ({
         field: c.field,
@@ -610,15 +556,13 @@ export class SparkDaemon implements ISparkDaemon {
       })),
     });
 
-    if (this.inspector) {
-      for (const fmChange of frontmatterChanges) {
-        this.inspector.recordFrontmatterChange(
-          relativePath,
-          fmChange.field,
-          fmChange.oldValue,
-          fmChange.newValue
-        );
-      }
+    for (const fmChange of frontmatterChanges) {
+      this.inspector.recordFrontmatterChange(
+        relativePath,
+        fmChange.field,
+        fmChange.oldValue,
+        fmChange.newValue
+      );
     }
   }
 }

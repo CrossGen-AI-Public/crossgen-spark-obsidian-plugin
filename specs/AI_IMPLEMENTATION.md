@@ -239,7 +239,7 @@ The prompt is structured in sections to guide the AI model:
 
 ## 3. Integration into SparkDaemon
 
-**File:** `daemon/src/SparkDaemon.ts`
+**File:** `daemon/src/main.ts`
 
 **Note:** ContextLoader already exists and is fully implemented with ProximityCalculator! Just need to initialize it.
 

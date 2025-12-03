@@ -47,7 +47,7 @@ daemon/
 ├── src/
 │   ├── cli.ts                # CLI entry point
 │   ├── index.ts              # Main export point
-│   ├── SparkDaemon.ts        # Main daemon orchestrator
+│   ├── main.ts        # Main daemon orchestrator
 │   ├── cli/                  # CLI utilities
 │   │   ├── registry.ts       # Global daemon registry
 │   │   └── DaemonInspector.ts # State inspection

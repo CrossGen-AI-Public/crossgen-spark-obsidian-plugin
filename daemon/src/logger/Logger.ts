@@ -22,9 +22,15 @@ export class Logger {
     this.config = config;
   }
 
+  private static readonly DEFAULT_CONFIG: LoggingConfig = {
+    level: 'info',
+    console: true,
+    file: null,
+  };
+
   public static getInstance(config?: LoggingConfig): Logger {
-    if (!Logger.instance && config) {
-      Logger.instance = new Logger(config);
+    if (!Logger.instance) {
+      Logger.instance = new Logger(config ?? Logger.DEFAULT_CONFIG);
     }
     return Logger.instance;
   }

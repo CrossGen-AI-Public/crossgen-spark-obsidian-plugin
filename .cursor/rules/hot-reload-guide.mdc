@@ -46,7 +46,7 @@ The daemon itself watches `.spark/config.yaml` and reloads config changes automa
 
 **✅ Good - Import directly in SparkDaemon:**
 ```typescript
-// In SparkDaemon.ts
+// In main.ts
 import { ClaudeClient } from './ai/ClaudeClient.js';
 
 private async processCommand(command: ParsedCommand) {
@@ -160,7 +160,7 @@ We simplified from a custom 450-line `HotReloadManager` to using `tsx watch` bec
 The daemon watches config files independently of tsx:
 
 ```typescript
-// In SparkDaemon.ts - automatically watches config
+// In main.ts - automatically watches config
 private startConfigWatcher(): void {
   const configPath = join(this.vaultPath, '.spark', 'config.yaml');
   
