@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { App, TFile } from 'obsidian';
 import type { MentionDecorator } from './MentionDecorator';
 import { PaletteView } from '../command-palette/PaletteView';
 import { ItemLoader } from '../command-palette/ItemLoader';
@@ -11,6 +11,7 @@ import { ResourceService } from '../services/ResourceService';
  * Adapts the command palette's mention system for chat use
  */
 export class ChatMentionHandler {
+	private app: App;
 	private mentionDecorator: MentionDecorator;
 	private inputElement: HTMLDivElement | null = null;
 	private isProcessing = false;
@@ -22,6 +23,7 @@ export class ChatMentionHandler {
 	private chatContainer: HTMLElement | null = null;
 
 	constructor(app: App, mentionDecorator: MentionDecorator) {
+		this.app = app;
 		this.mentionDecorator = mentionDecorator;
 		this.paletteView = new PaletteView();
 		this.itemLoader = new ItemLoader(app);
@@ -205,6 +207,11 @@ export class ChatMentionHandler {
 		const range = selection.getRangeAt(0);
 		const cursorOffset = this.getCursorOffset(range);
 
+		// Check for @@ pattern (current file shortcut) before palette trigger
+		if (this.checkForCurrentFileMention()) {
+			return; // @@ was handled, don't process further
+		}
+
 		// Check for palette trigger
 		this.checkForPalette();
 
@@ -216,6 +223,66 @@ export class ChatMentionHandler {
 		if (contentModified) {
 			this.restoreCursor(cursorOffset);
 		}
+	}
+
+	/**
+	 * Check for @@ pattern and replace with current active file mention
+	 * @returns true if @@ was found and replaced, false otherwise
+	 */
+	private checkForCurrentFileMention(): boolean {
+		if (!this.inputElement) return false;
+
+		const text = this.getTextWithLineBreaks(this.inputElement);
+		const cursorPos = this.getCursorTextPosition();
+
+		// Check if text before cursor ends with @@ (preceded by start or whitespace)
+		const textBeforeCursor = text.substring(0, cursorPos);
+		const doubleAtMatch = textBeforeCursor.match(/(?:^|[\s\u00A0])@@$/);
+
+		if (!doubleAtMatch) return false;
+
+		// Get the active file
+		const activeFile = this.getActiveFile();
+		if (!activeFile) {
+			console.debug('[ChatMentionHandler] No active file for @@ mention');
+			return false;
+		}
+
+		// Calculate position of @@ in the text
+		const doubleAtPos = cursorPos - 2;
+
+		// Build replacement text: @filename with non-breaking space after
+		const fileName = activeFile.basename;
+		const replacement = `@${fileName}\u00A0`;
+
+		// Replace @@ with the file mention
+		const before = text.substring(0, doubleAtPos);
+		const after = text.substring(cursorPos);
+		const newText = before + replacement + after;
+
+		// Update input with proper HTML (convert newlines to <br>)
+		this.inputElement.innerHTML = this.escapeHtmlWithLineBreaks(newText);
+
+		// Calculate new cursor position (after the inserted mention)
+		const newCursorPos = doubleAtPos + replacement.length;
+
+		// Process content to apply styling
+		this.processContent();
+
+		// Set cursor after the inserted mention
+		this.setCursorPosition(newCursorPos);
+
+		this.inputElement.focus();
+		this.hidePalette();
+
+		return true;
+	}
+
+	/**
+	 * Get the currently active file in the workspace
+	 */
+	private getActiveFile(): TFile | null {
+		return this.app.workspace.getActiveFile();
 	}
 
 	/**
