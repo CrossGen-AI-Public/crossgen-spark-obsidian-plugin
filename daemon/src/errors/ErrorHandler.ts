@@ -82,7 +82,6 @@ export class ErrorHandler {
   /**
    * Get user-friendly suggestions based on error code
    */
-  // eslint-disable-next-line complexity, max-lines-per-function
   public static getSuggestions(errorCode: string, _error?: unknown): string[] {
     switch (errorCode) {
       case 'API_KEY_NOT_SET': {

@@ -38,7 +38,6 @@ export class CommandExecutor {
   /**
    * Core AI execution - returns AI response without writing to files
    */
-  // eslint-disable-next-line complexity
   private async executeAI(command: ParsedCommand, filePath: string): Promise<string> {
     this.logger.info('Executing command', {
       command: command.raw.substring(0, 100),

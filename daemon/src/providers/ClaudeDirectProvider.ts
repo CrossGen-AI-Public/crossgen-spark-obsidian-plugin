@@ -69,7 +69,6 @@ export class ClaudeDirectProvider implements IAIProvider {
   /**
    * Build full prompt from options
    */
-  // eslint-disable-next-line complexity
   private buildPrompt(options: ProviderCompletionOptions): string {
     const sections: string[] = [];
 

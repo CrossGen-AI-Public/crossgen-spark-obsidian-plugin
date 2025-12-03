@@ -335,8 +335,7 @@ Run `npm run check` before committing to ensure all checks pass locally.
 
 - **TypeScript** strict mode enforced
 - **No `any` types** - All types must be explicit
-- **ESLint** strict rules, no unused vars (use `_prefix` for intentionally unused)
-- **Prettier** consistent formatting
+- **Biome** linting and formatting (strict rules, no unused vars - use `_prefix` for intentionally unused)
 - **Tests** required for new features
 - **Coverage** threshold: 78% minimum
 

@@ -1,4 +1,3 @@
-/* eslint-env node */
 /* global Buffer */
 /**
  * Secrets Encryption

@@ -623,8 +623,8 @@ cd plugin && npm run check    # Plugin: format, lint, types
 cd daemon && npm run check    # Daemon: format, lint, types, tests
 
 # Individual fixes
-npm run format                # Prettier formatting
-npm run lint:fix              # ESLint auto-fixes
+npm run format                # Biome formatting
+npm run lint:fix              # Biome linting auto-fixes
 ```
 
 Run `npm run check` before committing to ensure all checks pass.
@@ -684,7 +684,7 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 **Code Standards:**
 - TypeScript strict mode
 - No `any` types (daemon)
-- ESLint + Prettier
+- Biome (linting + formatting)
 - Tests required (daemon)
 
 ### Code Standards
@@ -692,8 +692,7 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 **Enforced via pre-commit hooks:**
 - ✅ **TypeScript** - All code in strict mode
 - ✅ **No `any` types** - Daemon enforces explicit typing
-- ✅ **ESLint** - Strict rules, no unused vars (use `_prefix` for intentionally unused)
-- ✅ **Prettier** - Consistent formatting
+- ✅ **Biome** - Linting and formatting (strict rules, no unused vars - use `_prefix` for intentionally unused)
 - ✅ **Tests** - Required for daemon, all tests must pass
 - ✅ **Conventional commits** - `feat:`, `fix:`, `docs:`, etc.
 

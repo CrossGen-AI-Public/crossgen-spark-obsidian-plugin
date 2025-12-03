@@ -47,7 +47,6 @@ export class ResultWriter {
       }
 
       // If line already has a status indicator, replace it
-      // eslint-disable-next-line no-misleading-character-class
       const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/;
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `✅ ${cleanLine}`;
@@ -100,7 +99,6 @@ export class ResultWriter {
         throw new SparkError('Command line is empty', 'EMPTY_LINE');
       }
 
-      // eslint-disable-next-line no-misleading-character-class
       const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/;
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `${status} ${cleanLine}`;

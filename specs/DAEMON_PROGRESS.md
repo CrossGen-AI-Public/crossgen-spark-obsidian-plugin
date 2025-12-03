@@ -71,7 +71,7 @@ daemon/
 
 ### Tasks
 - [x] Initialize npm project with TypeScript
-- [x] Set up ESLint and Prettier configs
+- [x] Set up Biome config (linting + formatting)
 - [x] Create type definitions in `src/types/`
 - [x] Implement ConfigLoader with validation
 - [x] Implement FileWatcher with debouncing
@@ -119,8 +119,7 @@ daemon/
 **Project Setup**
 - `package.json` - Dependencies and scripts
 - `tsconfig.json` - Strict TypeScript config
-- `eslint.config.mjs` - Linting rules (no `any` enforced)
-- `.prettierrc` - Code formatting
+- `biome.json` - Linting and formatting rules (no `any` enforced)
 - `.gitignore` - Git exclusions
 
 ### Compile & Test Results
@@ -421,8 +420,7 @@ Instead of util files, we use classes with focused methods:
 - `@types/node` - Node.js types
 - `tsx` - TypeScript execution
 - `jest` - Testing framework
-- `eslint` - Linting
-- `prettier` - Code formatting
+- `@biomejs/biome` - Linting and formatting
 
 ---
 

@@ -28,16 +28,16 @@ Watch the Actions tab to see your workflows run!
 ### On Every PR and Push to Main
 
 **Daemon (Node 18.x & 20.x):**
-- ✅ Code formatting (Prettier)
-- ✅ Linting (ESLint)
+- ✅ Code formatting (Biome)
+- ✅ Linting (Biome)
 - ✅ Type checking (TypeScript)
-- ✅ 264 unit tests
-- ✅ 79% coverage threshold
+- ✅ 590+ unit tests
+- ✅ Coverage threshold
 - ✅ Build validation
 
 **Plugin (Node 18.x & 20.x):**
-- ✅ Code formatting (Prettier)
-- ✅ Linting (ESLint)
+- ✅ Code formatting (Biome)
+- ✅ Linting (Biome)
 - ✅ Type checking (TypeScript)
 - ✅ Build validation
 - ✅ Manifest validation

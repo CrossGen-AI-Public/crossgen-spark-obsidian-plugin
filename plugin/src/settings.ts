@@ -1,4 +1,3 @@
-/* eslint-env node */
 import { type App, PluginSettingTab, Setting, Notice, Modal } from 'obsidian';
 import type { SparkSettings, ISparkPlugin } from './types';
 import * as yaml from 'js-yaml';
