@@ -3,7 +3,7 @@
  * Writes AI results back to markdown files
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import type {
   WriteInlineOptions,
   UpdateStatusOptions,

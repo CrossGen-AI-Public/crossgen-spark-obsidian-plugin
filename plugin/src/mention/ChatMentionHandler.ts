@@ -1,9 +1,9 @@
-import { App } from 'obsidian';
+import type { App } from 'obsidian';
 import type { MentionDecorator } from './MentionDecorator';
 import { PaletteView } from '../command-palette/PaletteView';
 import { ItemLoader } from '../command-palette/ItemLoader';
 import { FuzzyMatcher } from '../command-palette/FuzzyMatcher';
-import { PaletteItem } from '../types/command-palette';
+import type { PaletteItem } from '../types/command-palette';
 import { ResourceService } from '../services/ResourceService';
 
 /**
@@ -11,8 +11,6 @@ import { ResourceService } from '../services/ResourceService';
  * Adapts the command palette's mention system for chat use
  */
 export class ChatMentionHandler {
-	private app: App;
-	private plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } };
 	private mentionDecorator: MentionDecorator;
 	private inputElement: HTMLDivElement | null = null;
 	private isProcessing = false;
@@ -23,15 +21,9 @@ export class ChatMentionHandler {
 	private currentTrigger: { char: string; position: number } | null = null;
 	private chatContainer: HTMLElement | null = null;
 
-	constructor(
-		app: App,
-		mentionDecorator: MentionDecorator,
-		plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } }
-	) {
-		this.app = app;
-		this.plugin = plugin;
+	constructor(app: App, mentionDecorator: MentionDecorator) {
 		this.mentionDecorator = mentionDecorator;
-		this.paletteView = new PaletteView(app);
+		this.paletteView = new PaletteView();
 		this.itemLoader = new ItemLoader(app);
 		this.fuzzyMatcher = new FuzzyMatcher();
 		this.resourceService = ResourceService.getInstance(app);
@@ -450,7 +442,7 @@ export class ChatMentionHandler {
 		if (trailingNewlines) {
 			// Remove all trailing newlines, convert remaining, then add single <br>
 			const withoutTrailing = escaped.slice(0, -trailingNewlines[0].length);
-			return withoutTrailing.replace(/\n/g, '<br>') + '<br>';
+			return `${withoutTrailing.replace(/\n/g, '<br>')}<br>`;
 		}
 		return escaped.replace(/\n/g, '<br>');
 	}
@@ -465,7 +457,7 @@ export class ChatMentionHandler {
 
 		// Find @mentions
 		const mentionRegex = /(@[\w-]+\/?)/g;
-		let match;
+		let match: RegExpExecArray | null = null;
 		while ((match = mentionRegex.exec(text)) !== null) {
 			const mention = match[0];
 			const type = this.resourceService.validateMentionType(mention);

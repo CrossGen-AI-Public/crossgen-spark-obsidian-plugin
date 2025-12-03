@@ -3,7 +3,7 @@
  * Combines all parsers to analyze a complete file
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import type { ParsedFile } from '../types/parser.js';
 import { MentionParser } from './MentionParser.js';
 import { CommandDetector } from './CommandDetector.js';

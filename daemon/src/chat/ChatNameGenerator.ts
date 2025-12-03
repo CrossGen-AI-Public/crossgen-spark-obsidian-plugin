@@ -164,7 +164,7 @@ Rules:
 
     // If name is too long, truncate to reasonable length
     if (name.length > 60) {
-      name = name.substring(0, 60).trim() + '...';
+      name = `${name.substring(0, 60).trim()}...`;
     }
 
     // Basic validation - must have at least 2 words

@@ -1,5 +1,4 @@
-import { App } from 'obsidian';
-import { PaletteItem } from '../types/command-palette';
+import type { PaletteItem } from '../types/command-palette';
 
 /**
  * Manages the visual palette UI
@@ -12,16 +11,10 @@ export class PaletteView {
 		file: '📝',
 		folder: '📁',
 	};
-
-	private app: App;
 	private containerEl: HTMLElement | null = null;
 	private selectedIndex: number = 0;
 	private items: PaletteItem[] = [];
 	private activeChatContainer: HTMLElement | null = null;
-
-	constructor(app: App) {
-		this.app = app;
-	}
 
 	/**
 	 * Create and show the palette DOM

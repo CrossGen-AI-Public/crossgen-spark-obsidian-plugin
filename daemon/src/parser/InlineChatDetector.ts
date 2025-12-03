@@ -46,7 +46,7 @@ export class InlineChatDetector implements IInlineChatDetector {
       // Extract status, ID, agent, and optional message from opening marker
       // Format: <!-- spark-inline-chat:status:id:agent:message -->
       const status = openingMatch[1] as InlineChatStatus;
-      const id = openingMatch[2]!;
+      const id = openingMatch[2] ?? '';
       const agentInComment = openingMatch[3]; // Agent name (new format)
       const messageInComment = openingMatch[4]; // Message embedded in comment (new format)
       const startLine = i + 1; // Line numbers are 1-indexed

@@ -4,8 +4,8 @@
  */
 
 import chokidar, { type FSWatcher } from 'chokidar';
-import { EventEmitter } from 'events';
-import path from 'path';
+import { EventEmitter } from 'node:events';
+import path from 'node:path';
 import type { IFileWatcher, FileChange, FileWatcherConfig } from '../types/watcher.js';
 import { ChangeDebouncer } from './ChangeDebouncer.js';
 import { PathMatcher } from './PathMatcher.js';

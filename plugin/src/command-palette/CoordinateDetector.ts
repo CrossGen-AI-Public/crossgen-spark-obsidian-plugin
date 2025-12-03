@@ -1,5 +1,5 @@
-import { Editor } from 'obsidian';
-import { EditorWithCoords } from '../types/command-palette';
+import type { Editor } from 'obsidian';
+import type { EditorWithCoords } from '../types/command-palette';
 
 /**
  * Handles cursor coordinate detection for palette positioning

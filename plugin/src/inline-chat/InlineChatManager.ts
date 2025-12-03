@@ -181,7 +181,7 @@ export class InlineChatManager {
 				});
 
 				// Hide the processing widget if it's for this chat
-				if (this.activeWidget && this.activeWidget.isVisible()) {
+				if (this.activeWidget?.isVisible()) {
 					this.hideWidget();
 					this.resetState();
 				}
@@ -242,7 +242,7 @@ export class InlineChatManager {
 		const markerStart = `<!-- ${this.markerId}-start -->\n`;
 		const blankLines = '\n\n\n'; // 3 blank lines initially (will be adjusted dynamically)
 		const markerEnd = `<!-- ${this.markerId}-end -->`;
-		const insertText = markerStart + blankLines + markerEnd + '\n';
+		const insertText = `${markerStart + blankLines + markerEnd}\n`;
 
 		editor.replaceRange(insertText, insertPosition);
 
@@ -373,7 +373,7 @@ export class InlineChatManager {
 		editor: Editor
 	): { top: number; left: number; parentElement: HTMLElement } | null {
 		// Get editor container (CodeMirror 6 structure)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: CodeMirror internal property access
 		const editorEl = (editor as any).cm?.dom as HTMLElement | undefined;
 		if (!editorEl) {
 			return null;

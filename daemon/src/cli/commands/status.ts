@@ -4,7 +4,7 @@
  */
 
 import type { Command } from 'commander';
-import path from 'path';
+import path from 'node:path';
 import { getActiveDaemons, findDaemon } from '../registry.js';
 
 export function registerStatusCommand(program: Command): void {

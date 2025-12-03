@@ -5,9 +5,9 @@
  */
 
 import { Command } from 'commander';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import {
   registerStartCommand,
   registerStopCommand,

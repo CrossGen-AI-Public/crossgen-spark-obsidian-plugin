@@ -1,12 +1,12 @@
-import { Editor } from 'obsidian';
-import { ISparkPlugin } from '../types';
-import { PaletteItem, TriggerContext } from '../types/command-palette';
+import type { Editor } from 'obsidian';
+import type { ISparkPlugin } from '../types';
+import type { PaletteItem, TriggerContext } from '../types/command-palette';
 import { ItemLoader } from './ItemLoader';
 import { FuzzyMatcher } from './FuzzyMatcher';
 import { PaletteView } from './PaletteView';
 import { CoordinateDetector } from './CoordinateDetector';
 import { TriggerDetector } from './TriggerDetector';
-import { MentionDecorator } from '../mention/MentionDecorator';
+import type { MentionDecorator } from '../mention/MentionDecorator';
 
 /**
  * Orchestrates the command palette functionality
@@ -34,7 +34,7 @@ export class CommandPaletteManager {
 		this.mentionDecorator = mentionDecorator || null;
 		this.itemLoader = new ItemLoader(plugin.app);
 		this.fuzzyMatcher = new FuzzyMatcher();
-		this.paletteView = new PaletteView(plugin.app);
+		this.paletteView = new PaletteView();
 		this.coordinateDetector = new CoordinateDetector();
 		this.triggerDetector = new TriggerDetector();
 

@@ -1,5 +1,5 @@
-import { App, TAbstractFile } from 'obsidian';
-import { PaletteItem } from '../types/command-palette';
+import type { App, TAbstractFile } from 'obsidian';
+import type { PaletteItem } from '../types/command-palette';
 import { parseFrontmatter } from '../utils/markdown';
 
 export class ResourceService {
@@ -9,8 +9,16 @@ export class ResourceService {
 	// Caches
 	private agentsCache: PaletteItem[] | null = null;
 	private commandsCache: PaletteItem[] | null = null;
-	private validAgentsCache: Set<string> | null = null;
-	private validCommandsCache: Set<string> | null = null;
+	private _validAgentsCache: Set<string> | null = null;
+	private _validCommandsCache: Set<string> | null = null;
+
+	// Public readonly getters for validation caches
+	get validAgentsCache(): Set<string> | null {
+		return this._validAgentsCache;
+	}
+	get validCommandsCache(): Set<string> | null {
+		return this._validCommandsCache;
+	}
 
 	private constructor(app: App) {
 		this.app = app;
@@ -97,7 +105,7 @@ export class ResourceService {
 			}
 
 			this.agentsCache = items;
-			this.validAgentsCache = new Set(items.map(item => item.id.substring(1))); // Remove @
+			this._validAgentsCache = new Set(items.map(item => item.id.substring(1))); // Remove @
 		} catch (error) {
 			console.error('ResourceService: Error loading agents:', error);
 		}
@@ -143,7 +151,7 @@ export class ResourceService {
 			}
 
 			this.commandsCache = items;
-			this.validCommandsCache = new Set(items.map(item => item.id.substring(1))); // Remove /
+			this._validCommandsCache = new Set(items.map(item => item.id.substring(1))); // Remove /
 		} catch (error) {
 			console.error('ResourceService: Error loading commands:', error);
 		}
@@ -198,7 +206,7 @@ export class ResourceService {
 			return this.validateFolder(folderPath) ? 'folder' : null;
 		} else {
 			// Check if it's an agent first (using cache)
-			if (this.validAgentsCache && this.validAgentsCache.has(basename)) {
+			if (this.validAgentsCache?.has(basename)) {
 				return 'agent';
 			}
 
@@ -217,7 +225,7 @@ export class ResourceService {
 	 */
 	public validateCommandType(command: string): 'command' | null {
 		const commandName = command.substring(1); // Remove /
-		if (this.validCommandsCache && this.validCommandsCache.has(commandName)) {
+		if (this.validCommandsCache?.has(commandName)) {
 			return 'command';
 		}
 		return null;
@@ -248,7 +256,7 @@ export class ResourceService {
 	 */
 	public invalidateAgentCache(): void {
 		this.agentsCache = null;
-		this.validAgentsCache = null;
+		this._validAgentsCache = null;
 	}
 
 	/**
@@ -256,7 +264,7 @@ export class ResourceService {
 	 */
 	public invalidateCommandCache(): void {
 		this.commandsCache = null;
-		this.validCommandsCache = null;
+		this._validCommandsCache = null;
 	}
 
 	/**

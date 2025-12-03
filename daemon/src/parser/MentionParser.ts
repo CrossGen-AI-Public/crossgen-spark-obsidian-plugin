@@ -69,7 +69,7 @@ export class MentionParser implements IMentionParser {
     // Process each pattern in priority order
     for (const pattern of sortedPatterns) {
       const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-      let match;
+      let match: RegExpExecArray | null = null;
 
       while ((match = regex.exec(content)) !== null) {
         const position = match.index;

@@ -53,12 +53,14 @@ export const INLINE_CHAT_PENDING_MARKER_REGEX = /<!--\s*spark-inline-chat:pendin
 /**
  * Regex for matching temporary marker block (start to end)
  */
-export const TEMP_MARKER_BLOCK_REGEX = /<!--\s*spark-inline-[\w-]+-start\s*-->\n[\s\S]*?<!--\s*spark-inline-[\w-]+-end\s*-->\n?/g;
+export const TEMP_MARKER_BLOCK_REGEX =
+	/<!--\s*spark-inline-[\w-]+-start\s*-->\n[\s\S]*?<!--\s*spark-inline-[\w-]+-end\s*-->\n?/g;
 
 /**
  * Regex for matching daemon marker block (pending to end)
  */
-export const DAEMON_MARKER_BLOCK_REGEX = /<!--\s*spark-inline-chat:pending:[\w-]+:[^>]+\s*-->\n[\s\S]*?<!--\s*\/spark-inline-chat\s*-->\n?/g;
+export const DAEMON_MARKER_BLOCK_REGEX =
+	/<!--\s*spark-inline-chat:pending:[\w-]+:[^>]+\s*-->\n[\s\S]*?<!--\s*\/spark-inline-chat\s*-->\n?/g;
 
 /**
  * Default chat window dimensions

@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import type { App } from 'obsidian';
 
 export interface ChatResult {
 	conversationId: string;

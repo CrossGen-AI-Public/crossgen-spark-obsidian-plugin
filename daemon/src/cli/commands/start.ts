@@ -4,8 +4,8 @@
  */
 
 import type { Command } from 'commander';
-import path from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
+import path from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { SparkDaemon } from '../../main.js';
 import { registerDaemon, findDaemon } from '../registry.js';
 import { handleCliError } from '../../errors/ErrorHandler.js';

@@ -3,8 +3,8 @@
  * Resolves mentions to actual file paths in the vault
  */
 
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { glob } from 'glob';
 import type { IPathResolver } from '../types/context.js';
 

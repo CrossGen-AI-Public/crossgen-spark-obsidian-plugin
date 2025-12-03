@@ -1,4 +1,4 @@
-import { Editor, EditorPosition } from 'obsidian';
+import type { Editor, EditorPosition } from 'obsidian';
 
 export interface TriggerInfo {
 	char: string;

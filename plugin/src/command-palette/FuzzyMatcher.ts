@@ -1,4 +1,4 @@
-import { PaletteItem } from '../types/command-palette';
+import type { PaletteItem } from '../types/command-palette';
 
 interface MatchResult {
 	item: PaletteItem;

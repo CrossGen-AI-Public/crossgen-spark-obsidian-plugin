@@ -3,8 +3,8 @@
  * Writes detailed error reports to .spark/logs/ and notification queue
  */
 
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join, basename } from 'path';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { join, basename } from 'node:path';
 import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
 
@@ -260,11 +260,11 @@ export class ErrorWriter {
    */
   private async writeNotification(notification: NotificationData): Promise<void> {
     const notificationsFile = join(this.vaultPath, '.spark', 'notifications.jsonl');
-    const notificationLine = JSON.stringify(notification) + '\n';
+    const notificationLine = `${JSON.stringify(notification)}\n`;
 
     try {
       // Append to JSONL file
-      const { appendFileSync } = await import('fs');
+      const { appendFileSync } = await import('node:fs');
       appendFileSync(notificationsFile, notificationLine, 'utf-8');
     } catch (_error) {
       // If file doesn't exist, create it

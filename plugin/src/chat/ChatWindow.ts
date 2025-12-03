@@ -1,11 +1,11 @@
-import { App, Component, MarkdownRenderer } from 'obsidian';
-import { ChatMessage, ChatState } from './types';
-import SparkPlugin from '../main';
-import { ConversationStorage } from './ConversationStorage';
+import { type App, Component, MarkdownRenderer } from 'obsidian';
+import type { ChatMessage, ChatState } from './types';
+import type SparkPlugin from '../main';
+import type { ConversationStorage } from './ConversationStorage';
 import { MentionInput } from '../mention/MentionInput';
 import { ChatSelector } from './ChatSelector';
 import { ChatQueue } from './ChatQueue';
-import { ChatResultWatcher, ChatResult } from './ChatResultWatcher';
+import { ChatResultWatcher, type ChatResult } from './ChatResultWatcher';
 import { ResourceService } from '../services/ResourceService';
 import {
 	MENTION_REGEX,
@@ -14,7 +14,7 @@ import {
 	DEFAULT_CHAT_RIGHT,
 	DEFAULT_CHAT_BOTTOM,
 } from '../constants';
-import { MentionDecorator } from '../mention/MentionDecorator';
+import type { MentionDecorator } from '../mention/MentionDecorator';
 
 export class ChatWindow extends Component {
 	private app: App;
@@ -170,19 +170,14 @@ export class ChatWindow extends Component {
 		inputWrapperEl.className = 'spark-chat-input-wrapper';
 
 		// Create mention input with full capabilities
-		this.mentionInput = new MentionInput(
-			this.app,
-			this.plugin.mentionDecorator,
-			{
-				placeholder: 'Type your message...',
-				multiLine: true,
-				enableMentionClick: true, // Enable click-to-open in main chat
-				onSubmit: () => this.sendMessage(),
-				onChange: () => this.adjustInputHeight(),
-				paletteContainer: this.containerEl,
-			},
-			this.plugin
-		);
+		this.mentionInput = new MentionInput(this.app, this.plugin.mentionDecorator, {
+			placeholder: 'Type your message...',
+			multiLine: true,
+			enableMentionClick: true, // Enable click-to-open in main chat
+			onSubmit: () => this.sendMessage(),
+			onChange: () => this.adjustInputHeight(),
+			paletteContainer: this.containerEl,
+		});
 
 		this.inputEl = this.mentionInput.create();
 		this.inputEl.className = 'spark-chat-input';
@@ -477,8 +472,8 @@ export class ChatWindow extends Component {
 				const maxTop = viewportHeight - minVisibleTop;
 				newTop = Math.max(0, Math.min(newTop, maxTop));
 
-				this.containerEl.style.left = newLeft + 'px';
-				this.containerEl.style.top = newTop + 'px';
+				this.containerEl.style.left = `${newLeft}px`;
+				this.containerEl.style.top = `${newTop}px`;
 				this.containerEl.style.right = 'auto';
 				this.containerEl.style.bottom = 'auto';
 			}
@@ -703,7 +698,9 @@ export class ChatWindow extends Component {
 
 	private renderAllMessages() {
 		this.messagesEl.innerHTML = '';
-		this.state.messages.forEach(message => this.renderMessage(message));
+		this.state.messages.forEach(message => {
+			this.renderMessage(message);
+		});
 		this.scrollToBottom();
 	}
 
@@ -750,7 +747,7 @@ export class ChatWindow extends Component {
 			this.inputEl.style.maxHeight = '120px';
 			this.inputEl.style.overflowY = 'auto';
 		} else {
-			this.inputEl.style.height = scrollHeight + 'px';
+			this.inputEl.style.height = `${scrollHeight}px`;
 			this.inputEl.style.maxHeight = 'none';
 			this.inputEl.style.overflowY = 'hidden';
 		}
@@ -796,7 +793,7 @@ export class ChatWindow extends Component {
 		messageEl.appendChild(contentEl);
 
 		// Store message reference for removal
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Custom property on DOM element
 		(messageEl as any)._sparkMessage = message;
 
 		this.messagesEl.appendChild(messageEl);
@@ -852,7 +849,7 @@ export class ChatWindow extends Component {
 		// Remove from DOM
 		const messageElements = this.messagesEl.querySelectorAll('.spark-chat-message');
 		messageElements.forEach(el => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			// biome-ignore lint/suspicious/noExplicitAny: Custom property on DOM element
 			const message = (el as any)._sparkMessage;
 			if (message && message.id === messageId) {
 				this.messagesEl.removeChild(el);
@@ -1124,7 +1121,9 @@ export class ChatWindow extends Component {
 			// If it's just a name update (intermediate result), keep loading
 			if (result.content || result.error) {
 				const loadingMessages = this.state.messages.filter(msg => msg.type === 'loading');
-				loadingMessages.forEach(msg => this.removeMessage(msg.id));
+				loadingMessages.forEach(msg => {
+					this.removeMessage(msg.id);
+				});
 			}
 
 			// Add agent response

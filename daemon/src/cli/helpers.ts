@@ -3,8 +3,8 @@
  * Shared utilities for CLI commands
  */
 
-import path from 'path';
-import { existsSync, unlinkSync } from 'fs';
+import path from 'node:path';
+import { existsSync, unlinkSync } from 'node:fs';
 import { unregisterDaemon } from './registry.js';
 
 /**
@@ -14,7 +14,7 @@ export function validateVault(absolutePath: string, context: 'start' | 'dev' = '
   const obsidianDir = path.join(absolutePath, '.obsidian');
   if (!existsSync(obsidianDir)) {
     console.error('❌ Not an Obsidian vault: .obsidian directory not found');
-    console.error('   Path: ' + absolutePath);
+    console.error(`   Path: ${absolutePath}`);
     console.error('');
     if (context === 'dev') {
       console.error('   Dev mode must be run from an Obsidian vault directory.');

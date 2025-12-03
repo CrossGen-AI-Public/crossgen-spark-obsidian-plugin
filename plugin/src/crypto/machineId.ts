@@ -10,9 +10,9 @@
  * - Windows: MachineGuid from registry
  */
 
-import { readFileSync } from 'fs';
-import { execSync } from 'child_process';
-import { platform } from 'os';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { platform } from 'node:os';
 
 /**
  * Get a unique machine identifier from the OS

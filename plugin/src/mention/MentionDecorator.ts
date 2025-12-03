@@ -1,6 +1,12 @@
-import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import {
+	type EditorView,
+	Decoration,
+	type DecorationSet,
+	ViewPlugin,
+	type ViewUpdate,
+} from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
-import { App, SuggestModal, TFile } from 'obsidian';
+import { type App, SuggestModal, type TFile } from 'obsidian';
 import { MENTION_REGEX, COMMAND_REGEX } from '../constants';
 import { ResourceService } from '../services/ResourceService';
 
@@ -139,7 +145,7 @@ export class MentionDecorator {
 		}> = [];
 
 		const mentionRegex = new RegExp(MENTION_REGEX);
-		let match;
+		let match: RegExpExecArray | null = null;
 		while ((match = mentionRegex.exec(text)) !== null) {
 			const prefix = match[1] || '';
 			const mention = match[2];
@@ -272,12 +278,16 @@ export class MentionDecorator {
 		const tables = document.querySelectorAll('.table-editor');
 		tables.forEach(table => {
 			const cells = table.querySelectorAll('.table-cell-wrapper');
-			cells.forEach(cell => this.processTableCell(cell as HTMLElement));
+			cells.forEach(cell => {
+				this.processTableCell(cell as HTMLElement);
+			});
 		});
 
 		// Process metadata property values
 		const metadataInputs = document.querySelectorAll('.metadata-input-longtext');
-		metadataInputs.forEach(input => this.processTableCell(input as HTMLElement));
+		metadataInputs.forEach(input => {
+			this.processTableCell(input as HTMLElement);
+		});
 	}
 
 	/**
@@ -353,7 +363,7 @@ export class MentionDecorator {
 
 		// Find @mentions
 		const mentionRegex = new RegExp(MENTION_REGEX);
-		let match;
+		let match: RegExpExecArray | null = null;
 		while ((match = mentionRegex.exec(text)) !== null) {
 			const mention = match[2]; // Group 2 is the mention
 			const type = this.validateMention(mention);
@@ -403,8 +413,8 @@ export class MentionDecorator {
 				return 'file';
 			} else {
 				// Use service cache - cache is pre-loaded in initialize/refresh
-				const agentNames = this.resourceService['validAgentsCache'];
-				if (agentNames && agentNames.has(basename)) {
+				const agentNames = this.resourceService.validAgentsCache;
+				if (agentNames?.has(basename)) {
 					return 'agent';
 				}
 			}
@@ -420,8 +430,8 @@ export class MentionDecorator {
 	public validateCommand(command: string): TokenType | null {
 		const commandName = command.substring(1); // Remove /
 		// Use service cache - cache is pre-loaded in initialize/refresh
-		const commandNames = this.resourceService['validCommandsCache'];
-		return commandNames && commandNames.has(commandName) ? 'command' : null;
+		const commandNames = this.resourceService.validCommandsCache;
+		return commandNames?.has(commandName) ? 'command' : null;
 	}
 
 	/**
@@ -449,7 +459,7 @@ export class MentionDecorator {
 
 			// Find all @mentions
 			const mentionRegex = new RegExp(MENTION_REGEX);
-			let match;
+			let match: RegExpExecArray | null = null;
 			while ((match = mentionRegex.exec(text)) !== null) {
 				const mention = match[2]; // Group 2 is the mention
 				const type = this.validateMention(mention);

@@ -18,7 +18,12 @@ export { FileParser } from './parser/FileParser.js';
 // Export config
 export { ConfigLoader } from './config/ConfigLoader.js';
 export { ConfigValidator } from './config/ConfigValidator.js';
-export { ConfigDefaults, DEFAULT_SPARK_CONFIG, deepMerge } from './config/ConfigDefaults.js';
+export {
+  getDefaults,
+  mergeConfig,
+  DEFAULT_SPARK_CONFIG,
+  deepMerge,
+} from './config/ConfigDefaults.js';
 
 // Export logger
 export { Logger } from './logger/Logger.js';

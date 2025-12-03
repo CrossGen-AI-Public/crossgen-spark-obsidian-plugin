@@ -1,7 +1,7 @@
 // Spark Assistant Types
-import { Plugin } from 'obsidian';
-import { MentionDecorator } from '../mention/MentionDecorator';
-import { ChatManager } from '../chat/ChatManager';
+import type { Plugin } from 'obsidian';
+import type { MentionDecorator } from '../mention/MentionDecorator';
+import type { ChatManager } from '../chat/ChatManager';
 
 export interface SparkSettings {
 	enablePalette: boolean;

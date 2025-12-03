@@ -4,8 +4,8 @@
  */
 
 import type { Command } from 'commander';
-import path from 'path';
-import { existsSync, readFileSync, unlinkSync } from 'fs';
+import path from 'node:path';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { validateVault } from '../helpers.js';
 
 interface HistoryEvent {

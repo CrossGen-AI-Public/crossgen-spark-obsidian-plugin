@@ -4,10 +4,10 @@
  * Supports both encrypted (AES-256-GCM) and plaintext formats for backward compatibility
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { parse as parseYAML } from 'yaml';
-import { join } from 'path';
-import { homedir } from 'os';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { Logger } from '../logger/Logger.js';
 import { decryptSecrets, isEncrypted } from '../crypto/index.js';
 
@@ -73,7 +73,7 @@ export class SecretsLoader {
       // Load API keys
       if (secrets.api_keys && typeof secrets.api_keys === 'object') {
         Object.entries(secrets.api_keys).forEach(([providerName, apiKey]) => {
-          if (apiKey && apiKey.trim()) {
+          if (apiKey?.trim()) {
             this.loadedSecrets.set(providerName, apiKey.trim());
             this.logger.debug('Loaded API key from ~/.spark/secrets.yaml', {
               provider: providerName,

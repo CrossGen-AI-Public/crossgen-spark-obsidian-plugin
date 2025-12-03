@@ -8,11 +8,9 @@ import { ResourceService } from '../services/ResourceService';
 import { AGENT_NAME_REGEX } from '../constants';
 
 export class InlineChatDetector {
-	private app: App;
 	private resourceService: ResourceService;
 
 	constructor(app: App) {
-		this.app = app;
 		this.resourceService = ResourceService.getInstance(app);
 	}
 

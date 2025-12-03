@@ -3,7 +3,6 @@
  */
 
 import type { App } from 'obsidian';
-import type { WidgetMode } from './types';
 import { MentionInput } from '../mention/MentionInput';
 import type { MentionDecorator } from '../mention/MentionDecorator';
 
@@ -50,7 +49,6 @@ export class InlineChatWidget {
 	private mentionInput: MentionInput | null = null;
 	private sendButtonEl: HTMLButtonElement | null = null;
 	private options: InlineChatWidgetOptions;
-	private mode: WidgetMode = 'input';
 	private statusMessageEl: HTMLElement | null = null;
 	private statusIntervalId: number | null = null;
 	private currentStatusIndex: number = 0;
@@ -58,13 +56,6 @@ export class InlineChatWidget {
 	constructor(app: App, options: InlineChatWidgetOptions) {
 		this.app = app;
 		this.options = options;
-	}
-
-	/**
-	 * Get a random status message from the pool
-	 */
-	private getRandomStatusMessage(): string {
-		return STATUS_MESSAGES[Math.floor(Math.random() * STATUS_MESSAGES.length)];
 	}
 
 	/**
@@ -154,8 +145,6 @@ export class InlineChatWidget {
 		if (!this.containerEl) {
 			return;
 		}
-
-		this.mode = 'processing';
 
 		// Clear current content
 		this.containerEl.empty();

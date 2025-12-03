@@ -4,7 +4,7 @@
  */
 
 import type { Command } from 'commander';
-import path from 'path';
+import path from 'node:path';
 import { ConfigLoader } from '../../config/ConfigLoader.js';
 import { validateVault } from '../helpers.js';
 

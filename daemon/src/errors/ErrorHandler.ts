@@ -62,7 +62,7 @@ export class ErrorHandler {
    */
   private displayError(error: SparkError, context?: { operation?: string }): void {
     console.error('');
-    console.error('❌ Error' + (context?.operation ? `: ${context.operation}` : ''));
+    console.error(`❌ Error${context?.operation ? `: ${context.operation}` : ''}`);
     console.error('');
     console.error(`   ${error.message}`);
 

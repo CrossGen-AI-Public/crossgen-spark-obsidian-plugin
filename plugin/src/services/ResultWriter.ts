@@ -1,4 +1,4 @@
-import { App, Editor, TFile } from 'obsidian';
+import { type App, type Editor, TFile } from 'obsidian';
 import {
 	AGENT_PREFIX_REGEX,
 	NEWLINE_REGEX,

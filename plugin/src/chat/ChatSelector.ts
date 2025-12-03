@@ -1,6 +1,6 @@
-import { App, SuggestModal } from 'obsidian';
-import { ChatConversation } from './types';
-import { ConversationStorage } from './ConversationStorage';
+import { type App, SuggestModal } from 'obsidian';
+import type { ChatConversation } from './types';
+import type { ConversationStorage } from './ConversationStorage';
 
 /**
  * Modal for selecting conversations
@@ -65,7 +65,7 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 			// Otherwise show message preview
 			const preview =
 				firstMessage.content.length > 50
-					? firstMessage.content.substring(0, 50) + '...'
+					? `${firstMessage.content.substring(0, 50)}...`
 					: firstMessage.content;
 			noteEl.setText(preview);
 		} else {

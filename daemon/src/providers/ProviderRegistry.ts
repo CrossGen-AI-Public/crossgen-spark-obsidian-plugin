@@ -10,7 +10,7 @@ import type {
   ProviderFactoryFunction,
   ProviderConfig,
 } from '../types/provider.js';
-import { ProviderType } from '../types/provider.js';
+import type { ProviderType } from '../types/provider.js';
 import { SparkError } from '../types/index.js';
 import { Logger } from '../logger/Logger.js';
 

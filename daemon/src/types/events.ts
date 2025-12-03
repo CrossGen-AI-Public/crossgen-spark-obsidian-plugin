@@ -21,8 +21,8 @@ export interface IEventEmitter<Events extends Record<string, unknown>> {
  * Daemon events map
  */
 export interface DaemonEvents {
-  started: void;
-  stopped: void;
+  started: undefined;
+  stopped: undefined;
   error: Error;
   fileChange: {
     path: string;

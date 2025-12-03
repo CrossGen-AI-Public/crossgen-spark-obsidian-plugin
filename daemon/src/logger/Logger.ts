@@ -135,7 +135,7 @@ export class Logger {
   private formatLargeText(text: string): string {
     return text
       .split('\n')
-      .map((line) => '    ' + line)
+      .map((line) => `    ${line}`)
       .join('\n');
   }
 

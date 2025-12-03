@@ -425,7 +425,7 @@ class ClaudeAgentErrorHandler {
     }
 
     const exitCodeMatch = error.message.match(/process exited with code (\d+)/);
-    if (exitCodeMatch && exitCodeMatch[1]) {
+    if (exitCodeMatch?.[1]) {
       return parseInt(exitCodeMatch[1], 10);
     }
 

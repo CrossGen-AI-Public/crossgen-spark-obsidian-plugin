@@ -5,8 +5,8 @@
 
 import type { SparkDaemon } from '../main.js';
 import type { SparkConfig, DaemonState, FileChange } from '../types/index.js';
-import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
-import path from 'path';
+import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
 
 export interface InspectorState {
   state: DaemonState;

@@ -1,5 +1,5 @@
-import { App } from 'obsidian';
-import { ChatConversation } from './types';
+import type { App } from 'obsidian';
+import type { ChatConversation } from './types';
 import { CHAT_FILENAME_REGEX, REGEX_ESCAPE_PATTERN } from '../constants';
 
 export class ConversationStorage {

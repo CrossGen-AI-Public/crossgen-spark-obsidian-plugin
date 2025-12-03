@@ -1,19 +1,15 @@
-import { App } from 'obsidian';
-import SparkPlugin from '../main';
+import type { App } from 'obsidian';
+import type SparkPlugin from '../main';
 import { ChatWindow } from './ChatWindow';
 import { ConversationStorage } from './ConversationStorage';
-import { ChatMessage } from './types';
+import type { ChatMessage } from './types';
 
 export class ChatManager {
 	private static instance: ChatManager;
-	private app: App;
-	private plugin: SparkPlugin;
 	private chatWindow: ChatWindow;
 	private conversationStorage: ConversationStorage;
 
 	private constructor(app: App, plugin: SparkPlugin) {
-		this.app = app;
-		this.plugin = plugin;
 		this.conversationStorage = new ConversationStorage(app);
 		this.chatWindow = new ChatWindow(app, plugin, this.conversationStorage);
 	}

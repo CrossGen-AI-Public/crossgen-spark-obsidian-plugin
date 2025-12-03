@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import type { App } from 'obsidian';
 
 /**
  * Manages writing chat messages to the queue for daemon processing
@@ -58,7 +58,7 @@ export class ChatQueue {
 
 		// Add the user's current message
 		content += '<!-- spark-chat-message -->\n';
-		content += userMessage + '\n';
+		content += `${userMessage}\n`;
 		content += '<!-- /spark-chat-message -->\n';
 
 		// Write to queue

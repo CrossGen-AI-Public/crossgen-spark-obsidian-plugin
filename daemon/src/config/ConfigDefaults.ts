@@ -110,15 +110,13 @@ export function deepMerge(
   return output;
 }
 
-export class ConfigDefaults {
-  public static getDefaults(): SparkConfig {
-    return DEFAULT_SPARK_CONFIG;
-  }
+export function getDefaults(): SparkConfig {
+  return DEFAULT_SPARK_CONFIG;
+}
 
-  public static merge(userConfig: Partial<SparkConfig>): SparkConfig {
-    return deepMerge(
-      DEFAULT_SPARK_CONFIG as unknown as Record<string, unknown>,
-      userConfig as unknown as Record<string, unknown>
-    ) as unknown as SparkConfig;
-  }
+export function mergeConfig(userConfig: Partial<SparkConfig>): SparkConfig {
+  return deepMerge(
+    DEFAULT_SPARK_CONFIG as unknown as Record<string, unknown>,
+    userConfig as unknown as Record<string, unknown>
+  ) as unknown as SparkConfig;
 }

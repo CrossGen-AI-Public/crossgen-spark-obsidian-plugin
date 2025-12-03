@@ -3,8 +3,8 @@
  * Orchestrates all daemon components
  */
 
-import { writeFileSync } from 'fs';
-import { join } from 'path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import chokidar from 'chokidar';
 import type { FSWatcher } from 'chokidar';
 import type { ISparkDaemon, DaemonState } from './types/index.js';
@@ -282,7 +282,7 @@ export class SparkDaemon implements ISparkDaemon {
 
       // Restart watcher with new configuration
       this.logger.info('Restarting file watcher with new configuration...');
-      await this.watcher!.stop();
+      await this.watcher?.stop();
 
       this.watcher = new FileWatcher({
         vaultPath: this.vaultPath,

@@ -3,11 +3,11 @@
  * Loads and validates Spark configuration from vault
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { parse as parseYAML } from 'yaml';
-import { join } from 'path';
+import { join } from 'node:path';
 import type { IConfigLoader, SparkConfig } from '../types/config.js';
-import { ConfigDefaults } from './ConfigDefaults.js';
+import { getDefaults, mergeConfig } from './ConfigDefaults.js';
 import { ConfigValidator } from './ConfigValidator.js';
 import { SparkError } from '../types/index.js';
 
@@ -41,7 +41,7 @@ export class ConfigLoader implements IConfigLoader {
     } catch (error) {
       if (attempt < maxAttempts) {
         // Exponential backoff: 200ms, 400ms, 800ms
-        const delay = 200 * Math.pow(2, attempt - 1);
+        const delay = 200 * 2 ** (attempt - 1);
         await new Promise((resolve) => setTimeout(resolve, delay));
         return await this.loadWithRetry(vaultPath, attempt + 1, maxAttempts);
       }
@@ -65,7 +65,7 @@ export class ConfigLoader implements IConfigLoader {
 
     // If no config file, return defaults
     if (!existsSync(configPath)) {
-      return ConfigDefaults.getDefaults();
+      return getDefaults();
     }
 
     try {
@@ -73,18 +73,18 @@ export class ConfigLoader implements IConfigLoader {
 
       // Handle empty file or only comments
       if (!content.trim() || !content.trim().replace(/#.*/g, '').trim()) {
-        return ConfigDefaults.getDefaults();
+        return getDefaults();
       }
 
       const userConfig = parseYAML(content);
 
       // Handle empty YAML
       if (!userConfig || Object.keys(userConfig).length === 0) {
-        return ConfigDefaults.getDefaults();
+        return getDefaults();
       }
 
       // Merge with defaults
-      const config = ConfigDefaults.merge(userConfig as Partial<SparkConfig>);
+      const config = mergeConfig(userConfig as Partial<SparkConfig>);
 
       // Validate
       const validated = this.validator.validate(config);

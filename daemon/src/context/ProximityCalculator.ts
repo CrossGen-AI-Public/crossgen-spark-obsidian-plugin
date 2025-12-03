@@ -3,7 +3,7 @@
  * Calculates distance between files for context ranking
  */
 
-import { dirname, relative, sep } from 'path';
+import { dirname, relative, sep } from 'node:path';
 import type { IProximityCalculator } from '../types/context.js';
 
 export class ProximityCalculator implements IProximityCalculator {

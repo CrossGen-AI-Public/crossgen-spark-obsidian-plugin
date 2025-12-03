@@ -8,8 +8,8 @@
  * is just used for making the API call.
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
 import type { AICompletionResult } from '../types/ai.js';
 import { Logger } from '../logger/Logger.js';

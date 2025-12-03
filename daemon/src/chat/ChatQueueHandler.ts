@@ -3,8 +3,8 @@
  * Reuses existing CommandExecutor, MentionParser, and other components
  */
 
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
-import { join, basename } from 'path';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import { join, basename } from 'node:path';
 import type { Logger } from '../logger/Logger.js';
 import type { CommandExecutor } from '../execution/CommandExecutor.js';
 import type { MentionParser } from '../parser/MentionParser.js';
@@ -187,7 +187,7 @@ export class ChatQueueHandler {
       try {
         const content = readFileSync(fullPath, 'utf-8');
         const match = content.match(/conversation_id:\s*(.+)/);
-        if (match && match[1]) {
+        if (match?.[1]) {
           conversationId = match[1].trim();
         } else {
           // Fallback: extract from queueId (format: conversationId-timestamp)
@@ -279,10 +279,9 @@ export class ChatQueueHandler {
       conversationId: conversationIdMatch[1].trim(),
       queueId: queueIdMatch[1].trim(),
       userMessage: messageMatch[1].trim(),
-      context: contextMatch && contextMatch[1] ? contextMatch[1].trim() : '',
-      activeFile: activeFileMatch && activeFileMatch[1] ? activeFileMatch[1].trim() : undefined,
-      primaryAgent:
-        primaryAgentMatch && primaryAgentMatch[1] ? primaryAgentMatch[1].trim() : undefined,
+      context: contextMatch?.[1] ? contextMatch[1].trim() : '',
+      activeFile: activeFileMatch?.[1] ? activeFileMatch[1].trim() : undefined,
+      primaryAgent: primaryAgentMatch?.[1] ? primaryAgentMatch[1].trim() : undefined,
     };
   }
 
@@ -303,7 +302,7 @@ export class ChatQueueHandler {
     }
 
     const resultFile = join(resultsDir, `${result.conversationId}.jsonl`);
-    writeFileSync(resultFile, JSON.stringify(result) + '\n', { flag: 'a' });
+    writeFileSync(resultFile, `${JSON.stringify(result)}\n`, { flag: 'a' });
 
     this.logger.debug('Chat result written', { conversationId: result.conversationId });
   }
@@ -324,7 +323,7 @@ export class ChatQueueHandler {
     // For Claude API errors with embedded JSON, extract the clean message
     // Match: Claude API error: 400 {"type":"error","error":{"message":"..."}}
     const jsonMatch = message.match(/\{.*?"message"\s*:\s*"([^"]+)"/);
-    if (jsonMatch && jsonMatch[1]) {
+    if (jsonMatch?.[1]) {
       message = jsonMatch[1];
     } else {
       // Clean up common error prefixes
@@ -338,8 +337,7 @@ export class ChatQueueHandler {
       const sparkError = error as { code: string; context?: Record<string, unknown> };
       const suggestions = ErrorHandler.getSuggestions(sparkError.code, error);
       if (suggestions.length > 0) {
-        message +=
-          '\n\n💡 **Suggestions:**\n' + suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n');
+        message += `\n\n💡 **Suggestions:**\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
       }
     }
 

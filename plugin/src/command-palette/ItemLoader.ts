@@ -1,14 +1,6 @@
-import { App, TFolder } from 'obsidian';
-import { PaletteItem } from '../types/command-palette';
+import { type App, TFolder } from 'obsidian';
+import type { PaletteItem } from '../types/command-palette';
 import { ResourceService } from '../services/ResourceService';
-import { parseFrontmatter } from '../utils/markdown';
-
-interface ItemConfig {
-	type: PaletteItem['type'];
-	folder: string;
-	prefix: string;
-	descriptionField?: string;
-}
 
 /**
  * Loads palette items from various sources
@@ -89,63 +81,6 @@ export class ItemLoader {
 	}
 
 	/**
-	 * Load items from a specific folder with configuration
-	 */
-	private async loadFromFolder(config: ItemConfig): Promise<PaletteItem[]> {
-		const items: PaletteItem[] = [];
-
-		try {
-			if (!(await this.folderExists(config.folder))) {
-				return items;
-			}
-
-			const files = await this.getMarkdownFiles(config.folder);
-
-			for (const filePath of files) {
-				const item = await this.createItemFromFile(filePath, config);
-				if (item) {
-					items.push(item);
-				}
-			}
-		} catch (error) {
-			console.error(`Error loading ${config.type}s from ${config.folder}:`, error);
-		}
-
-		return items;
-	}
-
-	/**
-	 * Create a palette item from a file
-	 */
-	private async createItemFromFile(
-		filePath: string,
-		config: ItemConfig
-	): Promise<PaletteItem | null> {
-		const content = await this.app.vault.adapter.read(filePath);
-		const metadata = parseFrontmatter(content);
-		const fileName = this.getFileName(filePath);
-
-		const description =
-			metadata.description ||
-			(config.descriptionField ? metadata[config.descriptionField] : undefined);
-
-		return {
-			type: config.type,
-			id: `${config.prefix}${fileName}`,
-			name: metadata.name || fileName,
-			description,
-			path: filePath,
-		};
-	}
-
-	/**
-	 * Check if folder exists
-	 */
-	private async folderExists(path: string): Promise<boolean> {
-		return this.app.vault.adapter.exists(path);
-	}
-
-	/**
 	 * Get all markdown files in a folder
 	 */
 	private async getMarkdownFiles(folderPath: string): Promise<string[]> {
@@ -156,13 +91,6 @@ export class ItemLoader {
 			const fileName = path.split('/').pop()?.toLowerCase();
 			return fileName !== 'readme.md';
 		});
-	}
-
-	/**
-	 * Extract file name without extension from path
-	 */
-	private getFileName(filePath: string): string {
-		return filePath.split('/').pop()?.replace('.md', '') || '';
 	}
 
 	/**

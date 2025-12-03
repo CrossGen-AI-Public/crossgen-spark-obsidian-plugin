@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import type { App } from 'obsidian';
 import { ChatMentionHandler } from './ChatMentionHandler';
 import type { MentionDecorator } from './MentionDecorator';
 
@@ -31,18 +31,11 @@ export class MentionInput {
 	private options: MentionInputOptions;
 	private inputEl: HTMLDivElement | null = null;
 	private mentionHandler: ChatMentionHandler | null = null;
-	private plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } };
 
-	constructor(
-		app: App,
-		mentionDecorator: MentionDecorator,
-		options: MentionInputOptions,
-		plugin?: { chatManager?: { openChatWithAgent: (agentName: string) => void } }
-	) {
+	constructor(app: App, mentionDecorator: MentionDecorator, options: MentionInputOptions) {
 		this.app = app;
 		this.mentionDecorator = mentionDecorator;
 		this.options = options;
-		this.plugin = plugin;
 	}
 
 	/**
@@ -64,12 +57,7 @@ export class MentionInput {
 		}
 
 		// Create and attach mention handler
-		const enableClick = this.options.enableMentionClick !== false;
-		this.mentionHandler = new ChatMentionHandler(
-			this.app,
-			this.mentionDecorator,
-			enableClick ? this.plugin : undefined
-		);
+		this.mentionHandler = new ChatMentionHandler(this.app, this.mentionDecorator);
 		void this.mentionHandler.initialize();
 		this.mentionHandler.attachToInput(this.inputEl, this.options.paletteContainer);
 

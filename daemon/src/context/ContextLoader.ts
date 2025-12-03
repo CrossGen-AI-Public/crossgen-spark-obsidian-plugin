@@ -3,7 +3,7 @@
  * Loads all context needed for command execution
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import type { IContextLoader, LoadedContext, AgentAIConfig } from '../types/context.js';
 import type { ParsedMention } from '../types/parser.js';
 import { PathResolver } from './PathResolver.js';
@@ -202,7 +202,7 @@ export class ContextLoader implements IContextLoader {
 
     // Combine metadata with body
     if (parts.length > 0) {
-      return parts.join('\n') + '\n\n' + body;
+      return `${parts.join('\n')}\n\n${body}`;
     }
 
     return body;
@@ -318,9 +318,9 @@ export class ContextLoader implements IContextLoader {
     const cutoff = Math.max(lastPeriod, lastNewline);
 
     if (cutoff > 100) {
-      return truncated.substring(0, cutoff + 1) + '...';
+      return `${truncated.substring(0, cutoff + 1)}...`;
     }
 
-    return truncated + '...';
+    return `${truncated}...`;
   }
 }
