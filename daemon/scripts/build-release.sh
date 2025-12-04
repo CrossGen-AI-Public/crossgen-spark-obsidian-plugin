@@ -27,19 +27,64 @@ echo -e "${BLUE}║   Version: ${VERSION}                        ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 
+# Pre-flight checks
+echo -e "${YELLOW}→ Running pre-flight checks...${NC}"
+
+# Check for clean working directory
+if [[ -n $(git status --porcelain) ]]; then
+    echo -e "${RED}✗ Working directory is not clean. Commit or stash changes first.${NC}"
+    exit 1
+fi
+
+# Check we're on main branch
+CURRENT_BRANCH=$(git branch --show-current)
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo -e "${RED}✗ Not on main branch (currently on: $CURRENT_BRANCH). Switch to main first.${NC}"
+    exit 1
+fi
+
+# Check local is up-to-date with remote
+git fetch origin main --quiet
+LOCAL_SHA=$(git rev-parse HEAD)
+REMOTE_SHA=$(git rev-parse origin/main)
+if [[ "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
+    echo -e "${RED}✗ Local main is not in sync with origin/main.${NC}"
+    echo -e "${RED}  Local:  $LOCAL_SHA${NC}"
+    echo -e "${RED}  Remote: $REMOTE_SHA${NC}"
+    echo -e "${RED}  Run: git pull origin main${NC}"
+    exit 1
+fi
+
+# Check if release already exists
+if command -v gh &> /dev/null; then
+    if gh release view "v${VERSION}" --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin &> /dev/null; then
+        echo -e "${RED}✗ Release v${VERSION} already exists on GitHub.${NC}"
+        echo -e "${RED}  Bump version in package.json first.${NC}"
+        exit 1
+    fi
+fi
+
+echo -e "${GREEN}✓ All pre-flight checks passed${NC}"
+echo ""
+
 # Clean previous release
 echo -e "${YELLOW}→ Cleaning previous release...${NC}"
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR/$RELEASE_NAME"
 
-# Install production dependencies only
-echo -e "${YELLOW}→ Installing production dependencies...${NC}"
+# Install all dependencies (need devDeps for build)
+echo -e "${YELLOW}→ Installing dependencies...${NC}"
 rm -rf node_modules
-npm ci --omit=dev
+npm ci
 
 # Build TypeScript
 echo -e "${YELLOW}→ Building TypeScript...${NC}"
 npm run build
+
+# Reinstall production dependencies only (for release)
+echo -e "${YELLOW}→ Stripping dev dependencies...${NC}"
+rm -rf node_modules
+npm ci --omit=dev
 
 # Copy files to release directory
 echo -e "${YELLOW}→ Copying files to release directory...${NC}"
@@ -61,15 +106,35 @@ echo ""
 echo -e "${BLUE}Release tarball:${NC} $RELEASE_DIR/$TARBALL"
 echo -e "${BLUE}Size:${NC} $SIZE"
 echo ""
-echo -e "${YELLOW}To upload to GitHub Releases:${NC}"
-echo "  1. Create a new release at https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/releases/new"
-echo "  2. Tag: v${VERSION}"
-echo "  3. Upload: $RELEASE_DIR/$TARBALL"
-echo ""
 
 # Restore dev dependencies for development
 echo -e "${YELLOW}→ Restoring dev dependencies...${NC}"
 cd "$DAEMON_DIR"
 npm install
 echo -e "${GREEN}✓ Dev dependencies restored${NC}"
+echo ""
+
+# Upload to GitHub Releases
+echo -e "${YELLOW}→ Upload to GitHub Releases?${NC}"
+read -p "Create release v${VERSION} and upload tarball? [y/N] " -n 1 -r
+echo ""
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if ! command -v gh &> /dev/null; then
+        echo -e "${RED}✗ GitHub CLI (gh) not installed. Install with: brew install gh${NC}"
+        exit 1
+    fi
+    
+    echo -e "${YELLOW}→ Creating GitHub release v${VERSION}...${NC}"
+    gh release create "v${VERSION}" \
+        "$RELEASE_DIR/$TARBALL" \
+        --title "v${VERSION}" \
+        --notes "Spark Daemon v${VERSION}" \
+        --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin
+    
+    echo -e "${GREEN}✓ Release v${VERSION} published to GitHub!${NC}"
+else
+    echo -e "${BLUE}Skipped GitHub upload. To upload manually:${NC}"
+    echo "  gh release create v${VERSION} $RELEASE_DIR/$TARBALL --title \"v${VERSION}\""
+fi
 
