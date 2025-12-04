@@ -57,8 +57,8 @@ fi
 
 # Check if release already exists
 if command -v gh &> /dev/null; then
-    if gh release view "v${VERSION}" --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin &> /dev/null; then
-        echo -e "${RED}✗ Release v${VERSION} already exists on GitHub.${NC}"
+    if gh release view "daemon-${VERSION}" --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin &> /dev/null; then
+        echo -e "${RED}✗ Release daemon-${VERSION} already exists on GitHub.${NC}"
         echo -e "${RED}  Bump version in package.json first.${NC}"
         exit 1
     fi
@@ -116,7 +116,7 @@ echo ""
 
 # Upload to GitHub Releases
 echo -e "${YELLOW}→ Upload to GitHub Releases?${NC}"
-read -p "Create release v${VERSION} and upload tarball? [y/N] " -n 1 -r
+read -p "Create release daemon-${VERSION} and upload tarball? [y/N] " -n 1 -r
 echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -125,16 +125,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         exit 1
     fi
     
-    echo -e "${YELLOW}→ Creating GitHub release v${VERSION}...${NC}"
-    gh release create "v${VERSION}" \
+    echo -e "${YELLOW}→ Creating GitHub release daemon-${VERSION}...${NC}"
+    gh release create "daemon-${VERSION}" \
         "$RELEASE_DIR/$TARBALL" \
-        --title "v${VERSION}" \
+        --title "Daemon ${VERSION}" \
         --notes "Spark Daemon v${VERSION}" \
         --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin
     
-    echo -e "${GREEN}✓ Release v${VERSION} published to GitHub!${NC}"
+    echo -e "${GREEN}✓ Release daemon-${VERSION} published to GitHub!${NC}"
 else
     echo -e "${BLUE}Skipped GitHub upload. To upload manually:${NC}"
-    echo "  gh release create v${VERSION} $RELEASE_DIR/$TARBALL --title \"v${VERSION}\""
+    echo "  gh release create daemon-${VERSION} $RELEASE_DIR/$TARBALL --title \"Daemon ${VERSION}\""
 fi
 

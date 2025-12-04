@@ -62,20 +62,25 @@ echo ""
 
 # Determine version to download
 if [ "$VERSION" = "latest" ]; then
-    echo -e "${YELLOW}→ Fetching latest version...${NC}"
-    RELEASE_URL="$REPO_URL/releases/latest"
-    # Get the redirect location to determine version
+    echo -e "${YELLOW}→ Fetching latest daemon version...${NC}"
+    # Get latest daemon release (tags start with 'daemon-')
+    RELEASES_API="https://api.github.com/repos/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/releases"
     if [ "$DOWNLOAD_TOOL" = "curl" ]; then
-        LATEST_URL=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$RELEASE_URL")
+        LATEST_TAG=$(curl -fsSL "$RELEASES_API" | grep -o '"tag_name": "daemon-[^"]*"' | head -1 | cut -d'"' -f4)
     else
-        LATEST_URL=$(wget --spider -S "$RELEASE_URL" 2>&1 | grep -i "Location:" | tail -1 | awk '{print $2}')
+        LATEST_TAG=$(wget -qO- "$RELEASES_API" | grep -o '"tag_name": "daemon-[^"]*"' | head -1 | cut -d'"' -f4)
     fi
-    VERSION=$(basename "$LATEST_URL" | sed 's/^v//')
-    echo -e "${GREEN}✓ Latest version: ${VERSION}${NC}"
+    if [ -z "$LATEST_TAG" ]; then
+        echo -e "${RED}✗ Could not find latest daemon release${NC}"
+        echo "  Check available releases: $REPO_URL/releases"
+        exit 1
+    fi
+    VERSION=$(echo "$LATEST_TAG" | sed 's/^daemon-//')
+    echo -e "${GREEN}✓ Latest daemon version: ${VERSION}${NC}"
 fi
 
 TARBALL_NAME="spark-daemon-v${VERSION}.tar.gz"
-DOWNLOAD_URL="$REPO_URL/releases/download/v${VERSION}/${TARBALL_NAME}"
+DOWNLOAD_URL="$REPO_URL/releases/download/daemon-${VERSION}/${TARBALL_NAME}"
 
 # Download and extract
 echo -e "${YELLOW}→ Downloading Spark daemon v${VERSION}...${NC}"
@@ -90,13 +95,13 @@ if ! $DOWNLOAD_CMD "$DOWNLOAD_URL" | tar -xz -C "$INSTALL_DIR" --strip-component
     echo -e "${RED}✗ Failed to download daemon${NC}"
     echo ""
     echo "Possible causes:"
-    echo "  • Version v${VERSION} may not exist"
+    echo "  • Daemon release daemon-${VERSION} may not exist"
     echo "  • Network connectivity issues"
     echo "  • GitHub rate limiting"
     echo ""
     echo "Try:"
     echo "  • Check available releases: $REPO_URL/releases"
-    echo "  • Specify a version: SPARK_VERSION=0.2.4 bash install-daemon.sh"
+    echo "  • Specify a version: SPARK_VERSION=0.2.5 bash install-daemon.sh"
     exit 1
 fi
 
