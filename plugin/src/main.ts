@@ -6,6 +6,8 @@ import { MentionDecorator } from './mention/MentionDecorator';
 import { ChatManager } from './chat/ChatManager';
 import { InlineChatManager } from './inline-chat/InlineChatManager';
 import { ResourceService } from './services/ResourceService';
+import { DaemonService } from './services/DaemonService';
+import { SetupModal } from './modals/SetupModal';
 
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	settings: SparkSettings;
@@ -13,6 +15,8 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	mentionDecorator: MentionDecorator;
 	chatManager: ChatManager;
 	private inlineChatManager: InlineChatManager;
+	private statusBarItem: HTMLElement;
+	private statusCheckInterval: number;
 
 	async onload() {
 		console.log('Spark Assistant: Loading plugin...');
@@ -77,16 +81,115 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		}); // Add settings tab
 		this.addSettingTab(new SparkSettingTab(this.app, this));
 
-		// Add status bar item
-		const statusBarItem = this.addStatusBarItem();
-		statusBarItem.setText('⚡ Spark');
+		// Add status bar item with daemon status
+		this.statusBarItem = this.addStatusBarItem();
+		this.statusBarItem.addClass('spark-status-bar');
+		this.updateStatusBar();
 
-		// Add ribbon icon for chat
-		this.addRibbonIcon('bot-message-square', 'Open Spark chat', () => {
+		// Periodically check daemon status (every 10 seconds)
+		this.statusCheckInterval = window.setInterval(() => {
+			this.updateStatusBar();
+		}, 10000);
+		this.registerInterval(this.statusCheckInterval);
+
+		// Click on status bar to toggle chat
+		this.statusBarItem.addEventListener('click', () => {
 			this.chatManager.toggleChat();
 		});
 
+		// Add ribbon icon for chat (move to end of ribbon after layout ready)
+		const ribbonIcon = this.addRibbonIcon('bot-message-square', 'Open Spark chat', () => {
+			this.chatManager.toggleChat();
+		});
+		this.app.workspace.onLayoutReady(() => {
+			ribbonIcon.parentElement?.appendChild(ribbonIcon);
+		});
+
+		// Check daemon status and show setup modal if needed
+		this.checkDaemonStatus();
+
 		console.log('Spark Assistant: Plugin loaded successfully');
+	}
+
+	/**
+	 * Update status bar with daemon status
+	 */
+	public updateStatusBar(): void {
+		const daemonService = DaemonService.getInstance(this.app);
+		const isInstalled = daemonService.isDaemonInstalled();
+		const isRunning = isInstalled && daemonService.isDaemonRunning();
+
+		this.statusBarItem.empty();
+
+		if (!isInstalled) {
+			this.statusBarItem.setText('⚡ Spark (not installed)');
+			this.statusBarItem.addClass('spark-status-offline');
+			this.statusBarItem.removeClass('spark-status-online');
+			this.statusBarItem.setAttribute(
+				'aria-label',
+				'Spark daemon not installed. Click to open chat.'
+			);
+		} else if (!isRunning) {
+			this.statusBarItem.setText('⚡ Spark (offline)');
+			this.statusBarItem.addClass('spark-status-offline');
+			this.statusBarItem.removeClass('spark-status-online');
+			this.statusBarItem.setAttribute(
+				'aria-label',
+				'Spark daemon not running. Click to open chat.'
+			);
+		} else {
+			this.statusBarItem.setText('⚡ Spark');
+			this.statusBarItem.addClass('spark-status-online');
+			this.statusBarItem.removeClass('spark-status-offline');
+			this.statusBarItem.setAttribute('aria-label', 'Spark daemon running. Click to open chat.');
+		}
+	}
+
+	/**
+	 * Check if daemon is installed and running, show setup modal if needed
+	 */
+	private async checkDaemonStatus(): Promise<void> {
+		const daemonService = DaemonService.getInstance(this.app);
+
+		// Check if daemon is installed
+		if (!daemonService.isDaemonInstalled()) {
+			// Show install modal if not dismissed
+			if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
+				const handleDismiss = async (dontShowAgain: boolean) => {
+					if (dontShowAgain) {
+						this.settings.dismissedDaemonSetup = true;
+						await this.saveSettings();
+					}
+				};
+				new SetupModal(this.app, this, daemonService, 'install', handleDismiss).open();
+			}
+			return;
+		}
+
+		// Daemon is installed, check if running
+		if (daemonService.isDaemonRunning()) {
+			console.log('[Spark] Daemon is already running');
+			return;
+		}
+
+		// Daemon not running - try auto-launch if enabled
+		if (this.settings.autoLaunchDaemon) {
+			console.log('[Spark] Auto-launching daemon...');
+			await daemonService.startDaemonBackground();
+			this.updateStatusBar(); // Update after auto-launch
+			return;
+		}
+
+		// Show start modal if not dismissed
+		if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
+			const handleDismiss = async (dontShowAgain: boolean) => {
+				if (dontShowAgain) {
+					this.settings.dismissedDaemonSetup = true;
+					await this.saveSettings();
+				}
+			};
+			new SetupModal(this.app, this, daemonService, 'start', handleDismiss).open();
+		}
 	}
 
 	async onunload() {

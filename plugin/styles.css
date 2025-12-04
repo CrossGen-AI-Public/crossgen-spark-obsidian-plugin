@@ -1201,3 +1201,125 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
         max-width: calc(100vw - 32px);
     }
 }
+
+/* ============================================
+   Daemon Setup Styles
+   ============================================ */
+
+/* Setup Modal */
+.spark-setup-modal {
+    max-width: 500px;
+}
+
+.spark-setup-modal h2 {
+    margin-bottom: 1em;
+}
+
+.spark-setup-description {
+    margin-bottom: 1.5em;
+}
+
+.spark-setup-description p {
+    margin-bottom: 0.5em;
+}
+
+.spark-setup-description ul {
+    margin: 0.5em 0 0 1.5em;
+    padding: 0;
+}
+
+.spark-setup-description li {
+    margin-bottom: 0.25em;
+}
+
+.spark-setup-manual {
+    margin-top: 1.5em;
+    padding-top: 1em;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.spark-setup-code {
+    display: block;
+    padding: 0.75em 1em;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    font-family: var(--font-monospace);
+    font-size: 0.85em;
+    overflow-x: auto;
+    white-space: nowrap;
+    user-select: all;
+}
+
+.spark-setup-buttons {
+    display: flex;
+    gap: 0.5em;
+    margin-bottom: 1em;
+}
+
+.spark-setup-buttons button {
+    padding: 0.5em 1em;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    border: none;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+}
+
+.spark-setup-buttons button:hover {
+    background: var(--interactive-hover);
+}
+
+.spark-setup-hint {
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+/* Settings Daemon Section */
+.spark-daemon-code-container {
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+}
+
+.spark-daemon-code {
+    display: block;
+    padding: 0.5em 0.75em;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    font-family: var(--font-monospace);
+    font-size: 0.8em;
+    overflow-x: auto;
+    white-space: nowrap;
+    user-select: all;
+}
+
+.spark-daemon-status-indicator {
+    font-weight: 500;
+}
+
+.spark-daemon-status-indicator.running {
+    color: var(--text-success, #4caf50);
+}
+
+.spark-daemon-status-indicator.stopped {
+    color: var(--text-muted);
+}
+
+/* Status Bar */
+.spark-status-bar {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.spark-status-bar:hover {
+    opacity: 0.8;
+}
+
+.spark-status-online {
+    color: var(--text-normal);
+}
+
+.spark-status-offline {
+    color: var(--text-muted);
+}

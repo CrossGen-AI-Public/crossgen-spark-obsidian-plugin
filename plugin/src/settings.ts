@@ -16,6 +16,7 @@ import {
 	DEFAULT_CHAT_RIGHT,
 	DEFAULT_CHAT_BOTTOM,
 } from './constants';
+import { DaemonService } from './services/DaemonService';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
@@ -158,6 +159,9 @@ export class SparkSettingTab extends PluginSettingTab {
 	}
 
 	private populateGeneralTab(containerEl: HTMLElement) {
+		// Daemon section
+		this.populateDaemonSection(containerEl);
+
 		// Plugin section
 		containerEl.createEl('h3', { text: 'Plugin' });
 		const pluginDesc = containerEl.createEl('p', {
@@ -175,6 +179,133 @@ export class SparkSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			);
+	}
+
+	private populateDaemonSection(containerEl: HTMLElement) {
+		const daemonService = DaemonService.getInstance(this.app);
+		const isInstalled = daemonService.isDaemonInstalled();
+		const isRunning = isInstalled && daemonService.isDaemonRunning();
+
+		containerEl.createEl('h3', { text: 'Daemon' });
+		const daemonDesc = containerEl.createEl('p', {
+			text: 'The Spark daemon handles AI requests for this vault.',
+			cls: 'setting-item-description',
+		});
+		daemonDesc.style.marginBottom = '1em';
+
+		if (!isInstalled) {
+			// Daemon not installed
+			new Setting(containerEl)
+				.setName('Spark daemon not installed')
+				.setDesc('Required for AI features to work')
+				.addButton(btn =>
+					btn
+						.setButtonText('Install Spark Daemon')
+						.setCta()
+						.onClick(() => {
+							daemonService.installDaemon();
+						})
+				);
+
+			// Show install command
+			const codeContainer = containerEl.createDiv({ cls: 'spark-daemon-code-container' });
+			codeContainer.createEl('p', {
+				text: 'Or run this command in your terminal:',
+				cls: 'setting-item-description',
+			});
+			const codeBlock = codeContainer.createEl('code', { cls: 'spark-daemon-code' });
+			codeBlock.setText(daemonService.getInstallCommand());
+		} else if (!isRunning) {
+			// Daemon installed but not running
+			new Setting(containerEl)
+				.setName('Daemon status')
+				.setDesc('Not running for this vault')
+				.addButton(btn =>
+					btn
+						.setButtonText('Start Daemon')
+						.setCta()
+						.onClick(async () => {
+							btn.setButtonText('Starting...');
+							btn.setDisabled(true);
+							const success = await daemonService.startDaemonBackground();
+							if (success) {
+								new Notice('Daemon started');
+							} else {
+								new Notice('Failed to start daemon');
+							}
+							// Refresh status bar and settings display
+							this.plugin.updateStatusBar();
+							this.display();
+						})
+				);
+
+			// Show start command
+			const codeContainer = containerEl.createDiv({ cls: 'spark-daemon-code-container' });
+			codeContainer.createEl('p', {
+				text: 'Or run this command in your terminal:',
+				cls: 'setting-item-description',
+			});
+			const codeBlock = codeContainer.createEl('code', { cls: 'spark-daemon-code' });
+			codeBlock.setText(daemonService.getStartCommand());
+		} else {
+			// Daemon running
+			const daemonInfo = daemonService.getDaemonInfo();
+			const uptime = daemonInfo ? Math.floor((Date.now() - daemonInfo.startTime) / 1000 / 60) : 0;
+			const uptimeStr = uptime < 60 ? `${uptime}m` : `${Math.floor(uptime / 60)}h ${uptime % 60}m`;
+
+			const statusSetting = new Setting(containerEl)
+				.setName('Daemon status')
+				.setDesc(`Running (PID: ${daemonInfo?.pid}, Uptime: ${uptimeStr})`)
+				.addButton(btn =>
+					btn.setButtonText('Stop Daemon').onClick(async () => {
+						btn.setButtonText('Stopping...');
+						btn.setDisabled(true);
+						// Small delay to let UI update before sync operation
+						await new Promise(resolve => setTimeout(resolve, 10));
+						const success = daemonService.stopDaemon();
+						if (success) {
+							new Notice('Daemon stopped');
+						} else {
+							new Notice('Failed to stop daemon');
+						}
+						// Refresh status bar and settings display
+						this.plugin.updateStatusBar();
+						this.display();
+					})
+				);
+
+			// Add green indicator
+			const statusEl = statusSetting.descEl;
+			statusEl.empty();
+			const indicator = statusEl.createSpan({ cls: 'spark-daemon-status-indicator running' });
+			indicator.setText('● Running');
+		}
+
+		// Auto-launch toggle (only if daemon is installed)
+		if (isInstalled) {
+			new Setting(containerEl)
+				.setName('Auto-launch daemon')
+				.setDesc('Automatically start the daemon when Obsidian opens')
+				.addToggle(toggle =>
+					toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(async value => {
+						this.plugin.settings.autoLaunchDaemon = value;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
+
+		// Show startup prompt toggle (only if daemon not running and auto-launch disabled)
+		if (!isRunning && !this.plugin.settings.autoLaunchDaemon) {
+			new Setting(containerEl)
+				.setName('Show daemon prompt on startup')
+				.setDesc('Show a reminder to start the daemon when Obsidian opens')
+				.addToggle(toggle =>
+					toggle.setValue(!this.plugin.settings.dismissedDaemonSetup).onChange(async value => {
+						this.plugin.settings.dismissedDaemonSetup = !value;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
 	}
 
 	private populateAgentsTab(containerEl: HTMLElement) {
