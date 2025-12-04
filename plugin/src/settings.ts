@@ -1,25 +1,25 @@
-import { type App, PluginSettingTab, Setting, Notice, Modal, normalizePath } from 'obsidian';
-import type { SparkSettings, ISparkPlugin } from './types';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import * as yaml from 'js-yaml';
-import { AgentConfigSchema, SparkConfigSchema, type SparkConfig } from './validation';
+import { type App, Modal, Notice, normalizePath, PluginSettingTab, Setting } from 'obsidian';
+import {
+	DEFAULT_CHAT_BOTTOM,
+	DEFAULT_CHAT_HEIGHT,
+	DEFAULT_CHAT_RIGHT,
+	DEFAULT_CHAT_WIDTH,
+} from './constants';
+import { decryptSecrets, encryptSecrets, isEncrypted } from './crypto/index';
 import {
 	ALL_MODELS,
 	getModelLabel,
-	ProviderType,
-	getProviderLabel,
 	getModelsByProvider,
+	getProviderLabel,
+	ProviderType,
 } from './models';
-import { encryptSecrets, decryptSecrets, isEncrypted } from './crypto/index';
-import {
-	DEFAULT_CHAT_WIDTH,
-	DEFAULT_CHAT_HEIGHT,
-	DEFAULT_CHAT_RIGHT,
-	DEFAULT_CHAT_BOTTOM,
-} from './constants';
 import { DaemonService } from './services/DaemonService';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
+import type { ISparkPlugin, SparkSettings } from './types';
+import { AgentConfigSchema, type SparkConfig, SparkConfigSchema } from './validation';
 
 export const DEFAULT_SETTINGS: SparkSettings = {
 	enablePalette: true,

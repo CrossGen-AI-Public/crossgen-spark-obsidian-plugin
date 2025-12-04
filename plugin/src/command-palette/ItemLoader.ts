@@ -1,6 +1,6 @@
 import { type App, TFolder } from 'obsidian';
-import type { PaletteItem } from '../types/command-palette';
 import { ResourceService } from '../services/ResourceService';
+import type { PaletteItem } from '../types/command-palette';
 
 /**
  * Loads palette items from various sources

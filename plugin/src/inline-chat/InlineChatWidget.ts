@@ -3,8 +3,8 @@
  */
 
 import type { App } from 'obsidian';
-import { MentionInput } from '../mention/MentionInput';
 import type { MentionDecorator } from '../mention/MentionDecorator';
+import { MentionInput } from '../mention/MentionInput';
 
 export interface InlineChatWidgetOptions {
 	/** Agent name to display */

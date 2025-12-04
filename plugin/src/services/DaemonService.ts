@@ -1,8 +1,8 @@
-import type { App, FileSystemAdapter } from 'obsidian';
 import { execSync, spawn } from 'node:child_process';
-import { platform, homedir } from 'node:os';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
+import type { App, FileSystemAdapter } from 'obsidian';
 
 interface DaemonEntry {
 	pid: number;

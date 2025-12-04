@@ -1,9 +1,9 @@
 import { type App, type Editor, TFile } from 'obsidian';
 import {
 	AGENT_PREFIX_REGEX,
+	DAEMON_MARKER_BLOCK_REGEX,
 	NEWLINE_REGEX,
 	TEMP_MARKER_BLOCK_REGEX,
-	DAEMON_MARKER_BLOCK_REGEX,
 } from '../constants';
 
 export class ResultWriter {

@@ -1,13 +1,13 @@
+import { RangeSetBuilder } from '@codemirror/state';
 import {
-	type EditorView,
 	Decoration,
 	type DecorationSet,
+	type EditorView,
 	ViewPlugin,
 	type ViewUpdate,
 } from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
 import { type App, SuggestModal, type TFile } from 'obsidian';
-import { MENTION_REGEX, COMMAND_REGEX } from '../constants';
+import { COMMAND_REGEX, MENTION_REGEX } from '../constants';
 import { ResourceService } from '../services/ResourceService';
 
 /**

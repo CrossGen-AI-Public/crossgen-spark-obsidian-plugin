@@ -1,20 +1,20 @@
 import { type App, Component, MarkdownRenderer } from 'obsidian';
-import type { ChatMessage, ChatState } from './types';
-import type SparkPlugin from '../main';
-import type { ConversationStorage } from './ConversationStorage';
-import { MentionInput } from '../mention/MentionInput';
-import { ChatSelector } from './ChatSelector';
-import { ChatQueue } from './ChatQueue';
-import { ChatResultWatcher, type ChatResult } from './ChatResultWatcher';
-import { ResourceService } from '../services/ResourceService';
 import {
-	MENTION_REGEX,
-	DEFAULT_CHAT_WIDTH,
+	DEFAULT_CHAT_BOTTOM,
 	DEFAULT_CHAT_HEIGHT,
 	DEFAULT_CHAT_RIGHT,
-	DEFAULT_CHAT_BOTTOM,
+	DEFAULT_CHAT_WIDTH,
+	MENTION_REGEX,
 } from '../constants';
+import type SparkPlugin from '../main';
 import type { MentionDecorator } from '../mention/MentionDecorator';
+import { MentionInput } from '../mention/MentionInput';
+import { ResourceService } from '../services/ResourceService';
+import { ChatQueue } from './ChatQueue';
+import { type ChatResult, ChatResultWatcher } from './ChatResultWatcher';
+import { ChatSelector } from './ChatSelector';
+import type { ConversationStorage } from './ConversationStorage';
+import type { ChatMessage, ChatState } from './types';
 
 export class ChatWindow extends Component {
 	private app: App;

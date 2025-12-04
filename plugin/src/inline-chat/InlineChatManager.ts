@@ -5,16 +5,16 @@
 
 import type { App, Editor, TFile } from 'obsidian';
 import { Notice } from 'obsidian';
+import {
+	AGENT_PREFIX_REGEX,
+	INLINE_CHAT_PENDING_MARKER_REGEX,
+	INLINE_CHAT_START_MARKER_REGEX,
+} from '../constants';
+import type { MentionDecorator } from '../mention/MentionDecorator';
+import { ResultWriter } from '../services/ResultWriter';
 import { InlineChatDetector } from './InlineChatDetector';
 import { InlineChatWidget } from './InlineChatWidget';
 import type { DetectedAgentMention } from './types';
-import type { MentionDecorator } from '../mention/MentionDecorator';
-import { ResultWriter } from '../services/ResultWriter';
-import {
-	AGENT_PREFIX_REGEX,
-	INLINE_CHAT_START_MARKER_REGEX,
-	INLINE_CHAT_PENDING_MARKER_REGEX,
-} from '../constants';
 
 interface PendingChat {
 	uuid: string;

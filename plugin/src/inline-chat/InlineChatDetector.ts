@@ -2,10 +2,10 @@
  * Detects agent mentions in editor for inline chat
  */
 
-import type { Editor, App } from 'obsidian';
-import type { DetectedAgentMention } from './types';
-import { ResourceService } from '../services/ResourceService';
+import type { App, Editor } from 'obsidian';
 import { AGENT_NAME_REGEX } from '../constants';
+import { ResourceService } from '../services/ResourceService';
+import type { DetectedAgentMention } from './types';
 
 export class InlineChatDetector {
 	private resourceService: ResourceService;

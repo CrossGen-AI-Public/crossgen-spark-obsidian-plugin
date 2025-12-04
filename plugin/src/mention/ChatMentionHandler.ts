@@ -1,10 +1,10 @@
 import type { App, TFile } from 'obsidian';
-import type { MentionDecorator } from './MentionDecorator';
-import { PaletteView } from '../command-palette/PaletteView';
-import { ItemLoader } from '../command-palette/ItemLoader';
 import { FuzzyMatcher } from '../command-palette/FuzzyMatcher';
-import type { PaletteItem } from '../types/command-palette';
+import { ItemLoader } from '../command-palette/ItemLoader';
+import { PaletteView } from '../command-palette/PaletteView';
 import { ResourceService } from '../services/ResourceService';
+import type { PaletteItem } from '../types/command-palette';
+import type { MentionDecorator } from './MentionDecorator';
 
 /**
  * Manages mentions and commands in the chat input

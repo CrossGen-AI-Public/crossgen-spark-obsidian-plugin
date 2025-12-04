@@ -1,13 +1,13 @@
 import { Plugin } from 'obsidian';
-import { SparkSettingTab, DEFAULT_SETTINGS } from './settings';
-import type { SparkSettings, ISparkPlugin } from './types';
-import { CommandPaletteManager } from './command-palette/CommandPaletteManager';
-import { MentionDecorator } from './mention/MentionDecorator';
 import { ChatManager } from './chat/ChatManager';
+import { CommandPaletteManager } from './command-palette/CommandPaletteManager';
 import { InlineChatManager } from './inline-chat/InlineChatManager';
-import { ResourceService } from './services/ResourceService';
-import { DaemonService } from './services/DaemonService';
+import { MentionDecorator } from './mention/MentionDecorator';
 import { SetupModal } from './modals/SetupModal';
+import { DaemonService } from './services/DaemonService';
+import { ResourceService } from './services/ResourceService';
+import { DEFAULT_SETTINGS, SparkSettingTab } from './settings';
+import type { ISparkPlugin, SparkSettings } from './types';
 
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	settings: SparkSettings;

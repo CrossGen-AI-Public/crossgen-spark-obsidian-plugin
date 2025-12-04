@@ -1,12 +1,12 @@
 import type { Editor } from 'obsidian';
+import type { MentionDecorator } from '../mention/MentionDecorator';
 import type { ISparkPlugin } from '../types';
 import type { PaletteItem, TriggerContext } from '../types/command-palette';
-import { ItemLoader } from './ItemLoader';
-import { FuzzyMatcher } from './FuzzyMatcher';
-import { PaletteView } from './PaletteView';
 import { CoordinateDetector } from './CoordinateDetector';
+import { FuzzyMatcher } from './FuzzyMatcher';
+import { ItemLoader } from './ItemLoader';
+import { PaletteView } from './PaletteView';
 import { TriggerDetector } from './TriggerDetector';
-import type { MentionDecorator } from '../mention/MentionDecorator';
 
 /**
  * Orchestrates the command palette functionality

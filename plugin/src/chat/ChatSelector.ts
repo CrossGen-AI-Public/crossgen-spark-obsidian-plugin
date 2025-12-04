@@ -1,6 +1,6 @@
-import { type App, setIcon, SuggestModal } from 'obsidian';
-import type { ChatConversation } from './types';
+import { type App, SuggestModal, setIcon } from 'obsidian';
 import type { ConversationStorage } from './ConversationStorage';
+import type { ChatConversation } from './types';
 
 /**
  * Modal for selecting conversations
