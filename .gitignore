@@ -68,3 +68,8 @@ coverage/
 
 # Agent
 .agent/
+
+# Local project context (not tracked in remotes)
+.cursor/
+CLAUDE.md
+specs/
