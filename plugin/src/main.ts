@@ -80,6 +80,12 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		// Add status bar item
 		const statusBarItem = this.addStatusBarItem();
 		statusBarItem.setText('⚡ Spark');
+
+		// Add ribbon icon for chat
+		this.addRibbonIcon('bot-message-square', 'Open Spark chat', () => {
+			this.chatManager.toggleChat();
+		});
+
 		console.log('Spark Assistant: Plugin loaded successfully');
 	}
 
