@@ -18,11 +18,11 @@
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:detect-leaks": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles",
     "lint": "biome lint src",
-    "lint:fix": "biome lint --write src",
+    "lint:fix": "biome check --write src",
     "format": "biome format --write src",
     "format:check": "biome check src",
     "type-check": "tsc --noEmit",
-    "check": "npm run format && npm run lint:fix && npm run type-check && npm run test:coverage",
+    "check": "npm run lint:fix && npm run type-check && npm run test:coverage",
     "clean": "rm -rf dist coverage",
     "reset": "npm run clean && npm install && npm run build",
     "version": "node version-bump.mjs && git add package.json"
