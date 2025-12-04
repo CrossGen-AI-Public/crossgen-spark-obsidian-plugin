@@ -8,19 +8,22 @@ AI-powered automation for Obsidian with slash commands, chat widget, and intelli
 
 This plugin requires the **Spark Daemon** to be running for AI features to work.
 
-### Install the Daemon
+### Install & Start the Daemon
+
+**From Plugin (Recommended):**
+
+The plugin handles daemon installation and management automatically:
+- On first launch, a setup modal prompts you to install the daemon
+- Go to **Settings → Spark → Daemon** to install, start, or stop the daemon
+- Enable **Auto-launch daemon** to start it automatically when Obsidian opens
+
+**Manual Installation:**
 
 ```bash
+# Install daemon
 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-daemon.sh | bash
-```
 
-Or manually:
-1. Install [Node.js 18+](https://nodejs.org/)
-2. Clone the repository and run `./install-daemon.sh`
-
-### Start the Daemon
-
-```bash
+# Start daemon for your vault
 spark start ~/path/to/your/vault
 ```
 
@@ -43,8 +46,8 @@ The daemon watches your vault and processes AI requests from the plugin.
 1. Open Obsidian Settings → Community Plugins
 2. Search for "Spark Assistant"
 3. Install and enable the plugin
-4. Configure your API key in plugin settings (Settings → Spark → Advanced)
-5. Start the daemon (see [Requirements](#requirements))
+4. Follow the setup modal to install the daemon (or go to Settings → Spark → Daemon)
+5. Configure your API key in plugin settings (Settings → Spark → API Key)
 
 ---
 

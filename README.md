@@ -85,15 +85,22 @@ curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-o
 
 **Daemon Only (for Community Plugins users):**
 
-If you installed the Spark plugin from Obsidian Community Plugins, you only need to install the daemon:
+If you installed the Spark plugin from Obsidian Community Plugins, you only need the daemon.
+
+**Option 1: Install from Plugin (Recommended)**
+
+The plugin will automatically detect if the daemon is missing and prompt you to install it:
+- A setup modal appears on first launch
+- Or go to **Settings → Spark → Daemon** and click "Install Spark Daemon"
+- The plugin can also auto-launch the daemon when Obsidian starts
+
+**Option 2: Manual Installation**
 
 ```bash
-# Install daemon only
+# Install daemon via script
 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-daemon.sh | bash
-```
 
-Then start the daemon:
-```bash
+# Start the daemon
 spark start ~/Documents/MyVault
 ```
 
