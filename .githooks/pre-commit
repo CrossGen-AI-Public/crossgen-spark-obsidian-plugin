@@ -11,7 +11,8 @@ echo "🔍 Running pre-commit checks..."
 STAGED_FILES=$(git diff --cached --name-only)
 
 # Check if plugin files are staged
-if echo "$STAGED_FILES" | grep -q "^plugin/"; then
+STAGED_PLUGIN_FILES=$(echo "$STAGED_FILES" | grep "^plugin/" || true)
+if [ -n "$STAGED_PLUGIN_FILES" ]; then
     echo "\n📦 Checking Plugin..."
     cd "$REPO_ROOT/plugin"
     
@@ -28,15 +29,18 @@ if echo "$STAGED_FILES" | grep -q "^plugin/"; then
     
     echo "✅ Plugin checks passed!"
     
-    # Re-stage plugin files (git add -u handles both modified and deleted files)
+    # Re-stage ONLY the originally staged plugin files (not all modified files)
     cd "$REPO_ROOT"
-    git add -u plugin/
+    echo "$STAGED_PLUGIN_FILES" | while read -r file; do
+        [ -n "$file" ] && git add "$file"
+    done
 else
     echo "\n⏭️  No plugin files staged, skipping plugin checks"
 fi
 
 # Check if daemon files are staged
-if echo "$STAGED_FILES" | grep -q "^daemon/"; then
+STAGED_DAEMON_FILES=$(echo "$STAGED_FILES" | grep "^daemon/" || true)
+if [ -n "$STAGED_DAEMON_FILES" ]; then
     echo "\n🤖 Checking Daemon..."
     cd "$REPO_ROOT/daemon"
     
@@ -53,9 +57,11 @@ if echo "$STAGED_FILES" | grep -q "^daemon/"; then
     
     echo "✅ Daemon checks passed!"
     
-    # Re-stage daemon files (git add -u handles both modified and deleted files)
+    # Re-stage ONLY the originally staged daemon files (not all modified files)
     cd "$REPO_ROOT"
-    git add -u daemon/
+    echo "$STAGED_DAEMON_FILES" | while read -r file; do
+        [ -n "$file" ] && git add "$file"
+    done
 else
     echo "\n⏭️  No daemon files staged, skipping daemon checks"
 fi
