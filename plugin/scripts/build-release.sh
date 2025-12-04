@@ -15,8 +15,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Get version from manifest.json
-VERSION=$(node -p "require('./manifest.json').version")
+# Get version from manifest.json (at repo root for Obsidian validation)
+VERSION=$(node -p "require('../manifest.json').version")
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Building Spark Plugin Release        ║${NC}"

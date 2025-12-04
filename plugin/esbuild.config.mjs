@@ -55,14 +55,16 @@ const context = await esbuild.context({
 if (prod) {
     await context.rebuild();
     // Copy static files to dist/ for production
-    copyFileSync("manifest.json", "dist/manifest.json");
+    // manifest.json is at repo root (for Obsidian community plugin validation)
+    copyFileSync("../manifest.json", "dist/manifest.json");
     copyFileSync("styles.css", "dist/styles.css");
     console.log("✅ Production build complete in dist/");
     process.exit(0);
 } else {
     // Copy static files to vault in dev mode
+    // manifest.json is at repo root
     copyFileSync("styles.css", "../example-vault/.obsidian/plugins/spark/styles.css");
-    copyFileSync("manifest.json", "../example-vault/.obsidian/plugins/spark/manifest.json");
+    copyFileSync("../manifest.json", "../example-vault/.obsidian/plugins/spark/manifest.json");
 
     // Create .hotreload file to enable Hot Reload plugin
     writeFileSync("../example-vault/.obsidian/plugins/spark/.hotreload", "");
