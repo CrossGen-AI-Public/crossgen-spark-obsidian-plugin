@@ -4,7 +4,7 @@
 	"version": "0.2.4",
 	"minAppVersion": "1.6.0",
 	"description": "AI-powered automation with slash commands, chat widget, and intelligent workflows.",
-	"author": "Automaze",
-	"authorUrl": "https://automaze.io",
+	"author": "CrossGenAI",
+	"authorUrl": "https://crossgen-ai.com",
 	"isDesktopOnly": true
 }
