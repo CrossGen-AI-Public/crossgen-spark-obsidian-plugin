@@ -155,17 +155,15 @@ export class ChatMentionHandler {
 		const after = text.substring(cursorPos);
 		const newText = before + replacement + after;
 
-		// Update input with proper HTML (convert newlines to <br>)
-		this.inputElement.innerHTML = this.escapeHtmlWithLineBreaks(newText);
-
 		// Hide palette
 		this.hidePalette();
 
 		// Calculate cursor position BEFORE processing content
 		const newCursorPos = triggerPos + replacement.length;
 
-		// Process content to apply styling (for mentions/commands)
-		this.processContent();
+		// Update input with DOM APIs and apply styling
+		const tokens = newText.includes('@') || newText.includes('/') ? this.findTokens(newText) : [];
+		this.rebuildContentWithDOM(newText, tokens);
 
 		// Set cursor after inserted item (after processing to account for HTML changes)
 		this.setCursorPosition(newCursorPos);
@@ -244,7 +242,6 @@ export class ChatMentionHandler {
 		// Get the active file
 		const activeFile = this.getActiveFile();
 		if (!activeFile) {
-			console.debug('[ChatMentionHandler] No active file for @@ mention');
 			return false;
 		}
 
@@ -260,14 +257,12 @@ export class ChatMentionHandler {
 		const after = text.substring(cursorPos);
 		const newText = before + replacement + after;
 
-		// Update input with proper HTML (convert newlines to <br>)
-		this.inputElement.innerHTML = this.escapeHtmlWithLineBreaks(newText);
-
 		// Calculate new cursor position (after the inserted mention)
 		const newCursorPos = doubleAtPos + replacement.length;
 
-		// Process content to apply styling
-		this.processContent();
+		// Update input with DOM APIs and apply styling
+		const tokens = newText.includes('@') || newText.includes('/') ? this.findTokens(newText) : [];
+		this.rebuildContentWithDOM(newText, tokens);
 
 		// Set cursor after the inserted mention
 		this.setCursorPosition(newCursorPos);
@@ -404,75 +399,132 @@ export class ChatMentionHandler {
 
 		this.isProcessing = true;
 
-		// Extract text while preserving line breaks
-		// Walk through DOM and convert <br> elements to newline characters
-		const text = this.getTextWithLineBreaks(this.inputElement);
+		try {
+			// Extract text while preserving line breaks
+			const text = this.getTextWithLineBreaks(this.inputElement);
 
-		// Always clean up content, even without mentions (to handle trailing <br> cleanup)
-		if (!text.includes('@') && !text.includes('/')) {
-			// No mentions/commands, but still clean up trailing newlines/br tags
-			const cleaned = this.escapeHtmlWithLineBreaks(text);
-			const currentHTML = this.inputElement.innerHTML;
+			// No mentions/commands - don't interfere with native editing
+			if (!text.includes('@') && !text.includes('/')) {
+				// Only check if we need to clean up existing token spans
+				const existingSpans = this.inputElement.querySelectorAll('.spark-token');
+				if (existingSpans.length > 0) {
+					// Had tokens before, now removed - rebuild to clean up spans
+					this.rebuildContentWithDOM(text, []);
+					return true;
+				}
+				// Plain text, let browser handle natively
+				return false;
+			}
 
-			// Normalize for comparison (ignore zero-width spaces)
-			const currentNormalized = currentHTML.replace(/\u200B/g, '');
-			const cleanedNormalized = cleaned.replace(/\u200B/g, '');
+			// Find all tokens (mentions and commands)
+			const tokens = this.findTokens(text);
 
-			// Only update if it actually changed
-			if (currentNormalized !== cleanedNormalized) {
-				this.inputElement.innerHTML = cleaned;
-				this.isProcessing = false;
+			if (tokens.length === 0) {
+				// No valid tokens, check if cleanup needed
+				const existingSpans = this.inputElement.querySelectorAll('.spark-token');
+				if (existingSpans.length > 0) {
+					this.rebuildContentWithDOM(text, []);
+					return true;
+				}
+				return false;
+			}
+
+			// Check if DOM needs updating by comparing token count
+			const existingSpans = this.inputElement.querySelectorAll('.spark-token');
+			const validTokenCount = tokens.filter(t => t.type).length;
+
+			// Only rebuild if token structure changed
+			if (existingSpans.length !== validTokenCount) {
+				this.rebuildContentWithDOM(text, tokens);
 				return true;
 			}
-			this.isProcessing = false;
-			return false;
-		}
 
-		// Find all tokens (mentions and commands)
-		const tokens = this.findTokens(text);
+			// Check if token content changed
+			let tokensMatch = true;
+			const validTokens = tokens.filter(t => t.type);
+			existingSpans.forEach((span, idx) => {
+				const token = validTokens[idx];
+				if (!token || span.textContent !== token.text) {
+					tokensMatch = false;
+				}
+			});
+
+			if (!tokensMatch) {
+				this.rebuildContentWithDOM(text, tokens);
+				return true;
+			}
+
+			return false;
+		} finally {
+			this.isProcessing = false;
+		}
+	}
+
+	/**
+	 * Rebuild contenteditable content using DOM APIs
+	 */
+	private rebuildContentWithDOM(
+		text: string,
+		tokens: Array<{ text: string; start: number; end: number; type: string | null }>
+	): void {
+		if (!this.inputElement) return;
+
+		// Clear content
+		this.inputElement.textContent = '';
 
 		if (tokens.length === 0) {
-			// No valid tokens found, just clean up the text
-			const cleaned = this.escapeHtmlWithLineBreaks(text);
-			const currentHTML = this.inputElement.innerHTML;
-
-			// Normalize for comparison
-			const currentNormalized = currentHTML.replace(/\u200B/g, '');
-			const cleanedNormalized = cleaned.replace(/\u200B/g, '');
-
-			if (currentNormalized !== cleanedNormalized) {
-				this.inputElement.innerHTML = cleaned;
-				this.isProcessing = false;
-				return true;
-			}
-			this.isProcessing = false;
-			return false;
+			// No tokens, just add text with line breaks
+			this.appendTextWithLineBreaks(this.inputElement, text);
+			return;
 		}
 
-		// Build HTML with styled tokens
-		let html = '';
+		// Build DOM with styled tokens
 		let lastIndex = 0;
 
 		for (const token of tokens) {
+			// Add text before token
 			const textSegment = text.substring(lastIndex, token.start);
-			html += this.escapeHtmlWithLineBreaks(textSegment);
+			if (textSegment) {
+				this.appendTextWithLineBreaks(this.inputElement, textSegment);
+			}
 
 			// Add styled token or plain text
 			if (token.type) {
-				html += `<span class="spark-token spark-token-${token.type}" data-token="${this.escapeHtml(token.text)}" data-type="${token.type}">${this.escapeHtml(token.text)}</span>`;
+				const span = document.createElement('span');
+				span.className = `spark-token spark-token-${token.type}`;
+				span.dataset.token = token.text;
+				span.dataset.type = token.type;
+				span.textContent = token.text;
+				this.inputElement.appendChild(span);
 			} else {
-				html += this.escapeHtml(token.text);
+				this.inputElement.appendChild(document.createTextNode(token.text));
 			}
 
 			lastIndex = token.end;
 		}
 
+		// Add remaining text
 		const remainingText = text.substring(lastIndex);
-		html += this.escapeHtmlWithLineBreaks(remainingText);
+		if (remainingText) {
+			this.appendTextWithLineBreaks(this.inputElement, remainingText);
+		}
+	}
 
-		this.inputElement.innerHTML = html || '';
-		this.isProcessing = false;
-		return true;
+	/**
+	 * Append text to element, converting newlines to <br> elements
+	 */
+	private appendTextWithLineBreaks(element: HTMLElement, text: string): void {
+		const parts = text.split('\n');
+		for (let i = 0; i < parts.length; i++) {
+			if (parts[i]) {
+				element.appendChild(document.createTextNode(parts[i]));
+			}
+			// Add <br> between parts (each split point represents a newline)
+			// Don't add <br> after the last part
+			if (i < parts.length - 1) {
+				element.appendChild(document.createElement('br'));
+			}
+		}
 	}
 
 	/**
@@ -495,23 +547,6 @@ export class ChatMentionHandler {
 			}
 		}
 		return text;
-	}
-
-	/**
-	 * Escape HTML and convert newlines to <br> elements
-	 * Also cleans up trailing newlines that would create unnecessary <br> tags
-	 */
-	private escapeHtmlWithLineBreaks(text: string): string {
-		const escaped = this.escapeHtml(text);
-		// Convert newlines to <br>, but handle trailing newlines specially
-		// Multiple trailing newlines should be collapsed to single <br> for cursor positioning
-		const trailingNewlines = escaped.match(/\n+$/);
-		if (trailingNewlines) {
-			// Remove all trailing newlines, convert remaining, then add single <br>
-			const withoutTrailing = escaped.slice(0, -trailingNewlines[0].length);
-			return `${withoutTrailing.replace(/\n/g, '<br>')}<br>`;
-		}
-		return escaped.replace(/\n/g, '<br>');
 	}
 
 	/**
@@ -552,18 +587,6 @@ export class ChatMentionHandler {
 		// Sort by start position
 		tokens.sort((a, b) => a.start - b.start);
 		return tokens;
-	}
-
-	/**
-	 * Escape HTML special characters
-	 */
-	private escapeHtml(text: string): string {
-		return text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#039;');
 	}
 
 	/**

@@ -93,7 +93,7 @@ export class ChatWindow extends Component {
 			this.state.mentionedAgents.clear();
 			this.state.conversationName = null; // Reset name
 			this.state.conversationId = this.generateConversationId();
-			this.messagesEl.innerHTML = '';
+			this.messagesEl.empty();
 			this.updateChatTitle();
 			this.chatSelector.update(this.state.conversationId);
 			this.chatSelector.invalidateCache();
@@ -145,7 +145,7 @@ export class ChatWindow extends Component {
 		this.chatSelector.createRightSide(headerRightEl);
 
 		const closeBtn = document.createElement('button');
-		closeBtn.innerHTML = '×';
+		closeBtn.textContent = '×';
 		closeBtn.className = 'spark-chat-close-btn';
 		closeBtn.onclick = (e: MouseEvent) => {
 			e.preventDefault();
@@ -184,7 +184,7 @@ export class ChatWindow extends Component {
 
 		const sendBtn = document.createElement('button');
 		sendBtn.className = 'spark-chat-send-btn';
-		sendBtn.innerHTML = '↑';
+		sendBtn.textContent = '↑';
 		sendBtn.setAttribute('aria-label', 'Send message');
 		sendBtn.onclick = () => this.sendMessage();
 
@@ -625,7 +625,7 @@ export class ChatWindow extends Component {
 		}
 
 		// Clear current messages
-		this.messagesEl.innerHTML = '';
+		this.messagesEl.empty();
 		this.state.messages = [];
 		this.state.mentionedAgents.clear();
 		this.state.lastMentionedAgent = null;
@@ -640,14 +640,11 @@ export class ChatWindow extends Component {
 				this.state.mentionedAgents = new Set(conversation.mentionedAgents || []);
 				this.state.conversationName = conversation.name || null;
 
-				// Restore lastMentionedAgent from message history
-				// Find the most recent agent message (excluding "Spark Assistant")
-				for (let i = this.state.messages.length - 1; i >= 0; i--) {
-					const msg = this.state.messages[i];
-					if (msg.type === 'agent' && msg.agent && msg.agent !== 'Spark Assistant') {
-						this.state.lastMentionedAgent = msg.agent;
-						break;
-					}
+				// Restore lastMentionedAgent from mentionedAgents set
+				// Use the last agent in the set (most recently added)
+				const agentsArray = Array.from(this.state.mentionedAgents);
+				if (agentsArray.length > 0) {
+					this.state.lastMentionedAgent = agentsArray[agentsArray.length - 1];
 				}
 
 				this.renderAllMessages();
@@ -697,7 +694,7 @@ export class ChatWindow extends Component {
 	}
 
 	private renderAllMessages() {
-		this.messagesEl.innerHTML = '';
+		this.messagesEl.empty();
 		this.state.messages.forEach(message => {
 			this.renderMessage(message);
 		});
@@ -778,15 +775,18 @@ export class ChatWindow extends Component {
 		contentEl.className = 'spark-chat-message-content';
 
 		if (message.type === 'loading') {
-			// Create jumping dots loader
-			contentEl.innerHTML = `<span class="spark-chat-loading-dots">${message.content}</span><span class="spark-jumping-dots"></span>`;
+			// Create jumping dots loader using DOM APIs
+			const loadingTextSpan = contentEl.createSpan({ cls: 'spark-chat-loading-dots' });
+			loadingTextSpan.textContent = message.content;
+			contentEl.createSpan({ cls: 'spark-jumping-dots' });
 		} else if (message.type === 'agent') {
 			// Render agent responses as markdown
 			void this.renderMarkdown(message.content, contentEl);
 			// Note: Global listener in main.ts handles clicks
 		} else {
 			// User messages with mention decoration
-			contentEl.innerHTML = this.mentionDecorator.decorateText(message.content);
+			contentEl.textContent = message.content;
+			this.mentionDecorator.decorateMentionsInElement(contentEl);
 			// Note: Global listener in main.ts handles clicks
 		}
 
@@ -869,7 +869,7 @@ export class ChatWindow extends Component {
 		this.state.mentionedAgents.clear();
 		this.state.conversationId = this.generateConversationId();
 		this.state.conversationName = null; // Clear name for new chat
-		this.messagesEl.innerHTML = '';
+		this.messagesEl.empty();
 		this.updateChatTitle();
 		this.chatSelector.update(this.state.conversationId);
 
@@ -913,7 +913,7 @@ export class ChatWindow extends Component {
 		this.state.mentionedAgents.clear();
 		this.state.lastMentionedAgent = null;
 		this.state.conversationId = this.generateConversationId();
-		this.messagesEl.innerHTML = '';
+		this.messagesEl.empty();
 		this.updateChatTitle();
 		this.chatSelector.update(this.state.conversationId);
 		// Save the cleared conversation state
@@ -946,13 +946,10 @@ export class ChatWindow extends Component {
 				this.state.messages = conversation.messages || [];
 				this.state.mentionedAgents = new Set(conversation.mentionedAgents || []);
 
-				// Update lastMentionedAgent
-				for (let i = this.state.messages.length - 1; i >= 0; i--) {
-					const msg = this.state.messages[i];
-					if (msg.type === 'agent' && msg.agent && msg.agent !== 'Spark Assistant') {
-						this.state.lastMentionedAgent = msg.agent;
-						break;
-					}
+				// Update lastMentionedAgent from mentionedAgents set
+				const agentsArray = Array.from(this.state.mentionedAgents);
+				if (agentsArray.length > 0) {
+					this.state.lastMentionedAgent = agentsArray[agentsArray.length - 1];
 				}
 
 				// Re-render all messages with updated names
@@ -982,8 +979,6 @@ export class ChatWindow extends Component {
 
 			// Save the conversation (persists current messages + new name)
 			await this.saveConversation();
-
-			console.log('Chat name updated:', name);
 		} catch (error) {
 			console.error('Failed to update conversation name:', error);
 		}

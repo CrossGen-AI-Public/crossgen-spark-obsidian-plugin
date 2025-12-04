@@ -73,15 +73,6 @@ export class ResultWriter {
 		const newlines = '\n'.repeat(Math.max(linesNeeded - 1, 2));
 		const finalContent = `${openingMarker}\n${newlines}${closingMarker}`;
 
-		console.log('[ResultWriter] Replacing markers:', {
-			startLine,
-			endLine,
-			uuid,
-			agentName,
-			markerId,
-			linesNeeded,
-		});
-
 		// Check if there's content after the end marker
 		const hasContentAfter =
 			endLine + 1 < lineCount && editor.getLine(endLine + 1).trim().length > 0;
@@ -94,12 +85,11 @@ export class ResultWriter {
 			{ line: startLine, ch: 0 },
 			{ line: endLine + 1, ch: 0 }
 		);
-
-		console.log('[ResultWriter] Markers replaced successfully');
 	}
 
 	/**
 	 * Remove all inline chat markers from a file
+	 * Uses vault.process for atomic read-modify-write
 	 */
 	public async cleanupMarkersFromFile(filePath: string): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -108,18 +98,17 @@ export class ResultWriter {
 		}
 
 		try {
-			const content = await this.app.vault.read(file);
-			let modifiedContent = content;
+			await this.app.vault.process(file, content => {
+				let modifiedContent = content;
 
-			// Pattern 1: Remove temporary positioning markers
-			modifiedContent = modifiedContent.replace(TEMP_MARKER_BLOCK_REGEX, '');
+				// Pattern 1: Remove temporary positioning markers
+				modifiedContent = modifiedContent.replace(TEMP_MARKER_BLOCK_REGEX, '');
 
-			// Pattern 2: Remove daemon format markers
-			modifiedContent = modifiedContent.replace(DAEMON_MARKER_BLOCK_REGEX, '');
+				// Pattern 2: Remove daemon format markers
+				modifiedContent = modifiedContent.replace(DAEMON_MARKER_BLOCK_REGEX, '');
 
-			if (modifiedContent !== content) {
-				await this.app.vault.modify(file, modifiedContent);
-			}
+				return modifiedContent;
+			});
 		} catch (error) {
 			console.error('[ResultWriter] Error cleaning up markers:', error);
 		}

@@ -1,4 +1,4 @@
-import { type App, SuggestModal } from 'obsidian';
+import { type App, setIcon, SuggestModal } from 'obsidian';
 import type { ChatConversation } from './types';
 import type { ConversationStorage } from './ConversationStorage';
 
@@ -77,8 +77,7 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 		const deleteBtn = contentEl.createDiv({
 			cls: 'spark-conversation-delete-btn',
 		});
-		deleteBtn.innerHTML =
-			'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/></svg>';
+		setIcon(deleteBtn, 'trash-2');
 		deleteBtn.title = 'Delete conversation';
 		deleteBtn.onclick = async (e: MouseEvent) => {
 			e.stopPropagation();
@@ -189,7 +188,7 @@ export class ChatSelector {
 
 		const dropdownBtn = document.createElement('button');
 		dropdownBtn.className = 'spark-chat-dropdown-btn';
-		dropdownBtn.innerHTML = '☰';
+		dropdownBtn.textContent = '☰';
 		dropdownBtn.title = 'Select Conversation';
 		dropdownBtn.onclick = async () => await this.showConversationModal();
 
@@ -202,7 +201,7 @@ export class ChatSelector {
 	createRightSide(containerEl: HTMLElement): void {
 		const newChatBtn = document.createElement('button');
 		newChatBtn.className = 'spark-chat-new-btn';
-		newChatBtn.innerHTML = '+';
+		newChatBtn.textContent = '+';
 		newChatBtn.title = 'New Chat';
 		newChatBtn.onclick = () => this.onNewChat();
 
@@ -263,7 +262,7 @@ export class ChatSelector {
 	 */
 	destroy(): void {
 		if (this.containerEl) {
-			this.containerEl.innerHTML = '';
+			this.containerEl.empty();
 		}
 	}
 }

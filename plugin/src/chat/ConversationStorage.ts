@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import { type App, normalizePath } from 'obsidian';
 import type { ChatConversation } from './types';
 import { CHAT_FILENAME_REGEX, REGEX_ESCAPE_PATTERN } from '../constants';
 
@@ -11,7 +11,7 @@ export class ConversationStorage {
 	}
 
 	async saveConversation(conversation: ChatConversation): Promise<void> {
-		const filePath = `${this.conversationsDir}/${conversation.id}.json`;
+		const filePath = normalizePath(`${this.conversationsDir}/${conversation.id}.json`);
 		const content = JSON.stringify(conversation, null, 2);
 
 		// Create directory if it doesn't exist
@@ -24,7 +24,7 @@ export class ConversationStorage {
 	}
 
 	async loadConversation(id: string): Promise<ChatConversation | null> {
-		const filePath = `${this.conversationsDir}/${id}.json`;
+		const filePath = normalizePath(`${this.conversationsDir}/${id}.json`);
 
 		try {
 			const content = await this.app.vault.adapter.read(filePath);
@@ -72,7 +72,7 @@ export class ConversationStorage {
 
 	async deleteConversation(id: string): Promise<void> {
 		try {
-			const filePath = `${this.conversationsDir}/${id}.json`;
+			const filePath = normalizePath(`${this.conversationsDir}/${id}.json`);
 			const exists = await this.app.vault.adapter.exists(filePath);
 			if (exists) {
 				await this.app.vault.adapter.remove(filePath);
@@ -138,7 +138,6 @@ export class ConversationStorage {
 	async updateAgentName(oldName: string, newName: string): Promise<void> {
 		try {
 			const conversations = await this.listConversations();
-			let updatedCount = 0;
 
 			for (const conversation of conversations) {
 				let conversationUpdated = false;
@@ -178,14 +177,7 @@ export class ConversationStorage {
 				// Save updated conversation
 				if (conversationUpdated) {
 					await this.saveConversation(conversation);
-					updatedCount++;
 				}
-			}
-
-			if (updatedCount > 0) {
-				console.log(
-					`ConversationStorage: Updated agent name from "${oldName}" to "${newName}" in ${updatedCount} conversation(s)`
-				);
 			}
 		} catch (error) {
 			console.error('ConversationStorage: Failed to update agent name:', error);

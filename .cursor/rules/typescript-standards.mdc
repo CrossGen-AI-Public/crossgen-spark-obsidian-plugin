@@ -151,3 +151,8 @@ If you find yourself wanting to use `any`:
 ---
 
 **Remember:** Types are documentation, safety nets, and productivity tools. Use them properly!
+
+## Related Rules
+
+For Obsidian-specific guidelines (DOM APIs, file handling, settings UI), see:
+- [obsidian-plugin-guidelines.mdc](obsidian-plugin-guidelines.mdc)

@@ -2,14 +2,49 @@
 
 AI-powered automation for Obsidian with slash commands, chat widget, and intelligent workflows.
 
-## 📑 Table of Contents
+> **Desktop Only**: This plugin requires Node.js and is only available on desktop (macOS, Windows, Linux).
+
+## Requirements
+
+This plugin requires the **Spark Daemon** to be running for AI features to work.
+
+### Install the Daemon
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-daemon.sh | bash
+```
+
+Or manually:
+1. Install [Node.js 18+](https://nodejs.org/)
+2. Clone the repository and run `./install-daemon.sh`
+
+### Start the Daemon
+
+```bash
+spark start ~/path/to/your/vault
+```
+
+The daemon watches your vault and processes AI requests from the plugin.
+
+---
+
+## Table of Contents
 
 - [Features](#features)
+- [Installation](#installation)
 - [Development](#development)
-- [Current Status](#current-status)
 - [Architecture](#architecture)
-- [Documentation](#documentation)
 - [License](#license)
+
+---
+
+## Installation
+
+1. Open Obsidian Settings → Community Plugins
+2. Search for "Spark Assistant"
+3. Install and enable the plugin
+4. Configure your API key in plugin settings (Settings → Spark → Advanced)
+5. Start the daemon (see [Requirements](#requirements))
 
 ---
 
@@ -152,48 +187,6 @@ plugin/
 └── esbuild.config.mjs       # Build configuration
 ```
 
-## Current Status
-
-### ✅ Phase 1: Project Setup (Complete)
-
-- [x] Plugin boilerplate
-- [x] TypeScript configuration
-- [x] Build pipeline (esbuild)
-- [x] Basic plugin registration
-- [x] Settings panel
-- [x] Development environment
-
-### ✅ Phase 2: Command Palette (Complete)
-
-- [x] Trigger detection (`/`, `@`)
-- [x] Fuzzy search interface
-- [x] Command/agent/file listing
-- [x] Selection and insertion
-- [x] Keyboard navigation (↑↓ Enter Esc)
-- [x] Cursor positioning
-- [x] Cache management
-
-### ✅ Phase 3: Chat Widget (Complete)
-
-- [x] Floating chat window
-- [x] Message input/display
-- [x] Mention support in chat
-- [x] Conversation persistence
-- [x] Real-time responses from daemon
-
-### ✅ Phase 4: Chat Result Watching (Complete)
-
-- [x] Watch `.spark/chat-results/` for daemon responses
-- [x] Display agent messages in chat
-- [x] Parse JSONL format
-- [x] Handle incremental reads
-
-### ✅ Phase 5: Polish & Settings (Complete)
-
-- [ ] Enhanced settings panel
-- [ ] Error handling
-- [ ] Style improvements
-
 ## Architecture
 
 This plugin follows the Spark Assistant architecture:
@@ -216,12 +209,11 @@ The daemon handles:
 - Executing commands
 - Writing results
 
-## Documentation
+## Support
 
-- **[PLUGIN_PROGRESS.md](../specs/PLUGIN_PROGRESS.md)**: Detailed implementation progress and task tracking
-- **[FUZZY_MATCHING_IMPROVEMENTS.md](../specs/FUZZY_MATCHING_IMPROVEMENTS.md)**: Fuzzy search algorithm analysis and future enhancements
-- **[specs/](../specs/)**: Complete technical specifications
+- **Issues**: [GitHub Issues](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/issues)
+- **Documentation**: [GitHub Wiki](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/wiki)
 
 ## License
 
-MIT
+MIT - See [LICENSE](../LICENSE) for details.

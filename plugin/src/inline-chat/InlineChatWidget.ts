@@ -210,11 +210,10 @@ export class InlineChatWidget {
 				'aria-label': 'Close',
 			},
 		});
-		closeButton.innerHTML = '×';
+		closeButton.setText('×');
 		closeButton.addEventListener('click', (e: MouseEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
-			console.log('[InlineChatWidget] Close button clicked');
 			this.options.onCancel();
 		});
 
@@ -247,11 +246,10 @@ export class InlineChatWidget {
 				'aria-label': 'Send message',
 			},
 		});
-		this.sendButtonEl.innerHTML = '↑';
+		this.sendButtonEl.setText('↑');
 		this.sendButtonEl.addEventListener('click', (e: MouseEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
-			console.log('[InlineChatWidget] Send button clicked');
 			this.handleSend();
 		});
 
@@ -265,21 +263,16 @@ export class InlineChatWidget {
 	 * Handle send action
 	 */
 	private handleSend(): void {
-		console.log('[InlineChatWidget] handleSend called');
 		if (!this.mentionInput) {
-			console.log('[InlineChatWidget] No mention input');
 			return;
 		}
 
 		const message = this.mentionInput.getText().trim();
-		console.log('[InlineChatWidget] Message:', message);
 
 		if (message.length === 0) {
-			console.log('[InlineChatWidget] Empty message, not sending');
 			return; // Don't send empty messages
 		}
 
-		console.log('[InlineChatWidget] Calling onSend callback');
 		this.options.onSend(message);
 	}
 

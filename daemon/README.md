@@ -86,6 +86,27 @@ daemon/
 
 ## Installation
 
+### Quick Install (Recommended)
+
+For users who installed the Spark plugin from Obsidian Community Plugins:
+
+```bash
+# One-command daemon installation
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-daemon.sh | bash
+```
+
+This automatically:
+- Installs Node.js 18+ via nvm (if needed)
+- Builds and installs the daemon globally
+- Configures your shell PATH
+
+Then start the daemon:
+```bash
+spark start ~/Documents/MyVault
+```
+
+### Manual Installation
+
 ```bash
 # Install dependencies
 npm install

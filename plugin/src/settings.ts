@@ -1,4 +1,4 @@
-import { type App, PluginSettingTab, Setting, Notice, Modal } from 'obsidian';
+import { type App, PluginSettingTab, Setting, Notice, Modal, normalizePath } from 'obsidian';
 import type { SparkSettings, ISparkPlugin } from './types';
 import * as yaml from 'js-yaml';
 import { AgentConfigSchema, SparkConfigSchema, type SparkConfig } from './validation';
@@ -158,8 +158,8 @@ export class SparkSettingTab extends PluginSettingTab {
 	}
 
 	private populateGeneralTab(containerEl: HTMLElement) {
-		// Plugin Settings Section
-		containerEl.createEl('h3', { text: 'Plugin Settings' });
+		// Plugin section
+		containerEl.createEl('h3', { text: 'Plugin' });
 		const pluginDesc = containerEl.createEl('p', {
 			text: 'Configure Spark plugin behavior and appearance.',
 			cls: 'setting-item-description',
@@ -447,7 +447,7 @@ export class SparkSettingTab extends PluginSettingTab {
 
 		if (oldFileName !== newFileName) {
 			// Rename the file
-			const newPath = `.spark/agents/${newFileName}.md`;
+			const newPath = normalizePath(`.spark/agents/${newFileName}.md`);
 			await adapter.write(newPath, content);
 			await adapter.remove(filePath);
 
@@ -478,7 +478,7 @@ export class SparkSettingTab extends PluginSettingTab {
 
 		const agentsPath = '.spark/agents';
 		const fileName = `${agentName.toLowerCase().replace(/\s+/g, '-')}.md`;
-		const filePath = `${agentsPath}/${fileName}`;
+		const filePath = normalizePath(`${agentsPath}/${fileName}`);
 
 		try {
 			const adapter = this.app.vault.adapter;
@@ -576,8 +576,8 @@ export class SparkSettingTab extends PluginSettingTab {
 			const content = await adapter.read(configPath);
 			const config = yaml.load(content) as SparkConfig;
 
-			// Daemon Settings
-			this.configContainer.createEl('h4', { text: 'Daemon Settings' });
+			// Daemon section
+			this.configContainer.createEl('h4', { text: 'Daemon' });
 
 			new Setting(this.configContainer)
 				.setName('Debounce (ms)')

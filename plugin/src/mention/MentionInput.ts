@@ -82,8 +82,8 @@ export class MentionInput {
 			const isEmpty = text.length === 0;
 
 			// Clear completely if empty (for proper placeholder display)
-			if (isEmpty && this.inputEl.innerHTML !== '') {
-				this.inputEl.innerHTML = '';
+			if (isEmpty && this.inputEl.textContent !== '') {
+				this.inputEl.textContent = '';
 			}
 
 			this.inputEl.setAttribute('data-empty', isEmpty ? 'true' : 'false');
@@ -173,7 +173,7 @@ export class MentionInput {
 	clear(): void {
 		if (!this.inputEl) return;
 
-		this.inputEl.innerHTML = '';
+		this.inputEl.textContent = '';
 		this.inputEl.setAttribute('data-empty', 'true');
 	}
 

@@ -329,26 +329,43 @@ export class MentionDecorator {
 			return;
 		}
 
-		// Build HTML with styled tokens
-		let html = '';
+		// Build DOM with styled tokens
+		cell.empty();
 		let lastIndex = 0;
 
 		for (const token of tokens) {
-			html += this.escapeHtml(text.substring(lastIndex, token.start));
+			// Add text before token
+			const beforeText = text.substring(lastIndex, token.start);
+			if (beforeText) {
+				cell.appendText(beforeText);
+			}
 
 			// Add styled token or plain text
 			if (token.type) {
-				html += `<span class="spark-token spark-token-${token.type}" data-token="${this.escapeHtml(token.text)}" data-type="${token.type}">${this.escapeHtml(token.text)}</span>`;
+				const span = cell.createSpan({
+					cls: `spark-token spark-token-${token.type}`,
+				});
+				span.dataset.token = token.text;
+				span.dataset.type = token.type;
+				span.textContent = token.text;
 			} else {
-				html += this.escapeHtml(token.text);
+				cell.appendText(token.text);
 			}
 
 			lastIndex = token.end;
 		}
 
-		html += this.escapeHtml(text.substring(lastIndex));
+		// Add remaining text
+		const remainingText = text.substring(lastIndex);
+		if (remainingText) {
+			cell.appendText(remainingText);
+		}
 
-		cell.innerHTML = html || '<br>';
+		// Ensure cell has content (for cursor positioning)
+		if (!cell.hasChildNodes()) {
+			cell.createEl('br');
+		}
+
 		cell.setAttribute('data-spark-processed', 'true');
 		cell.setAttribute('data-spark-text', text);
 	}
@@ -402,10 +419,9 @@ export class MentionDecorator {
 		const basename = mention.substring(1); // Remove @
 
 		if (isFolder) {
-			const folderPath = basename;
-			const folderExists = this.app.vault
-				.getMarkdownFiles()
-				.some(f => f.path.startsWith(folderPath));
+			// Remove trailing slash for folder lookup
+			const folderPath = basename.endsWith('/') ? basename.slice(0, -1) : basename;
+			const folderExists = this.app.vault.getFolderByPath(folderPath) !== null;
 			return folderExists ? 'folder' : null;
 		} else {
 			const fileExists = this.app.vault.getMarkdownFiles().some(f => f.basename === basename);
@@ -432,18 +448,6 @@ export class MentionDecorator {
 		// Use service cache - cache is pre-loaded in initialize/refresh
 		const commandNames = this.resourceService.validCommandsCache;
 		return commandNames?.has(commandName) ? 'command' : null;
-	}
-
-	/**
-	 * Escape HTML special characters
-	 */
-	private escapeHtml(text: string): string {
-		return text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#039;');
 	}
 
 	/**

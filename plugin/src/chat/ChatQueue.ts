@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import { type App, normalizePath } from 'obsidian';
 
 /**
  * Manages writing chat messages to the queue for daemon processing
@@ -32,7 +32,7 @@ export class ChatQueue {
 		// Generate unique queue file name
 		const timestamp = Date.now();
 		const queueId = `${conversationId}-${timestamp}`;
-		const queueFile = `${this.queueDir}/${queueId}.md`;
+		const queueFile = normalizePath(`${this.queueDir}/${queueId}.md`);
 
 		// Build markdown content with Spark syntax
 		let content = '---\n';
@@ -80,7 +80,7 @@ export class ChatQueue {
 	 * Clean up a processed queue file
 	 */
 	async dequeue(queueId: string): Promise<void> {
-		const queueFile = `${this.queueDir}/${queueId}.md`;
+		const queueFile = normalizePath(`${this.queueDir}/${queueId}.md`);
 		try {
 			const exists = await this.app.vault.adapter.exists(queueFile);
 			if (exists) {

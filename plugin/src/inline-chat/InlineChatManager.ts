@@ -114,11 +114,6 @@ export class InlineChatManager {
 	}): Promise<void> {
 		const { agentName, editor, line } = detail;
 
-		console.log('[Spark Inline Chat] Agent mention completed via palette', {
-			agentName,
-			line,
-		});
-
 		// Check if already has marker (don't show widget if already processed)
 		if (this.detector.hasExistingMarker(editor, line)) {
 			return;
@@ -174,11 +169,6 @@ export class InlineChatManager {
 			if (!content.includes(pendingMarker)) {
 				// Chat completed (daemon removed markers and inserted response)
 				const elapsed = Date.now() - pendingChat.timestamp;
-				console.log('[Spark Inline Chat] Chat completed:', {
-					uuid: pendingChat.uuid,
-					agent: pendingChat.agentName,
-					elapsed: `${elapsed}ms`,
-				});
 
 				// Hide the processing widget if it's for this chat
 				if (this.activeWidget?.isVisible()) {
@@ -199,11 +189,6 @@ export class InlineChatManager {
 		const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
 		for (const [uuid, chat] of this.pendingChats.entries()) {
 			if (chat.timestamp < fiveMinutesAgo) {
-				console.warn('[Spark Inline Chat] Removing stale pending chat:', {
-					uuid,
-					age: Date.now() - chat.timestamp,
-				});
-
 				// Clean up markers from the file
 				void ResultWriter.getInstance(this.app).cleanupMarkersFromFile(chat.filePath);
 
@@ -357,13 +342,6 @@ export class InlineChatManager {
 		window.setTimeout(() => {
 			this.isAdjustingContent = false;
 		}, 50);
-
-		console.log('[Spark Inline Chat] Adjusted blank lines:', {
-			widgetHeight,
-			linesNeeded,
-			startLine,
-			endLine,
-		});
 	}
 
 	/**
@@ -417,15 +395,6 @@ export class InlineChatManager {
 		const top = startRect.bottom - scrollerRect.top + scrollerEl.scrollTop + 5;
 		const left = (contentRect?.left || scrollerRect.left) - scrollerRect.left;
 
-		console.log('[Spark Inline Chat] Widget position:', {
-			markerId: this.markerId,
-			startMarkerFound: !!startMarkerLine,
-			endMarkerFound: !!endMarkerLine,
-			scrollTop: scrollerEl.scrollTop,
-			calculatedTop: top,
-			left,
-		});
-
 		return {
 			top,
 			left,
@@ -438,7 +407,6 @@ export class InlineChatManager {
 	 */
 	private cleanupMarkers(editor: Editor): void {
 		ResultWriter.getInstance(this.app).cleanupMarkersFromEditor(editor, this.markerId);
-		console.log('[Spark Inline Chat] Cleaned up markers successfully');
 	}
 
 	/**
@@ -448,11 +416,6 @@ export class InlineChatManager {
 		if (!this.currentEditor || !this.currentMention) {
 			return;
 		}
-
-		console.log('[Spark Inline Chat] Send clicked', {
-			agent: this.currentMention.agentName,
-			message,
-		});
 
 		// Get current file path
 		const activeFile = this.app.workspace.getActiveFile();
@@ -470,12 +433,6 @@ export class InlineChatManager {
 			filePath: activeFile.path,
 			agentName: this.currentMention.agentName,
 			timestamp: Date.now(),
-		});
-
-		console.log('[Spark Inline Chat] Tracking pending chat:', {
-			uuid,
-			filePath: activeFile.path,
-			totalPending: this.pendingChats.size,
 		});
 
 		// Extract clean user message (remove @agent prefix)
@@ -527,8 +484,6 @@ export class InlineChatManager {
 	 * Handle cancel button click
 	 */
 	private handleCancel(): void {
-		console.log('[Spark Inline Chat] Cancel clicked');
-
 		// Hide widget first (to prevent visual glitches)
 		if (this.activeWidget) {
 			this.activeWidget.hide();
@@ -538,6 +493,11 @@ export class InlineChatManager {
 		// Clean up markers and blank lines
 		if (this.currentEditor && this.markerId) {
 			this.cleanupMarkers(this.currentEditor);
+		}
+
+		// Return focus to editor
+		if (this.currentEditor) {
+			this.currentEditor.focus();
 		}
 
 		// Keep the mention removed (don't restore it)

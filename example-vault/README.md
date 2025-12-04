@@ -1,9 +1,13 @@
 # Spark Assistant
 
+[![Daemon CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml)
+[![Plugin CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml)
+
 **Transform Obsidian into an intelligent business operating system powered by AI.**
 
 Spark Assistant enables "markdown files triggering AI agents" - turning your Obsidian vault into a living, automated workspace where notes become actions, and simple text triggers complex workflows.
 
+---
 
 ## 📑 Table of Contents
 
@@ -21,8 +25,7 @@ Spark Assistant enables "markdown files triggering AI agents" - turning your Obs
 - [🙏 Acknowledgments](#-acknowledgments)
 - [📧 Contact](#-contact)
 
---- 
-
+---
 
 ## 🎯 What is Spark?
 
@@ -32,7 +35,7 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 2. **Chat Widget** - Persistent conversational AI with full vault context (Cmd+K)
 3. **Automation Engine** - File changes trigger automated workflows
 
-**Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a daemon watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files.
+**Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a daemon watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files. 
 
 ---
 
@@ -40,39 +43,81 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 
 ### Prerequisites
 
-- **Node.js** 18+ 
-- **Claude API key** (add in Obsidian plugin settings)
-- **Obsidian** (optional - comes with example vault)
+**Minimal requirements for fresh machines:**
+- `curl` or `wget` (for downloading)
+- `bash` (for running the script)
+- `tar` (usually pre-installed)
+
+That's it! No Node.js, npm, git, or other tools needed.
+
+**Everything else is auto-installed:**
+- ✅ Node.js 18+ (via nvm)
+- ✅ npm (comes with Node.js)
+- ✅ Obsidian (optional - example vault included)
+
+**Development features (enable with DEV_MODE=1):**
+- 🔧 Hot Reload plugin (auto-reload on changes)
+- 🔧 GitHub CLI (for contributing)
+
+> **Note:** API keys are managed securely in Obsidian plugin settings (`~/.spark/secrets.yaml`, encrypted)
 
 ### Installation
 
-**Development Setup (Recommended):**
+**One-Command Install (Easiest):**
+
+Fresh machine? No problem! This installs everything:
+
+```bash
+# Install to example vault (for testing/development)
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
+
+# Or install to your vault
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash -s -- ~/Documents/MyVault
+```
+
+**What it does:**
+- ✅ Installs Node.js via nvm (if needed)
+- ✅ Downloads and builds Spark daemon + plugin
+- ✅ Auto-starts daemon (configures vault)
+- ✅ Ready for production use (add API key in plugin settings)
+
+**For developers:**
+```bash
+# Enable development features (hot reload + gh CLI)
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
+```
+
+**Environment flags:**
+```bash
+# Development mode (hot reload, gh CLI)
+DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
+
+# Skip Node.js installation (if you have it)
+SKIP_NODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
+
+# Skip daemon auto-start
+AUTO_START=0 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
+```
+
+---
+
+**Development Setup (Clone First):**
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/automazeio/crossgen-spark.git
+git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd crossgen-spark
 
 # 2. Run installer (sets up example-vault with hot reload)
 ./install.sh
 
-# 3. Add API key in plugin settings
-# Settings → Spark → Advanced → Add your API key
-
-# 4. Open example-vault in Obsidian
+# 3. Open example-vault in Obsidian
 # - Plugins are auto-enabled (Spark + Hot Reload)
+# - Add your API key in plugin settings (Settings → Spark → Advanced)
 # - Ready for development!
 
 # 5. Start daemon
 spark start example-vault
-```
-
-**Install to Your Vault:**
-
-```bash
-# Same steps, but specify your vault path
-./install.sh ~/Documents/MyVault
-spark start ~/Documents/MyVault
 ```
 
 **Manual Installation:**
@@ -82,7 +127,7 @@ spark start ~/Documents/MyVault
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/automazeio/crossgen-spark.git
+git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd spark
 
 # 2. Install and build daemon
@@ -100,11 +145,11 @@ npm run build
 mkdir -p ~/Documents/MyVault/.obsidian/plugins/spark
 cp -r dist/* ~/Documents/MyVault/.obsidian/plugins/spark/
 
-# 5. Add API key in plugin settings
-# Settings → Spark → Advanced
-
-# 6. Enable plugin in Obsidian
+# 5. Enable plugin in Obsidian
 # Settings → Community plugins → Enable "Spark"
+
+# 6. Add API key in plugin settings
+# Settings → Spark → Advanced → Add your API key for each provider
 
 # 7. Start daemon
 spark start ~/Documents/MyVault
@@ -226,7 +271,7 @@ spark/
 └── daemon/                            # Node.js daemon (intelligence layer)
     ├── src/
     │   ├── cli.ts                     # CLI entry point
-    │   ├── SparkDaemon.ts             # Main orchestrator
+    │   ├── main.ts             # Main orchestrator
     │   ├── cli/                       # CLI utilities (registry, inspector)
     │   ├── config/                    # Configuration management
     │   ├── watcher/                   # File system watching
@@ -430,6 +475,7 @@ ai:
       model: claude-sonnet-4-5-20250929
       maxTokens: 4096
       temperature: 0.7
+      # API keys are managed in plugin settings (~/.spark/secrets.yaml)
 
 logging:
   level: info
@@ -510,7 +556,7 @@ triggers:
 
 **Quick setup for development:**
 ```bash
-git clone https://github.com/automazeio/crossgen-spark.git
+git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd spark
 
 # Install everything (daemon + plugin)
@@ -603,8 +649,8 @@ spark start ~/vault --debug           # Restart with debug logging
 ### Claude API errors
 
 ```bash
-spark inspect .                       # Check API key status
 spark config ~/vault                  # Check configuration
+spark inspect ~/vault                 # Inspect daemon state (includes API key status)
 ```
 
 #### Plugin Debugging
@@ -694,13 +740,17 @@ spark start ~/Documents/Vault
 
 ### Claude API errors
 
-```bash
-# Check API key status
-spark inspect .
+API keys are stored securely in `~/.spark/secrets.yaml` (encrypted). To check:
 
-# View encrypted secrets file
-cat ~/.spark/secrets.yaml
+```bash
+spark inspect ~/vault                 # Shows API key status
+cat ~/.spark/secrets.yaml             # View encrypted secrets (Base64 encoded)
 ```
+
+To troubleshoot:
+1. Check API key is set in plugin settings (Settings → Spark → Advanced)
+2. Verify provider configuration in `.spark/config.yaml`
+3. Check daemon logs in `.spark/logs/`
 
 ---
 

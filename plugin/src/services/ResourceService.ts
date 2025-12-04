@@ -50,19 +50,11 @@ export class ResourceService {
 	private handleFileChange(file: TAbstractFile): void {
 		// Invalidate agent cache if agent file changed
 		if (file.path.startsWith('.spark/agents/') && file.path.endsWith('.md')) {
-			console.log(
-				'[Spark ResourceService] Agent file changed, invalidating agent cache:',
-				file.path
-			);
 			this.invalidateAgentCache();
 		}
 
 		// Invalidate command cache if command file changed
 		if (file.path.startsWith('.spark/commands/') && file.path.endsWith('.md')) {
-			console.log(
-				'[Spark ResourceService] Command file changed, invalidating command cache:',
-				file.path
-			);
 			this.invalidateCommandCache();
 		}
 	}
@@ -187,10 +179,12 @@ export class ResourceService {
 	}
 
 	/**
-	 * Validate if a folder exists (by path prefix)
+	 * Validate if a folder exists (by path)
 	 */
 	public validateFolder(path: string): boolean {
-		return this.app.vault.getMarkdownFiles().some(f => f.path.startsWith(path));
+		// Remove trailing slash if present
+		const folderPath = path.endsWith('/') ? path.slice(0, -1) : path;
+		return this.app.vault.getFolderByPath(folderPath) !== null;
 	}
 
 	/**

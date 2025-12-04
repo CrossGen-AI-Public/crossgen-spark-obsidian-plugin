@@ -81,6 +81,24 @@ curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-o
 - ✅ Auto-starts daemon (configures vault)
 - ✅ Ready for production use (add API key in plugin settings)
 
+---
+
+**Daemon Only (for Community Plugins users):**
+
+If you installed the Spark plugin from Obsidian Community Plugins, you only need to install the daemon:
+
+```bash
+# Install daemon only
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-daemon.sh | bash
+```
+
+Then start the daemon:
+```bash
+spark start ~/Documents/MyVault
+```
+
+---
+
 **For developers:**
 ```bash
 # Enable development features (hot reload + gh CLI)

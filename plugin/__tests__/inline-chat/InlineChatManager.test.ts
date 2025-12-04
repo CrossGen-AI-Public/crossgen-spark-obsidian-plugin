@@ -571,8 +571,9 @@ describe('InlineChatManager', () => {
                     ...mockApp.vault,
                     getAbstractFileByPath: (path: string) => mockFile,
                     read: async () => fileContent,
-                    modify: async (file: any, content: string) => {
-                        modifiedContent = content;
+                    process: async (file: any, fn: (content: string) => string) => {
+                        modifiedContent = fn(fileContent);
+                        return modifiedContent;
                     },
                 };
                 (mockApp as any).vault = mockVault;
@@ -603,8 +604,9 @@ describe('InlineChatManager', () => {
                     ...mockApp.vault,
                     getAbstractFileByPath: () => mockFile,
                     read: async () => fileContent,
-                    modify: async (file: any, content: string) => {
-                        modifiedContent = content;
+                    process: async (file: any, fn: (content: string) => string) => {
+                        modifiedContent = fn(fileContent);
+                        return modifiedContent;
                     },
                 };
                 (mockApp as any).vault = mockVault;
@@ -620,20 +622,19 @@ describe('InlineChatManager', () => {
                 manager.initialize();
 
                 const cleanedFiles: string[] = [];
+                const fileContents: Record<string, string> = {
+                    'file1.md': '<!-- spark-inline-chat:pending:uuid:betty:msg -->\n\n<!-- /spark-inline-chat -->',
+                    'file2.md': '<!-- spark-inline-1234-start -->\n\n<!-- spark-inline-1234-end -->',
+                };
                 const mockVault = {
                     ...mockApp.vault,
                     getAbstractFileByPath: (path: string) => new (TFile as any)(path),
-                    read: async (file: any) => {
-                        if (file.path === 'file1.md') {
-                            return '<!-- spark-inline-chat:pending:uuid:betty:msg -->\n\n<!-- /spark-inline-chat -->';
-                        }
-                        if (file.path === 'file2.md') {
-                            return '<!-- spark-inline-1234-start -->\n\n<!-- spark-inline-1234-end -->';
-                        }
-                        return '';
-                    },
-                    modify: async (file: any, content: string) => {
+                    read: async (file: any) => fileContents[file.path] || '',
+                    process: async (file: any, fn: (content: string) => string) => {
+                        const content = fileContents[file.path] || '';
+                        const result = fn(content);
                         cleanedFiles.push(file.path);
+                        return result;
                     },
                 };
                 (mockApp as any).vault = mockVault;
@@ -665,7 +666,7 @@ describe('InlineChatManager', () => {
                     ...mockApp.vault,
                     getAbstractFileByPath: () => null,
                     read: async () => '',
-                    modify: async () => { },
+                    process: async () => '',
                 };
                 (mockApp as any).vault = mockVault;
 
@@ -704,21 +705,21 @@ describe('InlineChatManager', () => {
                     new (TFile as any)('file2.md'),
                 ];
 
+                const fileContents: Record<string, string> = {
+                    'file1.md': 'Text\n<!-- spark-inline-1234-start -->\n\n<!-- spark-inline-1234-end -->\nMore',
+                    'file2.md': 'Clean file with no markers',
+                };
+
                 const mockVault = {
                     ...mockApp.vault,
                     getMarkdownFiles: () => mockFiles,
                     getAbstractFileByPath: (path: string) => mockFiles.find(f => f.path === path),
-                    read: async (file: any) => {
-                        if (file.path === 'file1.md') {
-                            return 'Text\n<!-- spark-inline-1234-start -->\n\n<!-- spark-inline-1234-end -->\nMore';
-                        }
-                        if (file.path === 'file2.md') {
-                            return 'Clean file with no markers';
-                        }
-                        return '';
-                    },
-                    modify: async (file: any, content: string) => {
+                    read: async (file: any) => fileContents[file.path] || '',
+                    process: async (file: any, fn: (content: string) => string) => {
+                        const content = fileContents[file.path] || '';
+                        const result = fn(content);
                         cleanedFiles.push(file.path);
+                        return result;
                     },
                 };
                 (mockApp as any).vault = mockVault;
@@ -737,21 +738,21 @@ describe('InlineChatManager', () => {
                     new (TFile as any)('daemon-markers.md'),
                 ];
 
+                const fileContents: Record<string, string> = {
+                    'temp-markers.md': '<!-- spark-inline-abc-start -->\n\n<!-- spark-inline-abc-end -->',
+                    'daemon-markers.md': '<!-- spark-inline-chat:pending:uuid:agent:msg -->\n\n<!-- /spark-inline-chat -->',
+                };
+
                 const mockVault = {
                     ...mockApp.vault,
                     getMarkdownFiles: () => mockFiles,
                     getAbstractFileByPath: (path: string) => mockFiles.find(f => f.path === path),
-                    read: async (file: any) => {
-                        if (file.path === 'temp-markers.md') {
-                            return '<!-- spark-inline-abc-start -->\n\n<!-- spark-inline-abc-end -->';
-                        }
-                        if (file.path === 'daemon-markers.md') {
-                            return '<!-- spark-inline-chat:pending:uuid:agent:msg -->\n\n<!-- /spark-inline-chat -->';
-                        }
-                        return '';
-                    },
-                    modify: async (file: any, content: string) => {
+                    read: async (file: any) => fileContents[file.path] || '',
+                    process: async (file: any, fn: (content: string) => string) => {
+                        const content = fileContents[file.path] || '';
+                        const result = fn(content);
                         cleanedFiles.push(file.path);
+                        return result;
                     },
                 };
                 (mockApp as any).vault = mockVault;
@@ -778,7 +779,7 @@ describe('InlineChatManager', () => {
                         }
                         return 'Clean content';
                     },
-                    modify: async () => { },
+                    process: async () => '',
                 };
                 (mockApp as any).vault = mockVault;
 
@@ -802,8 +803,9 @@ describe('InlineChatManager', () => {
                     getAbstractFileByPath: (path: string) => (path === 'stale.md' ? mockFile : null),
                     getMarkdownFiles: () => [],
                     read: async (file: any) => fileContent,
-                    modify: async (file: any, content: string) => {
-                        modifiedContent = content;
+                    process: async (file: any, fn: (content: string) => string) => {
+                        modifiedContent = fn(fileContent);
+                        return modifiedContent;
                     },
                 };
 

@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import { type App, normalizePath } from 'obsidian';
 
 export interface ChatResult {
 	conversationId: string;
@@ -170,7 +170,7 @@ export class ChatResultWatcher {
 	 * Get the result file path for a conversation
 	 */
 	getResultFilePath(conversationId: string): string {
-		return `${this.resultsDir}/${conversationId}.jsonl`;
+		return normalizePath(`${this.resultsDir}/${conversationId}.jsonl`);
 	}
 
 	/**
