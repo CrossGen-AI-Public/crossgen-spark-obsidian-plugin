@@ -4,15 +4,15 @@
  * Manages provider registration and lookup
  */
 
+import { Logger } from '../logger/Logger.js';
+import { SparkError } from '../types/index.js';
 import type {
   IAIProvider,
-  ProviderRegistration,
-  ProviderFactoryFunction,
   ProviderConfig,
+  ProviderFactoryFunction,
+  ProviderRegistration,
+  ProviderType,
 } from '../types/provider.js';
-import type { ProviderType } from '../types/provider.js';
-import { SparkError } from '../types/index.js';
-import { Logger } from '../logger/Logger.js';
 
 export class ProviderRegistry {
   private static instance: ProviderRegistry | null = null;

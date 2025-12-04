@@ -10,10 +10,10 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
-import type { AICompletionResult } from '../types/ai.js';
 import { Logger } from '../logger/Logger.js';
+import type { AICompletionResult } from '../types/ai.js';
 import { SparkError } from '../types/index.js';
+import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
 import { ProviderType } from '../types/provider.js';
 
 const execAsync = promisify(exec);

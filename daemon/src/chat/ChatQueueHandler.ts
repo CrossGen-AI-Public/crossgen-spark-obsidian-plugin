@@ -3,15 +3,15 @@
  * Reuses existing CommandExecutor, MentionParser, and other components
  */
 
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
-import { join, basename } from 'node:path';
-import type { Logger } from '../logger/Logger.js';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import { ErrorHandler } from '../errors/ErrorHandler.js';
 import type { CommandExecutor } from '../execution/CommandExecutor.js';
+import type { Logger } from '../logger/Logger.js';
 import type { MentionParser } from '../parser/MentionParser.js';
+import { ErrorWriter } from '../results/ErrorWriter.js';
 import type { ParsedCommand, ParsedMention } from '../types/parser.js';
 import type { ChatNameGenerator } from './ChatNameGenerator.js';
-import { ErrorWriter } from '../results/ErrorWriter.js';
-import { ErrorHandler } from '../errors/ErrorHandler.js';
 
 export class ChatQueueHandler {
   private errorWriter: ErrorWriter;

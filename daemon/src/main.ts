@@ -5,32 +5,32 @@
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import chokidar from 'chokidar';
 import type { FSWatcher } from 'chokidar';
-import type { ISparkDaemon, DaemonState } from './types/index.js';
-import type { SparkConfig } from './types/config.js';
-import type { FileChange } from './types/watcher.js';
-import type { ParsedCommand, ParsedMention, ParsedInlineChat } from './types/parser.js';
+import chokidar from 'chokidar';
+import { ChatNameGenerator } from './chat/ChatNameGenerator.js';
+import { ChatQueueHandler } from './chat/ChatQueueHandler.js';
+import { DaemonInspector } from './cli/DaemonInspector.js';
 import { ConfigLoader } from './config/ConfigLoader.js';
-import { FileWatcher } from './watcher/FileWatcher.js';
+import { ContextLoader } from './context/ContextLoader.js';
+import { CommandExecutor } from './execution/CommandExecutor.js';
+import { VaultInitializer } from './init/VaultInitializer.js';
 import { Logger } from './logger/Logger.js';
-import { SparkError } from './types/index.js';
 import { FileParser } from './parser/FileParser.js';
 import { MentionParser } from './parser/MentionParser.js';
-import { DaemonInspector } from './cli/DaemonInspector.js';
-import { ContextLoader } from './context/ContextLoader.js';
-import { ResultWriter } from './results/ResultWriter.js';
-import { CommandExecutor } from './execution/CommandExecutor.js';
-import { ChatQueueHandler } from './chat/ChatQueueHandler.js';
-import { ChatNameGenerator } from './chat/ChatNameGenerator.js';
-import { VaultInitializer } from './init/VaultInitializer.js';
 import {
-  ProviderRegistry,
-  ClaudeDirectProvider,
   ClaudeAgentProvider,
   ClaudeCodeProvider,
+  ClaudeDirectProvider,
+  ProviderRegistry,
 } from './providers/index.js';
+import { ResultWriter } from './results/ResultWriter.js';
+import type { SparkConfig } from './types/config.js';
+import type { DaemonState, ISparkDaemon } from './types/index.js';
+import { SparkError } from './types/index.js';
+import type { ParsedCommand, ParsedInlineChat, ParsedMention } from './types/parser.js';
 import { ProviderType } from './types/provider.js';
+import type { FileChange } from './types/watcher.js';
+import { FileWatcher } from './watcher/FileWatcher.js';
 
 export class SparkDaemon implements ISparkDaemon {
   private readonly vaultPath: string;

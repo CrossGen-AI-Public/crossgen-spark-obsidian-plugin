@@ -5,9 +5,9 @@
 
 import type {
   IInlineChatDetector,
-  ParsedInlineChat,
-  InlineChatStatus,
   IMentionParser,
+  InlineChatStatus,
+  ParsedInlineChat,
 } from '../types/parser.js';
 import { MentionParser } from './MentionParser.js';
 

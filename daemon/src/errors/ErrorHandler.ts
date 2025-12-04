@@ -3,9 +3,9 @@
  * Provides user-friendly error messages and logging without stack traces
  */
 
-import { SparkError } from '../types/index.js';
 import { Logger } from '../logger/Logger.js';
 import { ErrorWriter } from '../results/ErrorWriter.js';
+import { SparkError } from '../types/index.js';
 
 export interface ErrorHandlerOptions {
   vaultPath?: string;

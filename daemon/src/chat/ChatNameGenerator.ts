@@ -4,9 +4,9 @@
  * Uses available AI providers (Anthropic Direct -> Agent -> Claude Code)
  */
 
+import { Logger } from '../logger/Logger.js';
 import type { AIProviderFactory } from '../providers/AIProviderFactory.js';
 import type { AIConfig } from '../types/config.js';
-import { Logger } from '../logger/Logger.js';
 
 export class ChatNameGenerator {
   private providerFactory: AIProviderFactory;

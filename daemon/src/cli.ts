@@ -1,21 +1,22 @@
 #!/usr/bin/env node
+
 /**
  * Spark CLI
  * Command-line interface for the Spark daemon
  */
 
-import { Command } from 'commander';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { Command } from 'commander';
 import {
-  registerStartCommand,
-  registerStopCommand,
-  registerStatusCommand,
   registerConfigCommand,
-  registerInspectCommand,
   registerHistoryCommand,
+  registerInspectCommand,
   registerReloadCommand,
+  registerStartCommand,
+  registerStatusCommand,
+  registerStopCommand,
   registerVersionCommand,
 } from './cli/commands/index.js';
 

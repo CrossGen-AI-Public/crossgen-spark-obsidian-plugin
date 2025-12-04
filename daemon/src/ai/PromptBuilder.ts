@@ -4,8 +4,8 @@
  */
 
 import type { IPromptBuilder } from '../types/ai.js';
-import type { ParsedCommand } from '../types/parser.js';
 import type { LoadedContext } from '../types/context.js';
+import type { ParsedCommand } from '../types/parser.js';
 
 export class PromptBuilder implements IPromptBuilder {
   build(command: ParsedCommand, context: LoadedContext): string {

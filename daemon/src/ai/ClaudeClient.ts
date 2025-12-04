@@ -4,9 +4,9 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { IAIClient, AICompletionOptions, AICompletionResult } from '../types/ai.js';
-import type { ClaudeConfig } from '../types/config.js';
 import { Logger } from '../logger/Logger.js';
+import type { AICompletionOptions, AICompletionResult, IAIClient } from '../types/ai.js';
+import type { ClaudeConfig } from '../types/config.js';
 import { SparkError } from '../types/index.js';
 
 export class ClaudeClient implements IAIClient {

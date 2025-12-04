@@ -6,8 +6,8 @@
  * to avoid conflicts with the singleton Logger instance used by the daemon.
  */
 
-import { Logger, type LogLevel } from './Logger.js';
 import type { LoggingConfig } from '../types/config.js';
+import { Logger, type LogLevel } from './Logger.js';
 
 export class DevLogger {
   private logger: Logger;

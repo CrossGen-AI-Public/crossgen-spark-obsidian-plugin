@@ -4,12 +4,12 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { SparkError } from '../types/index.js';
 import type { ParsedFile } from '../types/parser.js';
-import { MentionParser } from './MentionParser.js';
 import { CommandDetector } from './CommandDetector.js';
 import { FrontmatterParser } from './FrontmatterParser.js';
 import { InlineChatDetector } from './InlineChatDetector.js';
-import { SparkError } from '../types/index.js';
+import { MentionParser } from './MentionParser.js';
 
 export class FileParser {
   private mentionParser: MentionParser;

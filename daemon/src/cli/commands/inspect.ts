@@ -3,8 +3,8 @@
  * Inspect daemon configuration and state
  */
 
-import type { Command } from 'commander';
 import path from 'node:path';
+import type { Command } from 'commander';
 import { ConfigLoader } from '../../config/ConfigLoader.js';
 import { SecretsLoader } from '../../config/SecretsLoader.js';
 import { validateVault } from '../helpers.js';

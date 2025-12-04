@@ -3,13 +3,13 @@
  * Loads and validates Spark configuration from vault
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { parse as parseYAML } from 'yaml';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parse as parseYAML } from 'yaml';
 import type { IConfigLoader, SparkConfig } from '../types/config.js';
+import { SparkError } from '../types/index.js';
 import { getDefaults, mergeConfig } from './ConfigDefaults.js';
 import { ConfigValidator } from './ConfigValidator.js';
-import { SparkError } from '../types/index.js';
 
 export class ConfigLoader implements IConfigLoader {
   private validator: ConfigValidator;

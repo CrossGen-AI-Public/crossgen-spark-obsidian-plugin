@@ -3,13 +3,13 @@
  * Start the Spark daemon
  */
 
-import type { Command } from 'commander';
-import path from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { SparkDaemon } from '../../main.js';
-import { registerDaemon, findDaemon } from '../registry.js';
+import path from 'node:path';
+import type { Command } from 'commander';
 import { handleCliError } from '../../errors/ErrorHandler.js';
-import { validateVault, cleanupPidFile, cleanupDaemon } from '../helpers.js';
+import { SparkDaemon } from '../../main.js';
+import { cleanupDaemon, cleanupPidFile, validateVault } from '../helpers.js';
+import { findDaemon, registerDaemon } from '../registry.js';
 
 export function registerStartCommand(program: Command): void {
   program

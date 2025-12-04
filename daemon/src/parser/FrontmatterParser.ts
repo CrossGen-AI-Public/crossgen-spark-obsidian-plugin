@@ -4,7 +4,7 @@
  */
 
 import matter from 'gray-matter';
-import type { IFrontmatterParser, FrontmatterChange } from '../types/parser.js';
+import type { FrontmatterChange, IFrontmatterParser } from '../types/parser.js';
 
 export class FrontmatterParser implements IFrontmatterParser {
   private cache: Map<string, Record<string, unknown>>;

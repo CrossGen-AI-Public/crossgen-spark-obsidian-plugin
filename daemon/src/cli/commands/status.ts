@@ -3,9 +3,9 @@
  * Check if daemon is running
  */
 
-import type { Command } from 'commander';
 import path from 'node:path';
-import { getActiveDaemons, findDaemon } from '../registry.js';
+import type { Command } from 'commander';
+import { findDaemon, getActiveDaemons } from '../registry.js';
 
 export function registerStatusCommand(program: Command): void {
   program

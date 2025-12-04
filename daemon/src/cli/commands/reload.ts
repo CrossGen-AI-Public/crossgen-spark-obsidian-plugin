@@ -3,11 +3,11 @@
  * Reload configuration without restarting daemon
  */
 
-import type { Command } from 'commander';
-import path from 'node:path';
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
-import { findDaemon } from '../registry.js';
+import path from 'node:path';
+import type { Command } from 'commander';
 import { validateVault } from '../helpers.js';
+import { findDaemon } from '../registry.js';
 
 export function registerReloadCommand(program: Command): void {
   program

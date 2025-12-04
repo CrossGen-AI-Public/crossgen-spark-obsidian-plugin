@@ -3,8 +3,8 @@
  * Writes detailed error reports to .spark/logs/ and notification queue
  */
 
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
 

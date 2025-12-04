@@ -3,30 +3,27 @@
  * All interfaces and types used across the daemon
  */
 
+export * from './ai.js';
 // Re-export all types from domain-specific files
 export * from './config.js';
+// Export from context and trigger after parser
+export * from './context.js';
 export * from './events.js';
-export * from './ai.js';
-export * from './provider.js';
 export * from './notification.js';
+// Export from parser (includes FrontmatterChange)
+export * from './parser.js';
+export * from './provider.js';
 export * from './result.js';
-
+export * from './trigger.js';
 // Export from watcher (without FrontmatterChange to avoid duplication)
 export type {
   FileChange,
   FileChangeType,
   FileWatcherConfig,
-  IFileWatcher,
   IChangeDebouncer,
+  IFileWatcher,
   IPathMatcher,
 } from './watcher.js';
-
-// Export from parser (includes FrontmatterChange)
-export * from './parser.js';
-
-// Export from context and trigger after parser
-export * from './context.js';
-export * from './trigger.js';
 
 /**
  * Main Spark Daemon interface

@@ -4,14 +4,14 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import type {
-  WriteInlineOptions,
-  UpdateStatusOptions,
-  WriteInlineChatResponseOptions,
-  UpdateInlineChatStatusOptions,
-} from '../types/results.js';
 import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
+import type {
+  UpdateInlineChatStatusOptions,
+  UpdateStatusOptions,
+  WriteInlineChatResponseOptions,
+  WriteInlineOptions,
+} from '../types/results.js';
 
 export class ResultWriter {
   private logger: Logger;

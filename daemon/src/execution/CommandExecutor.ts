@@ -3,14 +3,14 @@
  * Orchestrates command execution: context loading, prompt building, AI calls, result writing
  */
 
-import type { ParsedCommand, ParsedInlineChat } from '../types/parser.js';
-import type { SparkConfig } from '../types/config.js';
-import type { ProviderCompletionOptions, ProviderContextFile } from '../types/provider.js';
 import type { ContextLoader } from '../context/ContextLoader.js';
-import type { ResultWriter } from '../results/ResultWriter.js';
-import { AIProviderFactory } from '../providers/index.js';
 import { Logger } from '../logger/Logger.js';
+import { AIProviderFactory } from '../providers/index.js';
 import { ErrorWriter } from '../results/ErrorWriter.js';
+import type { ResultWriter } from '../results/ResultWriter.js';
+import type { SparkConfig } from '../types/config.js';
+import type { ParsedCommand, ParsedInlineChat } from '../types/parser.js';
+import type { ProviderCompletionOptions, ProviderContextFile } from '../types/provider.js';
 
 export class CommandExecutor {
   private logger: Logger;

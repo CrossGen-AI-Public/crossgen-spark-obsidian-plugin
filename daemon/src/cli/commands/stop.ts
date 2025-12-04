@@ -3,10 +3,10 @@
  * Stop the Spark daemon
  */
 
-import type { Command } from 'commander';
 import path from 'node:path';
-import { getActiveDaemons, findDaemon } from '../registry.js';
-import { cleanupPidFile, cleanupDaemon, stopSingleDaemonFromRegistry } from '../helpers.js';
+import type { Command } from 'commander';
+import { cleanupDaemon, cleanupPidFile, stopSingleDaemonFromRegistry } from '../helpers.js';
+import { findDaemon, getActiveDaemons } from '../registry.js';
 
 export function registerStopCommand(program: Command): void {
   program

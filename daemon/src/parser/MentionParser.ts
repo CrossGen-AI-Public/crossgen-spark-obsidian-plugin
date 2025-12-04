@@ -3,7 +3,7 @@
  * Parses Spark syntax: @agent, @file.md, @folder/, /command, $service
  */
 
-import type { IMentionParser, ParsedMention, MentionType } from '../types/parser.js';
+import type { IMentionParser, MentionType, ParsedMention } from '../types/parser.js';
 
 interface MentionPattern {
   type: MentionType;

@@ -4,12 +4,12 @@
  * Supports both encrypted (AES-256-GCM) and plaintext formats for backward compatibility
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { parse as parseYAML } from 'yaml';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { Logger } from '../logger/Logger.js';
+import { join } from 'node:path';
+import { parse as parseYAML } from 'yaml';
 import { decryptSecrets, isEncrypted } from '../crypto/index.js';
+import { Logger } from '../logger/Logger.js';
 
 interface SecretsFile {
   api_keys?: Record<string, string>;

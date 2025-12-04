@@ -3,9 +3,9 @@
  * Show daemon processing history and statistics
  */
 
-import type { Command } from 'commander';
-import path from 'node:path';
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import type { Command } from 'commander';
 import { validateVault } from '../helpers.js';
 
 interface HistoryEvent {

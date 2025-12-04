@@ -7,11 +7,11 @@
  */
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
+import { Logger } from '../logger/Logger.js';
 import type { AICompletionResult } from '../types/ai.js';
 import type { ProviderConfiguration } from '../types/config.js';
-import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
+import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
 import { ProviderType } from '../types/provider.js';
 
 export class ClaudeAgentProvider implements IAIProvider {

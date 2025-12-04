@@ -4,12 +4,12 @@
  */
 
 import { readFileSync } from 'node:fs';
-import type { IContextLoader, LoadedContext, AgentAIConfig } from '../types/context.js';
+import { Logger } from '../logger/Logger.js';
+import { FrontmatterParser } from '../parser/FrontmatterParser.js';
+import type { AgentAIConfig, IContextLoader, LoadedContext } from '../types/context.js';
 import type { ParsedMention } from '../types/parser.js';
 import { PathResolver } from './PathResolver.js';
 import { ProximityCalculator } from './ProximityCalculator.js';
-import { FrontmatterParser } from '../parser/FrontmatterParser.js';
-import { Logger } from '../logger/Logger.js';
 
 export class ContextLoader implements IContextLoader {
   private resolver: PathResolver;

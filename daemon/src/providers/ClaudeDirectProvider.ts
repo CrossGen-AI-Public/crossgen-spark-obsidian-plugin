@@ -4,11 +4,11 @@
  * Uses direct Anthropic SDK (not Agent SDK)
  */
 
-import type { IAIProvider, ProviderConfig, ProviderCompletionOptions } from '../types/provider.js';
-import type { AICompletionResult } from '../types/ai.js';
 import { ClaudeClient } from '../ai/ClaudeClient.js';
 import { Logger } from '../logger/Logger.js';
+import type { AICompletionResult } from '../types/ai.js';
 import { SparkError } from '../types/index.js';
+import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
 import { ProviderType } from '../types/provider.js';
 
 export class ClaudeDirectProvider implements IAIProvider {

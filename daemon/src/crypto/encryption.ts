@@ -11,7 +11,7 @@
  * - Authentication tag prevents tampering
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { getMachineId } from './machineId.js';
 
 const ALGORITHM = 'aes-256-gcm';

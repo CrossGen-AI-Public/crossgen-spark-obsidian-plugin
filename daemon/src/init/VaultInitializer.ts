@@ -3,8 +3,8 @@
  * Initializes a vault with default structure and files on first run
  */
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Logger } from '../logger/Logger.js';
 

@@ -10,8 +10,8 @@
  * - Windows: MachineGuid from registry
  */
 
-import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { platform } from 'node:os';
 
 /**

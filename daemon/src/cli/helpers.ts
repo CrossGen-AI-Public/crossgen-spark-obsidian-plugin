@@ -3,8 +3,8 @@
  * Shared utilities for CLI commands
  */
 
-import path from 'node:path';
 import { existsSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
 import { unregisterDaemon } from './registry.js';
 
 /**

@@ -4,12 +4,12 @@
  * Uses ProviderRegistry for provider lookup
  */
 
-import type { IAIProvider, ProviderConfig } from '../types/provider.js';
-import type { AIConfig, ProviderConfiguration } from '../types/config.js';
-import { ProviderRegistry } from './ProviderRegistry.js';
-import { SparkError } from '../types/index.js';
-import { Logger } from '../logger/Logger.js';
 import { SecretsLoader } from '../config/SecretsLoader.js';
+import { Logger } from '../logger/Logger.js';
+import type { AIConfig, ProviderConfiguration } from '../types/config.js';
+import { SparkError } from '../types/index.js';
+import type { IAIProvider, ProviderConfig } from '../types/provider.js';
+import { ProviderRegistry } from './ProviderRegistry.js';
 
 export class AIProviderFactory {
   private registry: ProviderRegistry;

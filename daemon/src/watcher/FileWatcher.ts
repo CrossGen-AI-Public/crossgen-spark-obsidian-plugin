@@ -3,13 +3,13 @@
  * Watches vault files for changes using chokidar
  */
 
-import chokidar, { type FSWatcher } from 'chokidar';
 import { EventEmitter } from 'node:events';
 import path from 'node:path';
-import type { IFileWatcher, FileChange, FileWatcherConfig } from '../types/watcher.js';
+import chokidar, { type FSWatcher } from 'chokidar';
+import { Logger } from '../logger/Logger.js';
+import type { FileChange, FileWatcherConfig, IFileWatcher } from '../types/watcher.js';
 import { ChangeDebouncer } from './ChangeDebouncer.js';
 import { PathMatcher } from './PathMatcher.js';
-import { Logger } from '../logger/Logger.js';
 
 export class FileWatcher extends EventEmitter implements IFileWatcher {
   private watcher: FSWatcher | null;

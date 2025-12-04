@@ -5,5 +5,5 @@
  * Zero third-party dependencies - uses only Node.js built-ins.
  */
 
+export { decryptSecrets, encryptSecrets, isEncrypted } from './encryption.js';
 export { getMachineId } from './machineId.js';
-export { encryptSecrets, decryptSecrets, isEncrypted } from './encryption.js';

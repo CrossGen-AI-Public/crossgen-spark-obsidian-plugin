@@ -3,8 +3,8 @@
  * Validate and inspect configuration
  */
 
-import type { Command } from 'commander';
 import path from 'node:path';
+import type { Command } from 'commander';
 import { ConfigLoader } from '../../config/ConfigLoader.js';
 import { validateVault } from '../helpers.js';
 

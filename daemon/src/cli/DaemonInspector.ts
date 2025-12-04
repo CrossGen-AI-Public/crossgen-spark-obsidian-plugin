@@ -3,10 +3,10 @@
  * Provides debugging and inspection capabilities for the Spark daemon
  */
 
-import type { SparkDaemon } from '../main.js';
-import type { SparkConfig, DaemonState, FileChange } from '../types/index.js';
-import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import type { SparkDaemon } from '../main.js';
+import type { DaemonState, FileChange, SparkConfig } from '../types/index.js';
 
 export interface InspectorState {
   state: DaemonState;
