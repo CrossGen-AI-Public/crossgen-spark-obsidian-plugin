@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS: SparkSettings = {
 	chatWindowHeight: DEFAULT_CHAT_HEIGHT,
 	chatWindowRight: DEFAULT_CHAT_RIGHT,
 	chatWindowBottom: DEFAULT_CHAT_BOTTOM,
+	workflowSidebarWidth: 440,
 };
 
 interface AgentConfig {

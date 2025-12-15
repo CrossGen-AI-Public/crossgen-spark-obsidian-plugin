@@ -139,6 +139,49 @@ export class ContextLoader implements IContextLoader {
   }
 
   /**
+   * Load agent by name (public method for workflow use)
+   * Returns agent context without requiring a full LoadedContext
+   */
+  public async loadAgentByName(
+    agentName: string
+  ): Promise<{ persona?: string; aiConfig?: AgentAIConfig } | null> {
+    const agentPath = await this.resolver.resolveAgent(agentName);
+    if (!agentPath) {
+      return null;
+    }
+
+    const content = this.safeReadFile(agentPath);
+    if (!content || content.trim().length === 0) {
+      return null;
+    }
+
+    // Parse frontmatter and body
+    const frontmatterMatch = content.match(/^---\s*\n(.*?)\n---\s*\n([\s\S]*)$/s);
+
+    if (frontmatterMatch) {
+      const body = frontmatterMatch[2]?.trim() || '';
+      const metadata = this.frontmatterParser.extractFrontmatter(content);
+      const aiConfig = this.extractAgentAIConfig(metadata, agentName);
+
+      if (!body || body.length === 0) {
+        const defaultName = (metadata.name as string) || agentName;
+        const defaultRole = (metadata.role as string) || 'a helpful assistant';
+        const persona = this.formatAgentPersona(
+          metadata as Record<string, string | string[]>,
+          `You are ${defaultName}, ${defaultRole}.`
+        );
+        return { persona, aiConfig };
+      }
+
+      const persona = this.formatAgentPersona(metadata as Record<string, string | string[]>, body);
+      return { persona, aiConfig };
+    }
+
+    // No frontmatter - use raw content as persona
+    return { persona: content.trim() };
+  }
+
+  /**
    * Extract AI configuration from agent metadata
    */
   private extractAgentAIConfig(

@@ -11,6 +11,8 @@ import type { ResultWriter } from '../results/ResultWriter.js';
 import type { SparkConfig } from '../types/config.js';
 import type { ParsedCommand, ParsedInlineChat } from '../types/parser.js';
 import type { ProviderCompletionOptions, ProviderContextFile } from '../types/provider.js';
+import { PromptRunner } from '../workflows/PromptRunner.js';
+import type { WorkflowPromptRequest } from '../workflows/types.js';
 
 export class CommandExecutor {
   private logger: Logger;
@@ -426,5 +428,194 @@ export class CommandExecutor {
     });
 
     return response.content;
+  }
+
+  /**
+   * Execute a workflow prompt step
+   * Uses proper separation: system prompt (persona + role) vs user message (context + task)
+   */
+  async executeWorkflowPrompt(request: WorkflowPromptRequest): Promise<unknown> {
+    this.logger.info('Executing workflow prompt', {
+      workflowId: request.workflowId,
+      nodeId: request.nodeId,
+      agentId: request.agentId || 'none',
+      stepLabel: request.stepLabel,
+    });
+
+    // Load agent context if specified via @agent mention
+    let agentConfig:
+      | {
+          provider?: string;
+          model?: string;
+          temperature?: number;
+          maxTokens?: number;
+        }
+      | undefined;
+    let agentPersona: string | undefined;
+
+    if (request.agentId) {
+      // Load agent file to get persona and config
+      const agentContext = await this.contextLoader.loadAgentByName(request.agentId);
+      if (agentContext) {
+        agentConfig = agentContext.aiConfig;
+        agentPersona = agentContext.persona;
+      }
+    }
+
+    // Get appropriate AI provider
+    const provider = this.providerFactory.createWithAgentConfig(this.config.ai, agentConfig);
+
+    // Build system prompt (minimal: persona + workflow role)
+    const systemPrompt = this.buildWorkflowSystemPrompt(agentPersona, request);
+
+    // Build user message (structured: input context + task + output format)
+    const userMessage = this.buildWorkflowUserMessage(request);
+
+    // Build provider options
+    const providerOptions: ProviderCompletionOptions = {
+      prompt: userMessage,
+      systemPrompt,
+    };
+
+    this.logger.debug('Calling AI provider for workflow prompt', {
+      provider: provider.name,
+      userMessageLength: userMessage.length,
+      systemPromptLength: systemPrompt.length,
+      hasAgentPersona: !!agentPersona,
+    });
+
+    // Call AI
+    const response = await provider.complete(providerOptions);
+
+    this.logger.debug('Workflow prompt response received', {
+      responseLength: response.content.length,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+    });
+
+    // Always wrap response in consistent structure
+    return { content: response.content };
+  }
+
+  /**
+   * Build system prompt for workflow execution
+   * Minimal: agent persona + workflow role addon
+   */
+  private buildWorkflowSystemPrompt(
+    agentPersona: string | undefined,
+    request: WorkflowPromptRequest
+  ): string {
+    const parts: string[] = [];
+
+    // Agent persona first (if any)
+    if (agentPersona) {
+      parts.push(agentPersona);
+      parts.push('');
+    }
+
+    // Workflow role addon (minimal)
+    parts.push('## Workflow Context');
+    parts.push(`You are executing step "${request.stepLabel}" in an automated workflow.`);
+    if (request.stepDescription) {
+      parts.push(`Purpose: ${request.stepDescription}`);
+    }
+    parts.push('');
+
+    // Behavior guidelines
+    parts.push('## Guidelines');
+    parts.push('- Be concise and direct. No preamble or pleasantries.');
+    parts.push('- Your output feeds into the next workflow step.');
+    parts.push('- Focus on completing the task exactly as specified.');
+    parts.push(
+      '- Only write to files when explicitly asked (e.g., "save to file", "create a file"). Otherwise, return content directly.'
+    );
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Build user message for workflow execution
+   * Structured: Input (primary + context) + Task + Output Format
+   */
+  private buildWorkflowUserMessage(request: WorkflowPromptRequest): string {
+    const parts: string[] = [];
+
+    // Get the primary input value for variable substitution
+    const primaryOutput = request.inputContext.primary?.output;
+
+    // Primary input
+    if (request.inputContext.primary) {
+      parts.push('## Input');
+      parts.push(`From step "${request.inputContext.primary.label}":`);
+      parts.push('');
+      parts.push(PromptRunner.formatOutput(request.inputContext.primary.output));
+      parts.push('');
+    } else if (request.inputContext.workflowInput !== undefined) {
+      parts.push('## Input');
+      parts.push('Workflow input:');
+      parts.push('');
+      parts.push(PromptRunner.formatOutput(request.inputContext.workflowInput));
+      parts.push('');
+    }
+
+    // Additional context (other inputs)
+    if (request.inputContext.context.length > 0) {
+      parts.push('## Additional Context');
+      for (const ctx of request.inputContext.context) {
+        parts.push(`### From "${ctx.label}":`);
+        parts.push(PromptRunner.formatOutput(ctx.output));
+        parts.push('');
+      }
+    }
+
+    // The actual task - with variable substitution
+    const task = this.substituteVariables(request.task, primaryOutput);
+    parts.push('## Task');
+    parts.push(task);
+    parts.push('');
+
+    // Output format requirements
+    if (request.structuredOutput && request.outputSchema) {
+      parts.push('## Required Output Format');
+      parts.push(
+        'CRITICAL: Your ENTIRE response must be valid JSON matching this exact structure:'
+      );
+      parts.push(request.outputSchema);
+      parts.push('');
+      parts.push('Rules:');
+      parts.push('- Start your response with { and end with }');
+      parts.push('- No text before or after the JSON');
+      parts.push('- No markdown code fences');
+      parts.push('- No explanations or commentary');
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Substitute $input and $input.fieldname variables in text
+   * Supports: $input, $input.field, $context
+   */
+  private substituteVariables(text: string, input: unknown): string {
+    let result = text;
+
+    // Replace $input.fieldname with specific field values (do this first, more specific)
+    result = result.replace(/\$input\.(\w+)/g, (_match, fieldName) => {
+      if (input && typeof input === 'object' && fieldName in input) {
+        const value = (input as Record<string, unknown>)[fieldName];
+        return PromptRunner.formatOutput(value);
+      }
+      // If field doesn't exist, leave the placeholder (will be visible in output)
+      return `$input.${fieldName}`;
+    });
+
+    // Replace $input with the full input (after field replacements)
+    const inputStr = PromptRunner.formatOutput(input);
+    result = result.replace(/\$input(?!\.)/g, inputStr);
+
+    // Replace $context with workflow context (minimal info)
+    result = result.replace(/\$context/g, '(workflow context)');
+
+    return result;
   }
 }

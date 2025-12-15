@@ -74,17 +74,17 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
       this.emit('ready');
     });
 
-    this.watcher.on('add', (path: string) => {
-      this.logger.debug('FS event: add', { path });
-      this.handleChange(path, 'add');
+    this.watcher.on('add', (filePath: string) => {
+      this.logger.debug('FS event: add', { path: filePath });
+      this.handleChange(filePath, 'add');
     });
-    this.watcher.on('change', (path: string) => {
-      this.logger.debug('FS event: change', { path });
-      this.handleChange(path, 'change');
+    this.watcher.on('change', (filePath: string) => {
+      this.logger.debug('FS event: change', { path: filePath });
+      this.handleChange(filePath, 'change');
     });
-    this.watcher.on('unlink', (path: string) => {
-      this.logger.debug('FS event: unlink', { path });
-      this.handleChange(path, 'unlink');
+    this.watcher.on('unlink', (filePath: string) => {
+      this.logger.debug('FS event: unlink', { path: filePath });
+      this.handleChange(filePath, 'unlink');
     });
 
     this.watcher.on('error', (error: unknown) => {
@@ -140,24 +140,45 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
     return this.watching;
   }
 
+  /**
+   * Check if path is an internal queue file that should always be processed
+   * These bypass the normal watch patterns since they're internal daemon files
+   */
+  private isInternalQueueFile(relativePath: string): boolean {
+    // Workflow queue files (.spark/workflow-queue/*.json)
+    if (relativePath.startsWith('.spark/workflow-queue/') && relativePath.endsWith('.json')) {
+      return true;
+    }
+    // Chat queue files are .md and match normal patterns, but listed for completeness
+    // if (relativePath.startsWith('.spark/chat-queue/') && relativePath.endsWith('.md')) {
+    //   return true;
+    // }
+    return false;
+  }
+
   private handleChange(filePath: string, type: FileChange['type']): void {
     // Convert absolute path to relative path within vault
     const relativePath = path.relative(this.config.vaultPath, filePath);
 
-    // Check if path matches any of the watch patterns
-    const matchesPattern = this.pathMatcher.matchesAny(relativePath, this.config.patterns);
-    if (!matchesPattern) {
-      this.logger.debug('File does not match watch patterns', { path: relativePath });
-      return;
+    // Internal queue files bypass pattern matching - they're daemon-internal
+    const isQueueFile = this.isInternalQueueFile(relativePath);
+
+    // Check if path matches any of the watch patterns (skip for queue files)
+    if (!isQueueFile) {
+      const matchesPattern = this.pathMatcher.matchesAny(relativePath, this.config.patterns);
+      if (!matchesPattern) {
+        this.logger.debug('File does not match watch patterns', { path: relativePath });
+        return;
+      }
     }
 
-    // Check if path should be ignored
-    if (this.pathMatcher.shouldIgnore(relativePath, this.config.ignore)) {
+    // Check if path should be ignored (queue files are never ignored)
+    if (!isQueueFile && this.pathMatcher.shouldIgnore(relativePath, this.config.ignore)) {
       this.logger.debug('File ignored by pattern matcher', { path: relativePath });
       return;
     }
 
-    this.logger.debug(`File ${type}: ${relativePath}`);
+    this.logger.debug(`File ${type}: ${relativePath}`, { isQueueFile });
 
     // Debounce the change
     this.debouncer.debounce(relativePath, () => {

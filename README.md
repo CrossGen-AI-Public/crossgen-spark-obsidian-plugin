@@ -16,6 +16,10 @@ Spark Assistant enables "markdown files triggering AI agents" - turning your Obs
 - [🔧 CLI Commands](#-cli-commands)
 - [📁 Repository Structure](#-repository-structure)
 - [🎨 Features](#-features)
+  - [Slash Commands](#slash-commands)
+  - [Agent Mentions](#agent-mentions)
+  - [Chat Assistant](#chat-assistant)
+  - [Workflow Builder](#workflow-builder)
 - [🏗️ Architecture](#-architecture)
 - [📝 Configuration](#-configuration)
 - [🔧 Development](#-development)
@@ -29,11 +33,12 @@ Spark Assistant enables "markdown files triggering AI agents" - turning your Obs
 
 ## 🎯 What is Spark?
 
-Spark provides two powerful interfaces for AI interaction in Obsidian:
+Spark provides powerful interfaces for AI interaction in Obsidian:
 
 1. **Command Palette** - Notion-style autocomplete for instant, atomic actions (`/summarize`, `@betty`)
 2. **Chat Widget** - Persistent conversational AI with full vault context (Cmd+K)
-3. **Automation Engine** - File changes trigger automated workflows
+3. **Workflow Builder** - Visual node editor for multi-step AI automations (Cmd+Shift+W)
+4. **Automation Engine** - File changes trigger automated workflows
 
 **Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a daemon watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files.
 
@@ -288,7 +293,20 @@ spark/
 │   │   ├── main.ts
 │   │   ├── settings.ts
 │   │   ├── command-palette/           
-│   │   ├── chat/                    
+│   │   ├── chat/
+│   │   ├── workflows/                 # Workflow builder UI
+│   │   │   ├── WorkflowCanvas.tsx     # React Flow canvas
+│   │   │   ├── WorkflowView.tsx       # Obsidian ItemView
+│   │   │   ├── WorkflowListView.tsx   # Workflow list/dashboard
+│   │   │   ├── WorkflowManager.ts     # View management
+│   │   │   ├── WorkflowStorage.ts     # Persistence layer
+│   │   │   ├── Sidebar.tsx            # Properties/code/runs panel
+│   │   │   ├── MentionTextarea.tsx    # @mention input component
+│   │   │   ├── types.ts               # Shared types
+│   │   │   └── nodes/                 # Node components
+│   │   │       ├── PromptNode.tsx     # AI prompt step
+│   │   │       ├── CodeNode.tsx       # JavaScript code step
+│   │   │       └── ConditionNode.tsx  # Branching condition
 │   │   └── types/
 │   ├── dist/                          # Build output
 │   └── package.json
@@ -296,7 +314,7 @@ spark/
 └── daemon/                            # Node.js daemon (intelligence layer)
     ├── src/
     │   ├── cli.ts                     # CLI entry point
-    │   ├── main.ts             # Main orchestrator
+    │   ├── main.ts                    # Main orchestrator
     │   ├── cli/                       # CLI utilities (registry, inspector)
     │   ├── config/                    # Configuration management
     │   ├── watcher/                   # File system watching
@@ -304,6 +322,12 @@ spark/
     │   ├── context/                   # Context loading
     │   ├── logger/                    # Logging (Logger, DevLogger)
     │   ├── chat/                      # Chat queue handler
+    │   ├── workflows/                 # Workflow execution engine
+    │   │   ├── WorkflowExecutor.ts    # Queue processing, graph traversal
+    │   │   ├── PromptRunner.ts        # AI prompt execution
+    │   │   ├── CodeRunner.ts          # JavaScript code execution
+    │   │   ├── ConditionRunner.ts     # Condition evaluation
+    │   │   └── types.ts               # Shared types
     │   └── types/                     # TypeScript types
     ├── __tests__/                     # Test suite
     └── package.json
@@ -380,6 +404,68 @@ Alice: I'll review your proposal for clarity and tone.
 3. Real-time responses from daemon via file system
 4. Mentions work same as in documents with auto-completion
 5. Can reference files, folders, and agents naturally
+
+### Workflow Builder
+
+Visual workflow editor for creating multi-step AI automations:
+
+```
+Press Cmd+Shift+W or use "Spark: Open Workflows" command
+```
+
+**Step Types:**
+
+| Step | Purpose | Example |
+|------|---------|---------|
+| **Prompt** | AI processing with @agent support | `@betty analyze $input and suggest improvements` |
+| **Code** | JavaScript data transformation | `return { total: input.items.reduce((a,b) => a+b, 0) };` |
+| **Condition** | Branch logic with loop detection | `input.score > 0.8` → true/false branches |
+
+**How it works:**
+1. Create workflows with drag-and-drop nodes
+2. Connect nodes with edges (conditions support true/false branches)
+3. Use `@agent` mentions in prompts to specify AI persona
+4. Use `$input` and `$context` variables for data flow (type `$` for autocomplete)
+5. Run workflow and monitor step execution in real-time
+6. View run history with input/output for each step
+
+**Architecture:**
+```
+┌─────────────────────────┐
+│  PLUGIN (UI)            │
+│  WorkflowCanvas         │
+│  • React Flow editor    │
+│  • Node properties      │
+│  • Run history          │
+└────────┬────────────────┘
+         │ Saves to .spark/workflows/{id}.json
+         │ Queues to .spark/workflow-queue/{runId}.json
+         ▼
+┌─────────────────────────┐
+│  DAEMON (Execution)     │
+│  WorkflowExecutor       │
+│  • Graph traversal      │
+│  • Loop detection       │
+│  • Step runners         │
+└─────────────────────────┘
+```
+
+**File Structure:**
+```
+.spark/
+├── workflows/           # Workflow definitions
+│   └── {id}.json        # Nodes, edges, settings
+├── workflow-runs/       # Execution history
+│   └── {workflowId}/
+│       └── {runId}.json # Step results, input/output
+└── workflow-queue/      # Pending executions
+    └── {runId}.json     # Queue items for daemon
+```
+
+**Loop Detection:**
+- Global cycle limit (default: 10) prevents infinite loops
+- Per-condition `maxCycles` setting for controlled iteration
+- Visit counts tracked per node during execution
 
 ### Automation Triggers (Planned)
 
@@ -689,6 +775,8 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 ## 📚 Documentation
 
 - **[Product Architecture](specs/PRODUCT_ARCHITECTURE.md)** - System design
+- **[Workflow Builder](specs/WORKFLOW_BUILDER_SPEC.md)** - Visual workflow editor
+- **[Plugin UI Spec](specs/PLUGIN_UI_SPEC.md)** - Command palette & chat
 - **[Mention Parser](specs/MENTION_PARSER.md)** - Parsing syntax
 - **[Configuration](specs/CONFIGURATION.md)** - Config reference
 - **[File Formats](specs/FILE_FORMATS.md)** - Command/agent/trigger formats
@@ -731,7 +819,8 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 
 ### Areas to Contribute
 
-- **Plugin UI/UX** - Improve command palette, chat widget
+- **Plugin UI/UX** - Improve command palette, chat widget, workflow builder
+- **Workflow Builder** - New node types, execution features, templates
 - **Daemon Performance** - Optimize file watching, parsing
 - **Documentation** - Examples, tutorials, guides
 - **Testing** - Unit tests, integration tests (daemon: 81 tests currently)

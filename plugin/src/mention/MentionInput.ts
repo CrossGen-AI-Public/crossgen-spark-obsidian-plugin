@@ -2,6 +2,15 @@ import type { App } from 'obsidian';
 import { ChatMentionHandler } from './ChatMentionHandler';
 import type { MentionDecorator } from './MentionDecorator';
 
+/**
+ * Variable item for $ autocomplete
+ */
+export interface VariableItem {
+	name: string;
+	type: string;
+	description?: string;
+}
+
 export interface MentionInputOptions {
 	/** Placeholder text */
 	placeholder: string;
@@ -19,6 +28,8 @@ export interface MentionInputOptions {
 	initialContent?: string;
 	/** Container element for palette positioning (optional) */
 	paletteContainer?: HTMLElement;
+	/** Available variables for $ autocomplete */
+	variables?: VariableItem[];
 }
 
 /**
@@ -36,6 +47,14 @@ export class MentionInput {
 		this.app = app;
 		this.mentionDecorator = mentionDecorator;
 		this.options = options;
+	}
+
+	/**
+	 * Update available variables for $ autocomplete
+	 */
+	setVariables(variables: VariableItem[]): void {
+		this.options.variables = variables;
+		this.mentionHandler?.setVariables(variables);
 	}
 
 	/**
@@ -61,8 +80,18 @@ export class MentionInput {
 		void this.mentionHandler.initialize();
 		this.mentionHandler.attachToInput(this.inputEl, this.options.paletteContainer);
 
+		// Set variables if provided
+		if (this.options.variables) {
+			this.mentionHandler.setVariables(this.options.variables);
+		}
+
 		// Setup event listeners
 		this.setupEventListeners();
+
+		// Process initial content to apply mention styling
+		if (this.options.initialContent && this.mentionHandler) {
+			this.mentionHandler.processContent();
+		}
 
 		return this.inputEl;
 	}

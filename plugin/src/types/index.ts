@@ -12,6 +12,8 @@ export interface SparkSettings {
 	chatWindowHeight?: number; // Chat window height in pixels
 	chatWindowRight?: number; // Chat window position from right edge in pixels
 	chatWindowBottom?: number; // Chat window position from bottom edge in pixels
+	// Workflows UI
+	workflowSidebarWidth?: number; // Workflow node sidebar width in pixels
 	// Daemon setup
 	dismissedDaemonSetup?: boolean; // User dismissed the daemon setup modal
 	autoLaunchDaemon?: boolean; // Auto-launch daemon when Obsidian starts

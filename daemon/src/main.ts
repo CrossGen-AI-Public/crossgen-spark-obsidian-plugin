@@ -31,6 +31,7 @@ import type { ParsedCommand, ParsedInlineChat, ParsedMention } from './types/par
 import { ProviderType } from './types/provider.js';
 import type { FileChange } from './types/watcher.js';
 import { FileWatcher } from './watcher/FileWatcher.js';
+import { WorkflowExecutor } from './workflows/WorkflowExecutor.js';
 
 export class SparkDaemon implements ISparkDaemon {
   private readonly vaultPath: string;
@@ -51,6 +52,7 @@ export class SparkDaemon implements ISparkDaemon {
   private configWatcher: FSWatcher | null = null;
   private commandExecutor: CommandExecutor | null = null;
   private chatQueueHandler: ChatQueueHandler | null = null;
+  private workflowExecutor: WorkflowExecutor | null = null;
 
   /**
    * Get command executor (only valid after start())
@@ -124,6 +126,13 @@ export class SparkDaemon implements ISparkDaemon {
         this.logger,
         chatNameGenerator
       );
+
+      // Initialize workflow executor
+      this.workflowExecutor = new WorkflowExecutor(
+        this.vaultPath,
+        this.logger,
+        this.commandExecutor
+      );
       this.logger.debug('AI components initialized');
 
       // Create file watcher
@@ -157,6 +166,10 @@ export class SparkDaemon implements ISparkDaemon {
 
       // Watch config file for changes
       this.startConfigWatcher();
+
+      // Process any pending workflow queue items from before restart
+      await this.workflowExecutor.scanQueue();
+      this.logger.debug('Workflow queue scanned');
 
       // Record daemon start in inspector
       this.inspector.recordStart();
@@ -422,6 +435,13 @@ export class SparkDaemon implements ISparkDaemon {
     if (this.chatQueueHandler?.isChatQueueFile(change.path)) {
       this.logger.debug('Chat queue file detected', { path: change.path });
       await this.chatQueueHandler.process(change.path);
+      return;
+    }
+
+    // Check if this is a workflow queue file
+    if (this.workflowExecutor?.isQueueFile(change.path)) {
+      this.logger.debug('Workflow queue file detected', { path: change.path });
+      await this.workflowExecutor.processQueueFile(change.path);
       return;
     }
 

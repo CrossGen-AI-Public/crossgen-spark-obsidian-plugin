@@ -8,6 +8,9 @@ import { DaemonService } from './services/DaemonService';
 import { ResourceService } from './services/ResourceService';
 import { DEFAULT_SETTINGS, SparkSettingTab } from './settings';
 import type { ISparkPlugin, SparkSettings } from './types';
+import { WORKFLOW_LIST_VIEW_TYPE, WorkflowListView } from './workflows/WorkflowListView';
+import { WorkflowManager } from './workflows/WorkflowManager';
+import { WORKFLOW_VIEW_TYPE, WorkflowView } from './workflows/WorkflowView';
 
 export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	settings: SparkSettings;
@@ -17,6 +20,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	private inlineChatManager: InlineChatManager;
 	private statusBarItem: HTMLElement;
 	private statusCheckInterval: number;
+	private workflowManager: WorkflowManager;
 
 	async onload() {
 		console.log('Spark Assistant: Loading plugin...');
@@ -57,6 +61,35 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 					key: 'k',
 				},
 			],
+		});
+
+		// Initialize workflow manager and register views
+		this.workflowManager = WorkflowManager.getInstance(this.app, this);
+
+		// Register workflow views
+		this.registerView(WORKFLOW_VIEW_TYPE, leaf => new WorkflowView(leaf, this));
+		this.registerView(WORKFLOW_LIST_VIEW_TYPE, leaf => new WorkflowListView(leaf, this));
+
+		// Register workflow commands
+		this.addCommand({
+			id: 'open-workflows',
+			name: 'Open Workflows',
+			callback: () => {
+				void this.workflowManager.showWorkflowList();
+			},
+		});
+
+		this.addCommand({
+			id: 'create-workflow',
+			name: 'Create New Workflow',
+			callback: () => {
+				void this.workflowManager.createWorkflow();
+			},
+		});
+
+		// Add ribbon icon for workflows
+		this.addRibbonIcon('workflow', 'Open Workflows', () => {
+			void this.workflowManager.showWorkflowList();
 		});
 
 		// Start observing HTML table cells for mention styling

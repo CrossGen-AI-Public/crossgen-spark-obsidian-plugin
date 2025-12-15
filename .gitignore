@@ -57,6 +57,9 @@ example-vault/.spark/logs/*
 # Chat system temporary files (cleaned up automatically)
 example-vault/.spark/chat-queue/*
 example-vault/.spark/chat-results/*
+example-vault/.spark/workflows/*
+example-vault/.spark/workflow-runs/*
+example-vault/.spark/workflow-queue/*
 
 # Add the conversations directory to VCS, but ignore all files inside
 example-vault/.spark/conversations/*
@@ -71,6 +74,6 @@ coverage/
 .agent/
 
 # Local project context (not tracked in remotes)
-.cursor/
+.cursor/*
 CLAUDE.md
-specs/
+specs/*

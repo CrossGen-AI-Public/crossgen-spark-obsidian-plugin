@@ -300,11 +300,14 @@ export class ClaudeAgentProvider implements IAIProvider {
     );
 
     // Add file operations instructions for Agent SDK
+    // IMPORTANT: Tell the LLM the vault path so it uses correct absolute paths
     parts.push(
+      `You are working in the vault directory: ${this.vaultPath}`,
       'You have access to file operation tools: Read, Write, and Edit. ' +
         'When asked to create or edit files, USE THESE TOOLS IMMEDIATELY instead of describing what you would do. ' +
         'For multi-file operations: plan all files first, then create them all at once without re-thinking between each file. ' +
-        'ACTION BIAS: Prefer doing over thinking. Use tools early and often.'
+        'ACTION BIAS: Prefer doing over thinking. Use tools early and often.',
+      `IMPORTANT: Always use paths within ${this.vaultPath} for file operations. Do NOT use /tmp/vault or other directories.`
     );
 
     // Add base system prompt if provided

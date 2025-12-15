@@ -10,6 +10,7 @@ export class PaletteView {
 		agent: '🤖',
 		file: '📝',
 		folder: '📁',
+		variable: '{}',
 	};
 	private containerEl: HTMLElement | null = null;
 	private selectedIndex: number = 0;
@@ -88,8 +89,19 @@ export class PaletteView {
 
 		// Use fixed positioning relative to viewport
 		container.style.position = 'fixed';
-		container.style.left = `${coords.left}px`;
 		container.style.zIndex = '1000';
+
+		// Calculate left position with viewport boundary check
+		const paletteWidth = 350; // min-width from CSS
+		const viewportWidth = window.innerWidth;
+		const rightEdgeMargin = 8; // Keep some margin from viewport edge
+		let left = coords.left;
+
+		// If palette would overflow right edge, shift it left
+		if (left + paletteWidth > viewportWidth - rightEdgeMargin) {
+			left = Math.max(rightEdgeMargin, viewportWidth - paletteWidth - rightEdgeMargin);
+		}
+		container.style.left = `${left}px`;
 
 		if (positionAbove) {
 			// Position from bottom when above cursor

@@ -7,6 +7,15 @@ import type { PaletteItem } from '../types/command-palette';
 import type { MentionDecorator } from './MentionDecorator';
 
 /**
+ * Variable item for $ autocomplete
+ */
+export interface VariableItem {
+	name: string;
+	type: string;
+	description?: string;
+}
+
+/**
  * Manages mentions and commands in the chat input
  * Adapts the command palette's mention system for chat use
  */
@@ -21,6 +30,8 @@ export class ChatMentionHandler {
 	private resourceService: ResourceService;
 	private currentTrigger: { char: string; position: number } | null = null;
 	private chatContainer: HTMLElement | null = null;
+	/** Available variables for $ autocomplete */
+	private variables: VariableItem[] = [];
 
 	constructor(app: App, mentionDecorator: MentionDecorator) {
 		this.app = app;
@@ -29,6 +40,13 @@ export class ChatMentionHandler {
 		this.itemLoader = new ItemLoader(app);
 		this.fuzzyMatcher = new FuzzyMatcher();
 		this.resourceService = ResourceService.getInstance(app);
+	}
+
+	/**
+	 * Set available variables for $ autocomplete
+	 */
+	setVariables(variables: VariableItem[]): void {
+		this.variables = variables;
 	}
 
 	/**
@@ -145,10 +163,17 @@ export class ChatMentionHandler {
 		if (itemName.endsWith('/')) {
 			itemName = itemName.slice(0, -1);
 		}
-		const prefix = item.type === 'command' ? '/' : '@';
-		const suffix = item.type === 'folder' ? '/' : '';
-		// Use non-breaking space (\u00A0) so it's preserved in HTML rendering
-		const replacement = `${prefix}${itemName}${suffix}\u00A0`;
+
+		let replacement: string;
+		if (item.type === 'variable') {
+			// Variable: $varname followed by space
+			replacement = `$${itemName}\u00A0`;
+		} else {
+			const prefix = item.type === 'command' ? '/' : '@';
+			const suffix = item.type === 'folder' ? '/' : '';
+			// Use non-breaking space (\u00A0) so it's preserved in HTML rendering
+			replacement = `${prefix}${itemName}${suffix}\u00A0`;
+		}
 
 		// Replace text (preserving newlines)
 		const before = text.substring(0, triggerPos);
@@ -162,7 +187,7 @@ export class ChatMentionHandler {
 		const newCursorPos = triggerPos + replacement.length;
 
 		// Update input with DOM APIs and apply styling
-		const tokens = newText.includes('@') || newText.includes('/') ? this.findTokens(newText) : [];
+		const tokens = this.findTokens(newText);
 		this.rebuildContentWithDOM(newText, tokens);
 
 		// Set cursor after inserted item (after processing to account for HTML changes)
@@ -170,6 +195,10 @@ export class ChatMentionHandler {
 
 		// Focus the input
 		this.inputElement.focus();
+
+		// Dispatch input event to notify listeners of the change
+		// (DOM manipulation doesn't trigger native input events)
+		this.inputElement.dispatchEvent(new InputEvent('input', { bubbles: true }));
 	}
 
 	/**
@@ -291,8 +320,11 @@ export class ChatMentionHandler {
 		const cursorPos = this.getCursorTextPosition();
 
 		// Find trigger before cursor
+		// $ trigger only enabled when variables are available (workflow context)
 		const textBeforeCursor = text.substring(0, cursorPos);
-		const triggerMatch = textBeforeCursor.match(/(?:^|\s)([@/])([\w-]*)$/);
+		const triggerPattern =
+			this.variables.length > 0 ? /(?:^|\s)([@/$])([\w.-]*)$/ : /(?:^|\s)([@/])([\w-]*)$/;
+		const triggerMatch = textBeforeCursor.match(triggerPattern);
 
 		if (triggerMatch) {
 			const triggerChar = triggerMatch[1];
@@ -332,6 +364,15 @@ export class ChatMentionHandler {
 			items = [...agents, ...files, ...folders];
 		} else if (triggerChar === '/') {
 			items = await this.itemLoader.loadCommands();
+		} else if (triggerChar === '$') {
+			// Show available variables
+			items = this.variables.map(v => ({
+				id: `$${v.name}`,
+				name: v.name,
+				description: v.description || v.type,
+				type: 'variable' as const,
+				icon: '{}',
+			}));
 		}
 
 		// Filter items by query
@@ -403,8 +444,14 @@ export class ChatMentionHandler {
 			// Extract text while preserving line breaks
 			const text = this.getTextWithLineBreaks(this.inputElement);
 
-			// No mentions/commands - don't interfere with native editing
-			if (!text.includes('@') && !text.includes('/')) {
+			// Check for tokenizable content
+			// $ variables only checked when variables are available (workflow context)
+			const hasTokenizableContent =
+				text.includes('@') ||
+				text.includes('/') ||
+				(this.variables.length > 0 && text.includes('$'));
+
+			if (!hasTokenizableContent) {
 				// Only check if we need to clean up existing token spans
 				const existingSpans = this.inputElement.querySelectorAll('.spark-token');
 				if (existingSpans.length > 0) {
@@ -416,7 +463,7 @@ export class ChatMentionHandler {
 				return false;
 			}
 
-			// Find all tokens (mentions and commands)
+			// Find all tokens (mentions, commands, and variables)
 			const tokens = this.findTokens(text);
 
 			if (tokens.length === 0) {
@@ -550,7 +597,7 @@ export class ChatMentionHandler {
 	}
 
 	/**
-	 * Find all tokens (mentions and commands) in text
+	 * Find all tokens (mentions, commands, and variables) in text
 	 */
 	private findTokens(
 		text: string
@@ -582,6 +629,26 @@ export class ChatMentionHandler {
 				end: match.index + match[0].length,
 				type,
 			});
+		}
+
+		// Find $variables (e.g., $input, $input.field, $context)
+		// Only when variables are available (workflow context)
+		if (this.variables.length > 0) {
+			const variableRegex = /(\$[\w.]+)/g;
+			while ((match = variableRegex.exec(text)) !== null) {
+				const variable = match[0];
+				// Validate against available variables
+				const varName = variable.substring(1); // Remove $
+				const isValid = this.variables.some(
+					v => v.name === varName || varName.startsWith(`${v.name}.`)
+				);
+				tokens.push({
+					text: variable,
+					start: match.index,
+					end: match.index + variable.length,
+					type: isValid ? 'variable' : null,
+				});
+			}
 		}
 
 		// Sort by start position
