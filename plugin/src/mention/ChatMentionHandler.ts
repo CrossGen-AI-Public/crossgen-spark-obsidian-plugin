@@ -140,7 +140,7 @@ export class ChatMentionHandler {
 		const cursorPos = this.getCursorTextPosition();
 
 		// Build replacement text (use item.id to preserve lowercase)
-		let itemName = item.id.substring(1); // Remove trigger character from ID
+		let itemName = item.id.slice(1); // Remove trigger character from ID
 		// Remove trailing slash if present (folder IDs include it, we'll add it back)
 		if (itemName.endsWith('/')) {
 			itemName = itemName.slice(0, -1);

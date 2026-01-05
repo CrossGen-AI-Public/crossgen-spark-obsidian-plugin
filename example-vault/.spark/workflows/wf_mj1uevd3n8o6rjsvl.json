@@ -1,0 +1,240 @@
+{
+  "id": "wf_mj1uevd3n8o6rjsvl",
+  "name": "Cycles",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "prompt_mj1uevd31q74tbtmm",
+      "type": "prompt",
+      "position": {
+        "x": -328.98818712106754,
+        "y": 117.44362811188853
+      },
+      "data": {
+        "type": "prompt",
+        "label": "New article",
+        "prompt": "@alice Write 3 sentences about agentic workflow editors."
+      },
+      "measured": {
+        "width": 250,
+        "height": 89
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "prompt_mj1updpgvp931x1ey",
+      "type": "prompt",
+      "position": {
+        "x": -5.035420409393836,
+        "y": 117.60606217137284
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Review",
+        "prompt": "@alice review an article. Give it a creativity score from 0 to 10, output just 1 number. ",
+        "structuredOutput": true,
+        "outputSchema": "{\"score\": number, \"article\": string}"
+      },
+      "measured": {
+        "width": 250,
+        "height": 90
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "prompt_mj1upec6hc3j7l9hq",
+      "type": "prompt",
+      "position": {
+        "x": -10.064787880829726,
+        "y": 276.38490918121863
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Improve",
+        "prompt": "@alice Improve creativity of an article",
+        "structuredOutput": true,
+        "outputSchema": "{\"article\": string}"
+      },
+      "measured": {
+        "width": 250,
+        "height": 90
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "condition_mj23v4h59wpyv0k7s",
+      "type": "condition",
+      "position": {
+        "x": 310.89793249393813,
+        "y": 116.42205031562688
+      },
+      "data": {
+        "type": "condition",
+        "label": "Condition",
+        "expression": "input.score > 3",
+        "maxCycles": 3
+      },
+      "measured": {
+        "width": 172,
+        "height": 89
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "action_mj28pv83epxru4ug3",
+      "type": "code",
+      "position": {
+        "x": 576.0295982381573,
+        "y": 36.78875889671055
+      },
+      "data": {
+        "type": "code",
+        "label": "Finish",
+        "code": "return {result: true}"
+      },
+      "measured": {
+        "width": 208,
+        "height": 66
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "action_mj28q88ehqaslo1ux",
+      "type": "prompt",
+      "position": {
+        "x": 575.5473245169179,
+        "y": 170.31024528738234
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Write to file",
+        "prompt": "write the article to the file in the vault root."
+      },
+      "measured": {
+        "width": 250,
+        "height": 72
+      },
+      "selected": false,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "type": "smoothstep",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed",
+        "width": 20,
+        "height": 20
+      },
+      "pathOptions": {
+        "borderRadius": 16,
+        "offset": 20
+      },
+      "source": "prompt_mj1uevd31q74tbtmm",
+      "sourceHandle": "right-out",
+      "target": "prompt_mj1updpgvp931x1ey",
+      "targetHandle": "left-in",
+      "id": "edge_mj22qbm7al2syjjfq",
+      "selected": false
+    },
+    {
+      "type": "smoothstep",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed",
+        "width": 20,
+        "height": 20
+      },
+      "pathOptions": {
+        "borderRadius": 16,
+        "offset": 20
+      },
+      "source": "prompt_mj1upec6hc3j7l9hq",
+      "sourceHandle": "left-out",
+      "target": "prompt_mj1updpgvp931x1ey",
+      "targetHandle": "left-in",
+      "id": "edge_mj22qfo3q1dy39xsb",
+      "selected": false
+    },
+    {
+      "type": "smoothstep",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed",
+        "width": 20,
+        "height": 20
+      },
+      "pathOptions": {
+        "borderRadius": 16,
+        "offset": 20
+      },
+      "labelBgPadding": [
+        6,
+        4
+      ],
+      "labelBgBorderRadius": 4,
+      "source": "prompt_mj1updpgvp931x1ey",
+      "sourceHandle": "right-out",
+      "target": "condition_mj23v4h59wpyv0k7s",
+      "targetHandle": "left-in",
+      "id": "edge_mj23v93lncw2l71cj",
+      "selected": false
+    },
+    {
+      "type": "smoothstep",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed",
+        "width": 20,
+        "height": 20
+      },
+      "pathOptions": {
+        "borderRadius": 16,
+        "offset": 20
+      },
+      "labelBgPadding": [
+        6,
+        4
+      ],
+      "labelBgBorderRadius": 4,
+      "source": "condition_mj23v4h59wpyv0k7s",
+      "sourceHandle": "false",
+      "target": "prompt_mj1upec6hc3j7l9hq",
+      "targetHandle": "right-in",
+      "id": "edge_mj23vdry6uryrm49j",
+      "label": "false",
+      "className": "spark-edge-false",
+      "selected": false
+    },
+    {
+      "id": "edge_mj28pv86xxagottit",
+      "source": "condition_mj23v4h59wpyv0k7s",
+      "sourceHandle": "true",
+      "target": "action_mj28pv83epxru4ug3",
+      "targetHandle": "left-in",
+      "label": "true",
+      "className": "spark-edge-true",
+      "selected": false
+    },
+    {
+      "id": "edge_mj28q88eqepsxil1a",
+      "source": "condition_mj23v4h59wpyv0k7s",
+      "sourceHandle": "true",
+      "target": "action_mj28q88ehqaslo1ux",
+      "targetHandle": "left-in",
+      "selected": false
+    }
+  ],
+  "settings": {
+    "maxGlobalCycles": 10,
+    "timeout": 300000
+  },
+  "created": "2025-12-11T19:40:22.982Z",
+  "updated": "2025-12-12T04:57:12.129Z"
+}

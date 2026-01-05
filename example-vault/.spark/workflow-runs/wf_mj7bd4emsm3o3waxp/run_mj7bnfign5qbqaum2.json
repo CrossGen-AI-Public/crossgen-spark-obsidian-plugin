@@ -1,0 +1,107 @@
+{
+  "id": "run_mj7bnfign5qbqaum2",
+  "workflowId": "wf_mj7bd4emsm3o3waxp",
+  "status": "completed",
+  "stepResults": [
+    {
+      "nodeId": "action_mj7bd4emvyycbfs1p",
+      "status": "completed",
+      "startTime": 1765813307185,
+      "output": {
+        "topics": [
+          "The Hidden Costs of AI Hallucinations: Why Your Chatbot Keeps Lying and How to Fix It",
+          "From Prompt Engineering to Prompt Fatigue: When AI Assistance Becomes a Crutch",
+          "AI Code Review Tools: Catching Bugs QA Would've Found (If We Had QA)",
+          "The Death of Documentation: How AI Chatbots Are Making Us Forget Our Own Codebases",
+          "Vibe-Coding with AI: When 'Works on My Machine' Meets 'The Model Said So'"
+        ]
+      },
+      "endTime": 1765813315781,
+      "cycleCount": 1
+    },
+    {
+      "nodeId": "action_mj7bf5pmknox5vbta",
+      "status": "completed",
+      "input": {
+        "topics": [
+          "The Hidden Costs of AI Hallucinations: Why Your Chatbot Keeps Lying and How to Fix It",
+          "From Prompt Engineering to Prompt Fatigue: When AI Assistance Becomes a Crutch",
+          "AI Code Review Tools: Catching Bugs QA Would've Found (If We Had QA)",
+          "The Death of Documentation: How AI Chatbots Are Making Us Forget Our Own Codebases",
+          "Vibe-Coding with AI: When 'Works on My Machine' Meets 'The Model Said So'"
+        ]
+      },
+      "startTime": 1765813315782,
+      "output": {
+        "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+      },
+      "endTime": 1765813325482,
+      "cycleCount": 1
+    },
+    {
+      "nodeId": "action_mj7bgy8a6cr4gtqbs",
+      "status": "completed",
+      "input": {
+        "action_mj7bf5pmknox5vbta": {
+          "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+        }
+      },
+      "startTime": 1765813325483,
+      "output": {
+        "score": 7,
+        "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+      },
+      "endTime": 1765813331959,
+      "cycleCount": 1
+    },
+    {
+      "nodeId": "action_mj7bi9gwb8ky9sywy",
+      "status": "completed",
+      "input": {
+        "score": 7,
+        "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+      },
+      "startTime": 1765813331960,
+      "output": true,
+      "endTime": 1765813331962,
+      "cycleCount": 1
+    },
+    {
+      "nodeId": "action_mj7blui35awipfijg",
+      "status": "completed",
+      "input": {
+        "score": 7,
+        "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+      },
+      "startTime": 1765813331963,
+      "output": {
+        "result": {
+          "score": 7,
+          "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+        }
+      },
+      "endTime": 1765813331964,
+      "cycleCount": 1
+    },
+    {
+      "nodeId": "action_mj7bm3q0eedx36rnz",
+      "status": "completed",
+      "input": {
+        "score": 7,
+        "article": "AI hallucinations cost companies thousands in wasted developer hours chasing phantom bugs and implementing features that never existed. Your chatbot confidently invents API methods, fabricates documentation, and hallucinates entire libraries because it's trained to sound helpful, not to be accurate. The fix isn't better prompts—it's implementing retrieval-augmented generation (RAG) that grounds responses in your actual codebase and docs. Add confidence scoring to flag suspicious answers, and create feedback loops where developers mark hallucinations so the system learns your domain. Most importantly, treat AI as a junior developer who needs verification, not an oracle whose word is law."
+      },
+      "startTime": 1765813331965,
+      "output": {
+        "content": "Article written to vault."
+      },
+      "endTime": 1765813342825,
+      "cycleCount": 1
+    }
+  ],
+  "startTime": 1765813307185,
+  "totalCycles": 6,
+  "endTime": 1765813342825,
+  "output": {
+    "content": "Article written to vault."
+  }
+}

@@ -1,4 +1,8 @@
-/* global Buffer */
+/**
+ * Secrets Encryption
+ *
+ * Provides AES-256-GCM encryption using machine-derived keys.
+ */
 /**
  * Secrets Encryption
  *

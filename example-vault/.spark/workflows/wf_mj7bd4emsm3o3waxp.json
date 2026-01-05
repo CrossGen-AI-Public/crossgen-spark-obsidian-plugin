@@ -1,0 +1,218 @@
+{
+  "id": "wf_mj7bd4emsm3o3waxp",
+  "name": "Untitled Workflow",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "action_mj7bd4emvyycbfs1p",
+      "type": "prompt",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Prompt",
+        "prompt": "@bob generate 5 ai-related article topics",
+        "structuredOutput": true,
+        "outputSchema": "{\"topics\": array}"
+      },
+      "measured": {
+        "width": 250,
+        "height": 90
+      },
+      "selected": false
+    },
+    {
+      "id": "action_mj7bf5pmknox5vbta",
+      "type": "prompt",
+      "position": {
+        "x": 522.3980655614005,
+        "y": 213.1027340426833
+      },
+      "data": {
+        "type": "prompt",
+        "label": "New article",
+        "prompt": "@alice create a short article from one of provided topics, 5 sentences max:$input.topics ",
+        "description": "",
+        "structuredOutput": true,
+        "outputSchema": "{\"article\": string}"
+      },
+      "measured": {
+        "width": 250,
+        "height": 90
+      },
+      "selected": false
+    },
+    {
+      "id": "action_mj7bgy8a6cr4gtqbs",
+      "type": "prompt",
+      "position": {
+        "x": 843.1493146172207,
+        "y": 223.92570170242476
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Review",
+        "prompt": "@alice Give a creativity score to provided article, 0 to 10.",
+        "structuredOutput": true,
+        "outputSchema": "{\"score\": number, \"article\": string}"
+      },
+      "measured": {
+        "width": 250,
+        "height": 90
+      },
+      "selected": false
+    },
+    {
+      "id": "action_mj7bi9gwb8ky9sywy",
+      "type": "condition",
+      "position": {
+        "x": 1156.5824354792132,
+        "y": 222.86353416135807
+      },
+      "data": {
+        "type": "condition",
+        "label": "Gate",
+        "expression": "input.score > 7",
+        "maxCycles": 3
+      },
+      "measured": {
+        "width": 172,
+        "height": 89
+      },
+      "selected": false
+    },
+    {
+      "id": "action_mj7bixka2kumhss6u",
+      "type": "prompt",
+      "position": {
+        "x": 917.4198316929619,
+        "y": 472.1988255616836
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Improve",
+        "prompt": "@alice improve creativity of provided article, current score is $input.score ",
+        "structuredOutput": true,
+        "outputSchema": "{\"article\": string}"
+      },
+      "measured": {
+        "width": 250,
+        "height": 90
+      },
+      "selected": false
+    },
+    {
+      "id": "action_mj7blui35awipfijg",
+      "type": "code",
+      "position": {
+        "x": 1440.686688942349,
+        "y": 165.43447539284512
+      },
+      "data": {
+        "type": "code",
+        "label": "Finish",
+        "code": "// Process input and return output\nreturn { result: input };"
+      },
+      "measured": {
+        "width": 250,
+        "height": 66
+      },
+      "selected": false
+    },
+    {
+      "id": "action_mj7bm3q0eedx36rnz",
+      "type": "prompt",
+      "position": {
+        "x": 1470.5837904302837,
+        "y": 283.17070812740695
+      },
+      "data": {
+        "type": "prompt",
+        "label": "Write",
+        "prompt": "",
+        "description": "write the provided article to the file in the vault root, format it with new lines if needed, provide bullet points if needed."
+      },
+      "measured": {
+        "width": 250,
+        "height": 69
+      },
+      "selected": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_mj7bf5pmsgwr88x1g",
+      "source": "action_mj7bd4emvyycbfs1p",
+      "sourceHandle": "right-out",
+      "target": "action_mj7bf5pmknox5vbta",
+      "targetHandle": "left-in"
+    },
+    {
+      "id": "edge_mj7bgy8a16t3k6zy5",
+      "source": "action_mj7bf5pmknox5vbta",
+      "sourceHandle": "right-out",
+      "target": "action_mj7bgy8a6cr4gtqbs",
+      "targetHandle": "left-in"
+    },
+    {
+      "id": "edge_mj7bi9gxi8e47zkkg",
+      "source": "action_mj7bgy8a6cr4gtqbs",
+      "sourceHandle": "right-out",
+      "target": "action_mj7bi9gwb8ky9sywy",
+      "targetHandle": "left-in"
+    },
+    {
+      "id": "edge_mj7bixkbzl8c3kkcz",
+      "source": "action_mj7bi9gwb8ky9sywy",
+      "sourceHandle": "false",
+      "target": "action_mj7bixka2kumhss6u",
+      "targetHandle": "top-in",
+      "label": "true",
+      "className": "spark-edge-true"
+    },
+    {
+      "type": "smoothstep",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed",
+        "width": 20,
+        "height": 20
+      },
+      "pathOptions": {
+        "borderRadius": 16,
+        "offset": 20
+      },
+      "labelBgPadding": [
+        6,
+        4
+      ],
+      "labelBgBorderRadius": 4,
+      "source": "action_mj7bixka2kumhss6u",
+      "sourceHandle": "left-out",
+      "target": "action_mj7bgy8a6cr4gtqbs",
+      "targetHandle": "left-in",
+      "id": "edge_mj7bl9qukenc5ktxl"
+    },
+    {
+      "id": "edge_mj7blui4zromaw7xp",
+      "source": "action_mj7bi9gwb8ky9sywy",
+      "sourceHandle": "true",
+      "target": "action_mj7blui35awipfijg",
+      "targetHandle": "left-in",
+      "label": "false",
+      "className": "spark-edge-false"
+    },
+    {
+      "id": "edge_mj7bm3q1ysp4shnfe",
+      "source": "action_mj7bi9gwb8ky9sywy",
+      "sourceHandle": "true",
+      "target": "action_mj7bm3q0eedx36rnz",
+      "targetHandle": "left-in"
+    }
+  ],
+  "settings": {},
+  "created": "2025-12-15T15:33:45.737Z",
+  "updated": "2025-12-15T15:58:18.001Z"
+}

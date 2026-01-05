@@ -177,7 +177,7 @@ export class MentionDecorator {
 		for (const replacement of replacements) {
 			// Add text before the mention
 			if (replacement.start > lastIndex) {
-				fragment.appendChild(document.createTextNode(text.substring(lastIndex, replacement.start)));
+				fragment.appendChild(document.createTextNode(text.slice(lastIndex, replacement.start)));
 			}
 
 			// Add the mention span
@@ -335,7 +335,7 @@ export class MentionDecorator {
 
 		for (const token of tokens) {
 			// Add text before token
-			const beforeText = text.substring(lastIndex, token.start);
+			const beforeText = text.slice(lastIndex, token.start);
 			if (beforeText) {
 				cell.appendText(beforeText);
 			}
@@ -356,7 +356,7 @@ export class MentionDecorator {
 		}
 
 		// Add remaining text
-		const remainingText = text.substring(lastIndex);
+		const remainingText = text.slice(lastIndex);
 		if (remainingText) {
 			cell.appendText(remainingText);
 		}
