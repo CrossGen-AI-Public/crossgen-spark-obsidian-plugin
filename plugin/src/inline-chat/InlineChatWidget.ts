@@ -240,7 +240,7 @@ export class InlineChatWidget {
 
 		// Helper text below input
 		const helperText = mainContent.createDiv('spark-inline-chat-helper');
-		helperText.setText('↵ to send, ⇧↵ for newline, Esc to cancel, @ for mentions');
+		helperText.setText('Enter to send, Shift+Enter for newline, Esc to cancel, @ for mentions');
 
 		// Send button at bottom right corner of widget
 		this.sendButtonEl = mainContent.createEl('button', {

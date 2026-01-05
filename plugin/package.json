@@ -12,10 +12,12 @@
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "lint": "biome lint src",
     "lint:fix": "biome check --write src",
+    "eslint:check": "cd .. && eslint --config plugin/eslint.config.mjs --max-warnings=0 \"plugin/src/**/*.ts\"",
+    "eslint:fix": "cd .. && eslint --config plugin/eslint.config.mjs --fix \"plugin/src/**/*.ts\"",
     "format": "biome format --write src",
     "format:check": "biome check src",
     "type-check": "tsc --noEmit -skipLibCheck",
-    "check": "npm run lint:fix && npm run type-check && npm run test:coverage"
+    "check": "npm run lint:fix && npm run type-check && npm run eslint:check && npm run test:coverage"
   },
   "keywords": [
     "obsidian",
@@ -27,16 +29,21 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "2.3.8",
+    "@eslint/json": "^0.14.0",
     "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.5",
+    "@typescript-eslint/parser": "^8.51.0",
     "builtin-modules": "^5.0.0",
     "esbuild": "^0.24.2",
+    "eslint": "^9.39.2",
+    "eslint-plugin-obsidianmd": "^0.1.9",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "obsidian": "^1.7.2",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.51.0"
   },
   "dependencies": {
     "@codemirror/state": "^6.5.2",

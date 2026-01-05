@@ -63,8 +63,12 @@ export class ChatWindow extends Component {
 		this.chatSelector = new ChatSelector(
 			app,
 			this.conversationStorage,
-			() => this.createNewChat(),
-			(conversationId: string) => this.switchToConversation(conversationId)
+			() => {
+				this.createNewChat();
+			},
+			(conversationId: string) => {
+				void this.switchToConversation(conversationId);
+			}
 		);
 	}
 
@@ -263,7 +267,7 @@ export class ChatWindow extends Component {
 			this.applyResize(resize);
 		};
 
-		const handleMouseUp = async () => {
+		const handleMouseUp = () => {
 			if (!this.isResizing) return;
 
 			this.isResizing = false;
@@ -276,7 +280,7 @@ export class ChatWindow extends Component {
 
 			this.plugin.settings.chatWindowWidth = width;
 			this.plugin.settings.chatWindowHeight = height;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		};
 
 		// Attach mousedown to all resize handles

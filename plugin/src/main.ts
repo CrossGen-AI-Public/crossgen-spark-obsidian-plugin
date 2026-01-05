@@ -149,11 +149,10 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		if (!daemonService.isDaemonInstalled()) {
 			// Show install modal if not dismissed
 			if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
-				const handleDismiss = async (dontShowAgain: boolean) => {
-					if (dontShowAgain) {
-						this.settings.dismissedDaemonSetup = true;
-						await this.saveSettings();
-					}
+				const handleDismiss = (dontShowAgain: boolean) => {
+					if (!dontShowAgain) return;
+					this.settings.dismissedDaemonSetup = true;
+					void this.saveSettings();
 				};
 				new SetupModal(this.app, this, daemonService, 'install', handleDismiss).open();
 			}
@@ -176,20 +175,19 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
 		// Show start modal if not dismissed
 		if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
-			const handleDismiss = async (dontShowAgain: boolean) => {
-				if (dontShowAgain) {
-					this.settings.dismissedDaemonSetup = true;
-					await this.saveSettings();
-				}
+			const handleDismiss = (dontShowAgain: boolean) => {
+				if (!dontShowAgain) return;
+				this.settings.dismissedDaemonSetup = true;
+				void this.saveSettings();
 			};
 			new SetupModal(this.app, this, daemonService, 'start', handleDismiss).open();
 		}
 	}
 
-	async onunload() {
+	onunload(): void {
 		this.commandPaletteManager?.unload();
 		this.chatManager?.unload();
-		await this.inlineChatManager?.cleanup();
+		void this.inlineChatManager?.cleanup();
 		this.mentionDecorator?.stopTableObserver();
 		console.debug('Spark Assistant: Plugin unloaded');
 	}

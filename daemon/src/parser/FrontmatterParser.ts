@@ -60,7 +60,7 @@ export class FrontmatterParser implements IFrontmatterParser {
       // Parse with gray-matter
       const result = matter(content);
       return this.normalizeDates(result.data) as Record<string, unknown>;
-    } catch (_error) {
+    } catch {
       // Invalid frontmatter, return empty object
       return {};
     }
@@ -92,7 +92,7 @@ export class FrontmatterParser implements IFrontmatterParser {
     try {
       const result = matter(content);
       return result.content;
-    } catch (_error) {
+    } catch {
       return content;
     }
   }

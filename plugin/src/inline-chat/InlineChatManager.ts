@@ -425,7 +425,7 @@ export class InlineChatManager {
 		// Get current file path
 		const activeFile = this.app.workspace.getActiveFile();
 		if (!activeFile) {
-			new Notice('Error: No active file');
+			new Notice('Error: no active file');
 			return;
 		}
 

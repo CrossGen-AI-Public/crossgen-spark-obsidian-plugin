@@ -142,7 +142,7 @@ export class DaemonInspector {
       if (existsSync(this.historyFile)) {
         unlinkSync(this.historyFile);
       }
-    } catch (_error) {
+    } catch {
       // Ignore deletion errors
     }
   }
@@ -191,7 +191,7 @@ export class DaemonInspector {
         const data = readFileSync(this.historyFile, 'utf-8');
         this.processingHistory = JSON.parse(data);
       }
-    } catch (_error) {
+    } catch {
       // Ignore load errors, start with empty history
       this.processingHistory = [];
     }
@@ -205,7 +205,7 @@ export class DaemonInspector {
       const sparkDir = path.dirname(this.historyFile);
       mkdirSync(sparkDir, { recursive: true });
       writeFileSync(this.historyFile, JSON.stringify(this.processingHistory, null, 2));
-    } catch (_error) {
+    } catch {
       // Ignore save errors (daemon continues working)
     }
   }

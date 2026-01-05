@@ -48,7 +48,8 @@ export class ResultWriter {
 
       // If line already has a status indicator, replace it
       // Match status emojis: ⏳ (pending), ✅ (completed), ❌ (error), ⚠️ (warning)
-      const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/u;
+      // Use alternatives (not a character class) to avoid misleading character-class lint issues.
+      const statusPrefixRegex = /^(?:⏳|✅|❌|⚠️)\s+/u;
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `✅ ${cleanLine}`;
 
@@ -101,7 +102,8 @@ export class ResultWriter {
       }
 
       // Match status emojis: ⏳ (pending), ✅ (completed), ❌ (error), ⚠️ (warning)
-      const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/u;
+      // Use alternatives (not a character class) to avoid misleading character-class lint issues.
+      const statusPrefixRegex = /^(?:⏳|✅|❌|⚠️)\s+/u;
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `${status} ${cleanLine}`;
 

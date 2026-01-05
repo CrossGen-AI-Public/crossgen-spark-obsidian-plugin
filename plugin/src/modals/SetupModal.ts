@@ -58,7 +58,7 @@ export class SetupModal extends Modal {
 		const { contentEl } = this;
 
 		// Header
-		new Setting(contentEl).setName('Welcome to Spark Assistant').setHeading();
+		new Setting(contentEl).setName('Welcome to Spark').setHeading();
 
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
@@ -73,7 +73,7 @@ export class SetupModal extends Modal {
 		const list = desc.createEl('ul');
 		list.createEl('li', { text: 'Download the Spark daemon' });
 		list.createEl('li', { text: 'Install it globally on your system' });
-		list.createEl('li', { text: 'Add the spark command to your PATH' });
+		list.createEl('li', { text: 'Add the command to your PATH' });
 
 		// Install button
 		new Setting(contentEl)
@@ -147,7 +147,7 @@ export class SetupModal extends Modal {
 			.setDesc('Starts the daemon in the background')
 			.addButton(btn =>
 				btn
-					.setButtonText('Start Spark daemon')
+					.setButtonText('Start daemon')
 					.setCta()
 					.onClick(() => {
 						void (async () => {

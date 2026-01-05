@@ -93,8 +93,6 @@ export class SparkSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName('Spark Assistant').setHeading();
-
 		// Create tab navigation
 		const tabNav = containerEl.createDiv({ cls: 'spark-settings-tabs' });
 
@@ -279,7 +277,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			const statusEl = statusSetting.descEl;
 			statusEl.empty();
 			const indicator = statusEl.createSpan({ cls: 'spark-daemon-status-indicator running' });
-			indicator.setText('● Running');
+			indicator.setText('● running');
 		}
 
 		// Auto-launch toggle (only if daemon is installed)
@@ -1087,7 +1085,7 @@ class AgentNameModal extends Modal {
 			.setDesc('Enter a name for the new agent')
 			.addText(text => {
 				this.nameInput = text.inputEl;
-				text.setPlaceholder('e.g., Charlie').onChange(() => {
+				text.setPlaceholder('Example: charlie').onChange(() => {
 					// Clear any previous error styling
 					setCssProps(this.nameInput, { borderColor: '' });
 				});
