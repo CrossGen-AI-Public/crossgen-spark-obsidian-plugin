@@ -163,12 +163,10 @@ export class SparkSettingTab extends PluginSettingTab {
 		this.populateDaemonSection(containerEl);
 
 		// Plugin section
-		containerEl.createEl('h3', { text: 'Plugin' });
-		const pluginDesc = containerEl.createEl('p', {
-			text: 'Configure Spark plugin behavior and appearance.',
-			cls: 'setting-item-description',
-		});
-		pluginDesc.style.marginBottom = '1em';
+		new Setting(containerEl).setName('Plugin').setHeading();
+		new Setting(containerEl)
+			.setDesc('Configure Spark plugin behavior and appearance.')
+			.setClass('spark-section-desc');
 
 		new Setting(containerEl)
 			.setName('Enable Command Palette')
@@ -186,12 +184,10 @@ export class SparkSettingTab extends PluginSettingTab {
 		const isInstalled = daemonService.isDaemonInstalled();
 		const isRunning = isInstalled && daemonService.isDaemonRunning();
 
-		containerEl.createEl('h3', { text: 'Daemon' });
-		const daemonDesc = containerEl.createEl('p', {
-			text: 'The Spark daemon handles AI requests for this vault.',
-			cls: 'setting-item-description',
-		});
-		daemonDesc.style.marginBottom = '1em';
+		new Setting(containerEl).setName('Daemon').setHeading();
+		new Setting(containerEl)
+			.setDesc('The Spark daemon handles AI requests for this vault.')
+			.setClass('spark-section-desc');
 
 		if (!isInstalled) {
 			// Daemon not installed
@@ -310,12 +306,10 @@ export class SparkSettingTab extends PluginSettingTab {
 
 	private populateAgentsTab(containerEl: HTMLElement) {
 		// Agents Section
-		containerEl.createEl('h3', { text: 'Agents' });
-		const agentsDesc = containerEl.createEl('p', {
-			text: 'Manage AI agents. Changes are saved directly to files and picked up automatically.',
-			cls: 'setting-item-description',
-		});
-		agentsDesc.style.marginBottom = '1em';
+		new Setting(containerEl).setName('Agents').setHeading();
+		new Setting(containerEl)
+			.setDesc('Manage AI agents. Changes are saved directly to files and picked up automatically.')
+			.setClass('spark-section-desc');
 
 		// Add Agent button
 		new Setting(containerEl)
@@ -708,7 +702,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			const config = yaml.load(content) as SparkConfig;
 
 			// Daemon section
-			this.configContainer.createEl('h4', { text: 'Daemon' });
+			new Setting(this.configContainer).setName('Daemon').setHeading();
 
 			new Setting(this.configContainer)
 				.setName('Debounce (ms)')
@@ -732,7 +726,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			// AI Provider Settings
-			this.configContainer.createEl('h4', { text: 'AI Provider' });
+			new Setting(this.configContainer).setName('AI provider').setHeading();
 
 			// Get available provider names
 			const providerNames = Object.keys(config.ai.providers);
@@ -752,11 +746,10 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 			// Provider configurations as nested accordion
-			this.configContainer.createEl('h4', { text: 'AI Providers' });
-			this.configContainer.createEl('div', {
-				text: 'Configure AI provider settings',
-				cls: 'setting-item-description spark-providers-description',
-			});
+			new Setting(this.configContainer).setName('AI providers').setHeading();
+			new Setting(this.configContainer)
+				.setDesc('Configure AI provider settings')
+				.setClass('spark-providers-description');
 
 			// Add informational banner about API keys storage
 			const infoEl = this.configContainer.createDiv({ cls: 'setting-item-description' });
@@ -972,7 +965,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			}
 
 			// Logging
-			this.configContainer.createEl('h4', { text: 'Logging' });
+			new Setting(this.configContainer).setName('Logging').setHeading();
 
 			new Setting(this.configContainer)
 				.setName('Log Level')
@@ -999,7 +992,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			// Feature Flags
-			this.configContainer.createEl('h4', { text: 'Features' });
+			new Setting(this.configContainer).setName('Features').setHeading();
 
 			new Setting(this.configContainer)
 				.setName('Slash Commands')

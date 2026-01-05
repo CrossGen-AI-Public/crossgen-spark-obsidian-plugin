@@ -19,7 +19,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	private statusCheckInterval: number;
 
 	async onload() {
-		console.log('Spark Assistant: Loading plugin...');
+		console.debug('Spark Assistant: Loading plugin...');
 
 		// Load settings
 		await this.loadSettings();
@@ -44,19 +44,13 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		this.inlineChatManager = InlineChatManager.getInstance(this.app, this.mentionDecorator);
 		this.inlineChatManager.initialize();
 
-		// Register chat hotkey (Cmd+K)
+		// Register chat toggle command
 		this.addCommand({
 			id: 'toggle-chat',
-			name: 'Toggle Chat Window',
+			name: 'Toggle chat window',
 			editorCallback: () => {
 				this.chatManager.toggleChat();
 			},
-			hotkeys: [
-				{
-					modifiers: ['Mod'],
-					key: 'k',
-				},
-			],
 		});
 
 		// Start observing HTML table cells for mention styling
@@ -108,7 +102,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		// Check daemon status and show setup modal if needed
 		this.checkDaemonStatus();
 
-		console.log('Spark Assistant: Plugin loaded successfully');
+		console.debug('Spark Assistant: Plugin loaded successfully');
 	}
 
 	/**
@@ -168,13 +162,13 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
 		// Daemon is installed, check if running
 		if (daemonService.isDaemonRunning()) {
-			console.log('[Spark] Daemon is already running');
+			console.debug('[Spark] Daemon is already running');
 			return;
 		}
 
 		// Daemon not running - try auto-launch if enabled
 		if (this.settings.autoLaunchDaemon) {
-			console.log('[Spark] Auto-launching daemon...');
+			console.debug('[Spark] Auto-launching daemon...');
 			await daemonService.startDaemonBackground();
 			this.updateStatusBar(); // Update after auto-launch
 			return;
@@ -197,7 +191,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		this.chatManager?.unload();
 		await this.inlineChatManager?.cleanup();
 		this.mentionDecorator?.stopTableObserver();
-		console.log('Spark Assistant: Plugin unloaded');
+		console.debug('Spark Assistant: Plugin unloaded');
 	}
 
 	async loadSettings() {

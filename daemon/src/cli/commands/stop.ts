@@ -6,6 +6,7 @@
 import path from 'node:path';
 import type { Command } from 'commander';
 import { cleanupDaemon, cleanupPidFile, stopSingleDaemonFromRegistry } from '../helpers.js';
+import { print, printError } from '../output.js';
 import { findDaemon, getActiveDaemons } from '../registry.js';
 
 export function registerStopCommand(program: Command): void {
@@ -20,11 +21,11 @@ export function registerStopCommand(program: Command): void {
       if (options.all) {
         const daemons = getActiveDaemons();
         if (daemons.length === 0) {
-          console.log('No daemons are currently running');
+          print('No daemons are currently running');
           process.exit(0);
         }
 
-        console.log(`Stopping ${daemons.length} daemon(s)...`);
+        print(`Stopping ${daemons.length} daemon(s)...`);
         let stopped = 0;
         let failed = 0;
 
@@ -36,8 +37,8 @@ export function registerStopCommand(program: Command): void {
           }
         });
 
-        console.log('');
-        console.log(`✅ Stopped ${stopped} daemon(s)${failed > 0 ? `, ${failed} failed` : ''}`);
+        print('');
+        print(`✅ Stopped ${stopped} daemon(s)${failed > 0 ? `, ${failed} failed` : ''}`);
         process.exit(failed > 0 ? 1 : 0);
       }
 
@@ -47,7 +48,7 @@ export function registerStopCommand(program: Command): void {
       // Check registry first
       const daemon = findDaemon(absolutePath);
       if (!daemon) {
-        console.log('Daemon is not running for this vault');
+        print('Daemon is not running for this vault');
         // Clean up stale PID file if it exists
         cleanupPidFile(absolutePath);
         process.exit(0);
@@ -57,7 +58,7 @@ export function registerStopCommand(program: Command): void {
 
       // Stop the daemon
       const signal = options.force ? 'SIGKILL' : 'SIGTERM';
-      console.log(`Stopping daemon (PID ${pid})...`);
+      print(`Stopping daemon (PID ${pid})...`);
 
       try {
         process.kill(pid, signal);
@@ -71,22 +72,22 @@ export function registerStopCommand(program: Command): void {
               process.kill(pid, 0);
               if (attempts > 10) {
                 clearInterval(checkInterval);
-                console.log('⚠️  Daemon did not stop gracefully, use --force to kill');
+                print('⚠️  Daemon did not stop gracefully, use --force to kill');
                 process.exit(1);
               }
             } catch {
               clearInterval(checkInterval);
               cleanupDaemon(absolutePath);
-              console.log('✅ Daemon stopped successfully');
+              print('✅ Daemon stopped successfully');
               process.exit(0);
             }
           }, 100);
         } else {
           cleanupDaemon(absolutePath);
-          console.log('✅ Daemon force stopped');
+          print('✅ Daemon force stopped');
         }
       } catch (error) {
-        console.error('❌ Error stopping daemon:', error);
+        printError('❌ Error stopping daemon:', error);
         process.exit(1);
       }
     });

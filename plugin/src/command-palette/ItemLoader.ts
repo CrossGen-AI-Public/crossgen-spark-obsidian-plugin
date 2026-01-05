@@ -77,7 +77,8 @@ export class ItemLoader {
 	 * Check if folder should be included in results
 	 */
 	private shouldIncludeFolder(folder: TFolder): boolean {
-		return !folder.path.startsWith('.spark') && !folder.path.startsWith('.obsidian');
+		const configDir = this.app.vault.configDir;
+		return !folder.path.startsWith('.spark') && !folder.path.startsWith(configDir);
 	}
 
 	/**

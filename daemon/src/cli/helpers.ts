@@ -5,6 +5,7 @@
 
 import { existsSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
+import { print, printError } from './output.js';
 import { unregisterDaemon } from './registry.js';
 
 /**
@@ -13,17 +14,17 @@ import { unregisterDaemon } from './registry.js';
 export function validateVault(absolutePath: string, context: 'start' | 'dev' = 'start'): void {
   const obsidianDir = path.join(absolutePath, '.obsidian');
   if (!existsSync(obsidianDir)) {
-    console.error('❌ Not an Obsidian vault: .obsidian directory not found');
-    console.error(`   Path: ${absolutePath}`);
-    console.error('');
+    printError('❌ Not an Obsidian vault: .obsidian directory not found');
+    printError(`   Path: ${absolutePath}`);
+    printError('');
     if (context === 'dev') {
-      console.error('   Dev mode must be run from an Obsidian vault directory.');
+      printError('   Dev mode must be run from an Obsidian vault directory.');
     } else {
-      console.error('   An Obsidian vault must contain a .obsidian directory.');
+      printError('   An Obsidian vault must contain a .obsidian directory.');
     }
-    console.error('   Please provide the path to your Obsidian vault.');
-    console.error('');
-    console.error(`   Example: spark ${context} ~/Documents/MyVault`);
+    printError('   Please provide the path to your Obsidian vault.');
+    printError('');
+    printError(`   Example: spark ${context} ~/Documents/MyVault`);
     process.exit(1);
   }
 }
@@ -79,7 +80,7 @@ export function stopSingleDaemonFromRegistry(
   force: boolean
 ): boolean {
   try {
-    console.log(`  Stopping daemon for ${daemon.vaultPath} (PID ${daemon.pid})...`);
+    print(`  Stopping daemon for ${daemon.vaultPath} (PID ${daemon.pid})...`);
     const signal = force ? 'SIGKILL' : 'SIGTERM';
     process.kill(daemon.pid, signal);
 
@@ -90,10 +91,10 @@ export function stopSingleDaemonFromRegistry(
 
     // Clean up
     cleanupDaemon(daemon.vaultPath);
-    console.log(`  ✅ Stopped ${daemon.vaultPath}`);
+    print(`  ✅ Stopped ${daemon.vaultPath}`);
     return true;
   } catch (error) {
-    console.error(`  ❌ Failed to stop ${daemon.vaultPath}:`, error);
+    printError(`  ❌ Failed to stop ${daemon.vaultPath}:`, error);
     return false;
   }
 }

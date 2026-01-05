@@ -7,6 +7,7 @@ import path from 'node:path';
 import type { Command } from 'commander';
 import { ConfigLoader } from '../../config/ConfigLoader.js';
 import { validateVault } from '../helpers.js';
+import { print, printError } from '../output.js';
 
 export function registerConfigCommand(program: Command): void {
   program
@@ -20,30 +21,30 @@ export function registerConfigCommand(program: Command): void {
       // Validate that this is an Obsidian vault
       validateVault(absolutePath, 'start');
 
-      console.log(`Validating configuration at: ${absolutePath}`);
+      print(`Validating configuration at: ${absolutePath}`);
 
       try {
         const configLoader = new ConfigLoader();
         const config = await configLoader.load(absolutePath);
 
-        console.log('✓ Configuration is valid');
+        print('✓ Configuration is valid');
 
         if (options.verbose) {
-          console.log('\nConfiguration:');
-          console.log(JSON.stringify(config, null, 2));
+          print('\nConfiguration:');
+          print(JSON.stringify(config, null, 2));
         } else {
-          console.log('\nConfiguration summary:');
-          console.log(`  Log level: ${config.logging.level}`);
-          console.log(`  Console logging: ${config.logging.console ? 'enabled' : 'disabled'}`);
-          console.log(`  Watch patterns: ${config.daemon.watch.patterns.join(', ')}`);
-          console.log(`  Debounce: ${config.daemon.debounce_ms}ms`);
-          console.log(`  Default AI Provider: ${config.ai.defaultProvider}`);
+          print('\nConfiguration summary:');
+          print(`  Log level: ${config.logging.level}`);
+          print(`  Console logging: ${config.logging.console ? 'enabled' : 'disabled'}`);
+          print(`  Watch patterns: ${config.daemon.watch.patterns.join(', ')}`);
+          print(`  Debounce: ${config.daemon.debounce_ms}ms`);
+          print(`  Default AI Provider: ${config.ai.defaultProvider}`);
           const defaultProvider = config.ai.providers?.[config.ai.defaultProvider];
-          console.log(`  AI Model: ${defaultProvider?.model || 'not configured'}`);
+          print(`  AI Model: ${defaultProvider?.model || 'not configured'}`);
         }
       } catch (error) {
-        console.error('❌ Configuration validation failed:');
-        console.error(error instanceof Error ? error.message : String(error));
+        printError('❌ Configuration validation failed:');
+        printError(error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
     });

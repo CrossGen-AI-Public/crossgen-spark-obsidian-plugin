@@ -8,6 +8,7 @@ import type { Command } from 'commander';
 import { ConfigLoader } from '../../config/ConfigLoader.js';
 import { SecretsLoader } from '../../config/SecretsLoader.js';
 import { validateVault } from '../helpers.js';
+import { print, printError } from '../output.js';
 
 export function registerInspectCommand(program: Command): void {
   program
@@ -20,44 +21,44 @@ export function registerInspectCommand(program: Command): void {
       // Validate that this is an Obsidian vault
       validateVault(absolutePath, 'start');
 
-      console.log(`Inspecting vault: ${absolutePath}`);
-      console.log('');
+      print(`Inspecting vault: ${absolutePath}`);
+      print('');
 
       try {
         const configLoader = new ConfigLoader();
         const config = await configLoader.load(absolutePath);
 
         // Show vault info
-        console.log('📁 Vault Information:');
-        console.log(`  Path: ${absolutePath}`);
-        console.log(`  Config file: ${absolutePath}/.spark/config.yaml`);
-        console.log('');
+        print('📁 Vault Information:');
+        print(`  Path: ${absolutePath}`);
+        print(`  Config file: ${absolutePath}/.spark/config.yaml`);
+        print('');
 
         // Show configuration
-        console.log('⚙️  Configuration:');
-        console.log(`  Log level: ${config.logging.level}`);
-        console.log(`  Console logging: ${config.logging.console ? 'enabled' : 'disabled'}`);
-        console.log(`  Debounce: ${config.daemon.debounce_ms}ms`);
-        console.log('');
+        print('⚙️  Configuration:');
+        print(`  Log level: ${config.logging.level}`);
+        print(`  Console logging: ${config.logging.console ? 'enabled' : 'disabled'}`);
+        print(`  Debounce: ${config.daemon.debounce_ms}ms`);
+        print('');
 
         // Show watch patterns
-        console.log('👁️  Watch Patterns:');
+        print('👁️  Watch Patterns:');
         config.daemon.watch.patterns.forEach((pattern) => {
-          console.log(`  + ${pattern}`);
+          print(`  + ${pattern}`);
         });
-        console.log('');
+        print('');
 
         // Show ignore patterns
-        console.log('🚫 Ignore Patterns:');
+        print('🚫 Ignore Patterns:');
         config.daemon.watch.ignore.forEach((pattern) => {
-          console.log(`  - ${pattern}`);
+          print(`  - ${pattern}`);
         });
-        console.log('');
+        print('');
 
         // Show AI config
-        console.log('🤖 AI Configuration:');
-        console.log(`  Default Provider: ${config.ai.defaultProvider}`);
-        console.log(`  Available Providers:`);
+        print('🤖 AI Configuration:');
+        print(`  Default Provider: ${config.ai.defaultProvider}`);
+        print(`  Available Providers:`);
 
         // Load secrets to check API key status
         const secretsLoader = new SecretsLoader(vaultPath);
@@ -66,18 +67,18 @@ export function registerInspectCommand(program: Command): void {
         for (const [name, providerConfig] of Object.entries(config.ai.providers || {})) {
           const isDefault = name === config.ai.defaultProvider;
           const hasApiKey = secretsLoader.hasApiKey(name);
-          console.log(`    ${isDefault ? '→' : ' '} ${name}`);
-          console.log(`      Type: ${providerConfig.type}`);
-          console.log(`      Model: ${providerConfig.model}`);
-          console.log(
+          print(`    ${isDefault ? '→' : ' '} ${name}`);
+          print(`      Type: ${providerConfig.type}`);
+          print(`      Model: ${providerConfig.model}`);
+          print(
             `      API Key: ${hasApiKey ? '✓ configured in ~/.spark/secrets.yaml' : '✗ missing'}`
           );
-          console.log(`      Max Tokens: ${providerConfig.maxTokens}`);
-          console.log(`      Temperature: ${providerConfig.temperature}`);
+          print(`      Max Tokens: ${providerConfig.maxTokens}`);
+          print(`      Temperature: ${providerConfig.temperature}`);
         }
       } catch (error) {
-        console.error('❌ Inspection failed:');
-        console.error(error instanceof Error ? error.message : String(error));
+        printError('❌ Inspection failed:');
+        printError(error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
     });

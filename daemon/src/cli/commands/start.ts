@@ -9,6 +9,7 @@ import type { Command } from 'commander';
 import { handleCliError } from '../../errors/ErrorHandler.js';
 import { SparkDaemon } from '../../main.js';
 import { cleanupDaemon, cleanupPidFile, validateVault } from '../helpers.js';
+import { print, printError } from '../output.js';
 import { findDaemon, registerDaemon } from '../registry.js';
 
 export function registerStartCommand(program: Command): void {
@@ -23,9 +24,9 @@ export function registerStartCommand(program: Command): void {
       // Check if daemon is already running for this vault
       const existingDaemon = findDaemon(absolutePath);
       if (existingDaemon) {
-        console.error('❌ Daemon is already running for this vault');
-        console.error(`   PID: ${existingDaemon.pid}`);
-        console.error('   Run "spark stop" first to stop the existing daemon');
+        printError('❌ Daemon is already running for this vault');
+        printError(`   PID: ${existingDaemon.pid}`);
+        printError('   Run "spark stop" first to stop the existing daemon');
         process.exit(1);
       }
 
@@ -35,9 +36,9 @@ export function registerStartCommand(program: Command): void {
       // Validate that this is an Obsidian vault
       validateVault(absolutePath, 'start');
 
-      console.log(`Starting Spark daemon for vault: ${absolutePath}`);
+      print(`Starting Spark daemon for vault: ${absolutePath}`);
       if (options.debug) {
-        console.log('Debug mode enabled');
+        print('Debug mode enabled');
       }
 
       // Create daemon
@@ -51,7 +52,7 @@ export function registerStartCommand(program: Command): void {
         writeFileSync(pidFile, process.pid.toString());
         registerDaemon(process.pid, absolutePath);
       } catch (error) {
-        console.error('Warning: Could not write PID file:', error);
+        printError('Warning: Could not write PID file:', error);
       }
 
       // Override log level if debug flag is set
@@ -67,14 +68,14 @@ export function registerStartCommand(program: Command): void {
 
       // Graceful shutdown handlers
       const shutdown = async (signal: string): Promise<void> => {
-        console.log(`\nReceived ${signal}, shutting down gracefully...`);
+        print(`\nReceived ${signal}, shutting down gracefully...`);
         try {
           await daemon.stop();
           cleanupDaemon(absolutePath);
-          console.log('Daemon stopped successfully');
+          print('Daemon stopped successfully');
           process.exit(0);
         } catch (error) {
-          console.error('Error during shutdown:', error);
+          printError('Error during shutdown:', error);
           process.exit(1);
         }
       };
@@ -83,36 +84,38 @@ export function registerStartCommand(program: Command): void {
       process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
       // Handle config reload signal
-      process.on('SIGUSR1', async () => {
-        console.log('\nReceived reload signal, reloading configuration...');
-        try {
-          await daemon.reloadConfig();
-          console.log('✓ Configuration reloaded successfully');
-          console.log('  All settings have been updated');
-        } catch (error) {
-          console.error('❌ Failed to reload configuration');
-          if (error instanceof Error) {
-            console.error(`   Error: ${error.message}`);
-            if ('code' in error) {
-              console.error(`   Code: ${error.code}`);
+      process.on('SIGUSR1', () => {
+        print('\nReceived reload signal, reloading configuration...');
+        daemon
+          .reloadConfig()
+          .then(() => {
+            print('✓ Configuration reloaded successfully');
+            print('  All settings have been updated');
+          })
+          .catch((error: unknown) => {
+            printError('❌ Failed to reload configuration');
+            if (error instanceof Error) {
+              printError(`   Error: ${error.message}`);
+              if ('code' in error) {
+                printError(`   Code: ${(error as Error & { code: string }).code}`);
+              }
+            } else {
+              printError(`   Error: ${String(error)}`);
             }
-          } else {
-            console.error(`   Error: ${String(error)}`);
-          }
-          console.error('');
-          console.error('   The daemon is still running with the previous configuration.');
-          console.error('   Fix the config file and try again: spark reload');
-        }
+            printError('');
+            printError('   The daemon is still running with the previous configuration.');
+            printError('   Fix the config file and try again: spark reload');
+          });
       });
 
       // Handle uncaught errors
       process.on('uncaughtException', (error) => {
-        console.error('Uncaught exception:', error);
+        printError('Uncaught exception:', error);
         void shutdown('UNCAUGHT_EXCEPTION');
       });
 
       process.on('unhandledRejection', (reason) => {
-        console.error('Unhandled rejection:', reason);
+        printError('Unhandled rejection:', reason);
         void shutdown('UNHANDLED_REJECTION');
       });
     });

@@ -7,6 +7,7 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import type { Command } from 'commander';
 import { validateVault } from '../helpers.js';
+import { print, printError } from '../output.js';
 import { findDaemon } from '../registry.js';
 
 export function registerReloadCommand(program: Command): void {
@@ -23,8 +24,8 @@ export function registerReloadCommand(program: Command): void {
       // Find the running daemon
       const daemon = findDaemon(absolutePath);
       if (!daemon) {
-        console.error('❌ No daemon running for this vault');
-        console.error(`   Run: spark start ${absolutePath}`);
+        printError('❌ No daemon running for this vault');
+        printError(`   Run: spark start ${absolutePath}`);
         process.exit(1);
       }
 
@@ -42,7 +43,7 @@ export function registerReloadCommand(program: Command): void {
         // Send SIGUSR1 signal to trigger config reload
         process.kill(daemon.pid, 'SIGUSR1');
 
-        console.log('Reloading configuration...');
+        print('Reloading configuration...');
 
         // Wait for daemon to process reload and write status
         const maxWaitMs = 2000; // 2 seconds timeout
@@ -65,34 +66,34 @@ export function registerReloadCommand(program: Command): void {
           }
         }
 
-        console.log('');
+        print('');
 
         if (status) {
           if (status.status === 'success') {
-            console.log('✅ Configuration reloaded successfully');
-            console.log('   All settings have been updated');
+            print('✅ Configuration reloaded successfully');
+            print('   All settings have been updated');
           } else {
-            console.log('❌ Configuration reload failed');
-            console.log(`   Error: ${status.message}`);
-            console.log('');
-            console.log('   The daemon is still running with the previous configuration.');
-            console.log('   Fix the config file and try again: spark reload');
+            print('❌ Configuration reload failed');
+            print(`   Error: ${status.message}`);
+            print('');
+            print('   The daemon is still running with the previous configuration.');
+            print('   Fix the config file and try again: spark reload');
             process.exit(1);
           }
         } else {
-          console.log('⚠️  Reload signal sent, but status unclear');
-          console.log(`   PID: ${daemon.pid}`);
-          console.log('');
-          console.log('   The daemon may still be processing the reload.');
-          console.log('   Check daemon logs to confirm:');
-          console.log('   - Foreground: check console output');
-          console.log('   - Background: tail -f ~/.spark/daemon.log');
+          print('⚠️  Reload signal sent, but status unclear');
+          print(`   PID: ${daemon.pid}`);
+          print('');
+          print('   The daemon may still be processing the reload.');
+          print('   Check daemon logs to confirm:');
+          print('   - Foreground: check console output');
+          print('   - Background: tail -f ~/.spark/daemon.log');
         }
       } catch (error) {
-        console.error('❌ Failed to send reload signal:', error);
-        console.error('   The daemon process may have terminated');
-        console.error('');
-        console.error('   Check daemon status: spark status');
+        printError('❌ Failed to send reload signal:', error);
+        printError('   The daemon process may have terminated');
+        printError('');
+        printError('   Check daemon status: spark status');
         process.exit(1);
       }
     });

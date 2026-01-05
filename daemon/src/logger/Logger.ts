@@ -143,7 +143,7 @@ export class Logger {
     switch (level) {
       case 'debug':
       case 'info':
-        console.log(message);
+        console.debug(message);
         break;
       case 'warn':
         console.warn(message);

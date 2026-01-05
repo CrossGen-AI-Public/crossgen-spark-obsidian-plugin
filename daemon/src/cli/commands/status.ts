@@ -5,6 +5,7 @@
 
 import path from 'node:path';
 import type { Command } from 'commander';
+import { print } from '../output.js';
 import { findDaemon, getActiveDaemons } from '../registry.js';
 
 export function registerStatusCommand(program: Command): void {
@@ -18,16 +19,16 @@ export function registerStatusCommand(program: Command): void {
         const daemons = getActiveDaemons();
 
         if (daemons.length === 0) {
-          console.log('No daemons are currently running');
+          print('No daemons are currently running');
           process.exit(0);
         }
 
-        console.log(`Found ${daemons.length} running daemon(s):\n`);
+        print(`Found ${daemons.length} running daemon(s):\n`);
         daemons.forEach((daemon, index) => {
           const uptime = Math.floor((Date.now() - daemon.startTime) / 1000);
           const uptimeStr = uptime < 60 ? `${uptime}s` : `${Math.floor(uptime / 60)}m`;
-          console.log(`${index + 1}. ${daemon.vaultPath}`);
-          console.log(`   PID: ${daemon.pid} | Uptime: ${uptimeStr}`);
+          print(`${index + 1}. ${daemon.vaultPath}`);
+          print(`   PID: ${daemon.pid} | Uptime: ${uptimeStr}`);
         });
         process.exit(0);
       }
@@ -39,13 +40,13 @@ export function registerStatusCommand(program: Command): void {
       if (daemon) {
         const uptime = Math.floor((Date.now() - daemon.startTime) / 1000);
         const uptimeStr = uptime < 60 ? `${uptime}s` : `${Math.floor(uptime / 60)}m`;
-        console.log('✅ Daemon is running');
-        console.log(`   PID: ${daemon.pid}`);
-        console.log(`   Vault: ${daemon.vaultPath}`);
-        console.log(`   Uptime: ${uptimeStr}`);
+        print('✅ Daemon is running');
+        print(`   PID: ${daemon.pid}`);
+        print(`   Vault: ${daemon.vaultPath}`);
+        print(`   Uptime: ${uptimeStr}`);
       } else {
-        console.log('❌ Daemon is not running for this vault');
-        console.log(`   Vault: ${absolutePath}`);
+        print('❌ Daemon is not running for this vault');
+        print(`   Vault: ${absolutePath}`);
         process.exit(1);
       }
     });

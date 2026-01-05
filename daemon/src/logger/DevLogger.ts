@@ -30,7 +30,7 @@ export class DevLogger {
     if (!this.shouldLog('debug') || !this.consoleEnabled) return;
 
     const formattedMessage = this.formatMessage('DEBUG', message, context);
-    console.log(formattedMessage);
+    console.debug(formattedMessage);
   }
 
   /**
@@ -40,7 +40,7 @@ export class DevLogger {
     if (!this.shouldLog('info') || !this.consoleEnabled) return;
 
     const formattedMessage = this.formatMessage('INFO', message, context);
-    console.log(formattedMessage);
+    console.debug(formattedMessage);
   }
 
   /**
