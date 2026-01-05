@@ -189,8 +189,10 @@ export class ChatSelector {
 		const dropdownBtn = document.createElement('button');
 		dropdownBtn.className = 'spark-chat-dropdown-btn';
 		dropdownBtn.textContent = '☰';
-		dropdownBtn.title = 'Select Conversation';
-		dropdownBtn.onclick = async () => await this.showConversationModal();
+		dropdownBtn.title = 'Select conversation';
+		dropdownBtn.onclick = () => {
+			void this.showConversationModal();
+		};
 
 		containerEl.appendChild(dropdownBtn);
 	}
@@ -202,7 +204,7 @@ export class ChatSelector {
 		const newChatBtn = document.createElement('button');
 		newChatBtn.className = 'spark-chat-new-btn';
 		newChatBtn.textContent = '+';
-		newChatBtn.title = 'New Chat';
+		newChatBtn.title = 'New chat';
 		newChatBtn.onclick = () => this.onNewChat();
 
 		containerEl.appendChild(newChatBtn);

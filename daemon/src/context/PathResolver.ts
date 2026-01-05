@@ -71,7 +71,7 @@ export class PathResolver implements IPathResolver {
         absolute: true,
       });
       return files;
-    } catch (_error) {
+    } catch {
       return [];
     }
   }

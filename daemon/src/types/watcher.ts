@@ -40,7 +40,7 @@ export interface FileWatcherConfig {
  */
 export interface IFileWatcher {
   start(): void;
-  stop(): void;
+  stop(): Promise<void>;
   isWatching(): boolean;
   on(event: 'change', listener: (change: FileChange) => void): void;
   off(event: 'change', listener: (change: FileChange) => void): void;
