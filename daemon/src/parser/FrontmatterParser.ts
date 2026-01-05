@@ -59,32 +59,30 @@ export class FrontmatterParser implements IFrontmatterParser {
     try {
       // Parse with gray-matter
       const result = matter(content);
-
-      // Convert Date objects to strings, but keep numbers/booleans as-is
-      // This provides the best of both worlds: dates are consistent strings,
-      // but numbers can be used for comparisons (e.g., priority > 5)
-      const normalizeDates = (obj: unknown): unknown => {
-        if (obj === null || obj === undefined) return obj;
-        if (typeof obj === 'string') return obj;
-        if (typeof obj === 'boolean') return obj;
-        if (typeof obj === 'number') return obj; // Keep numbers as-is
-        if (obj instanceof Date) return obj.toISOString().split('T')[0]; // YYYY-MM-DD
-        if (Array.isArray(obj)) return obj.map(normalizeDates);
-        if (typeof obj === 'object') {
-          const result: Record<string, unknown> = {};
-          for (const [key, value] of Object.entries(obj)) {
-            result[key] = normalizeDates(value);
-          }
-          return result;
-        }
-        return obj;
-      };
-
-      return normalizeDates(result.data) as Record<string, unknown>;
+      return this.normalizeDates(result.data) as Record<string, unknown>;
     } catch (_error) {
       // Invalid frontmatter, return empty object
       return {};
     }
+  }
+
+  // Convert Date objects to strings (YYYY-MM-DD) but keep numbers/booleans/strings as-is.
+  // This provides the best of both worlds: dates are consistent strings,
+  // but numbers can be used for comparisons (e.g., priority > 5).
+  private normalizeDates(obj: unknown): unknown {
+    if (obj === null || obj === undefined) return obj;
+    if (obj instanceof Date) return obj.toISOString().split('T')[0];
+    if (Array.isArray(obj)) return obj.map((v) => this.normalizeDates(v));
+    if (typeof obj === 'object') return this.normalizeDatesObject(obj as Record<string, unknown>);
+    return obj;
+  }
+
+  private normalizeDatesObject(obj: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = this.normalizeDates(value);
+    }
+    return result;
   }
 
   /**

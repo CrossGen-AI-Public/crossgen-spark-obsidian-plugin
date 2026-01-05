@@ -295,7 +295,7 @@ export class SparkDaemon implements ISparkDaemon {
         void this.handleFileChange(change);
       });
 
-      await this.watcher.start();
+      this.watcher.start();
       this.logger.info('File watcher restarted successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

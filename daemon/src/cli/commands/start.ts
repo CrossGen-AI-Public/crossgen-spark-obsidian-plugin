@@ -97,7 +97,8 @@ export function registerStartCommand(program: Command): void {
             if (error instanceof Error) {
               printError(`   Error: ${error.message}`);
               if ('code' in error) {
-                printError(`   Code: ${(error as Error & { code: string }).code}`);
+                const code = (error as Error & { code: unknown }).code;
+                printError(`   Code: ${String(code)}`);
               }
             } else {
               printError(`   Error: ${String(error)}`);

@@ -211,7 +211,7 @@ export class InlineChatManager {
 		}
 
 		// Generate unique marker ID
-		this.markerId = `spark-inline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		this.markerId = `spark-inline-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
 		// Set flag to ignore editor change events from our modifications
 		this.isAdjustingContent = true;
@@ -351,8 +351,7 @@ export class InlineChatManager {
 		editor: Editor
 	): { top: number; left: number; parentElement: HTMLElement } | null {
 		// Get editor container (CodeMirror 6 structure)
-		// biome-ignore lint/suspicious/noExplicitAny: CodeMirror internal property access
-		const editorEl = (editor as any).cm?.dom as HTMLElement | undefined;
+		const editorEl = this.getCodeMirrorDom(editor);
 		if (!editorEl) {
 			return null;
 		}
@@ -400,6 +399,12 @@ export class InlineChatManager {
 			left,
 			parentElement: scrollerEl,
 		};
+	}
+
+	private getCodeMirrorDom(editor: Editor): HTMLElement | null {
+		const maybe = editor as unknown as { cm?: { dom?: unknown } };
+		const dom = maybe.cm?.dom;
+		return dom instanceof HTMLElement ? dom : null;
 	}
 
 	/**

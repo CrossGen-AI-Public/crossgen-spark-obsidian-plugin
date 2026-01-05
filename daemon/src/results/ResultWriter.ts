@@ -47,7 +47,8 @@ export class ResultWriter {
       }
 
       // If line already has a status indicator, replace it
-      const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/;
+      // Match status emojis: ⏳ (pending), ✅ (completed), ❌ (error), ⚠️ (warning)
+      const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/u;
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `✅ ${cleanLine}`;
 
@@ -99,7 +100,8 @@ export class ResultWriter {
         throw new SparkError('Command line is empty', 'EMPTY_LINE');
       }
 
-      const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/;
+      // Match status emojis: ⏳ (pending), ✅ (completed), ❌ (error), ⚠️ (warning)
+      const statusPrefixRegex = /^[⏳✅❌⚠️]\s+/u;
       const cleanLine = currentLine.replace(statusPrefixRegex, '');
       lines[commandLine - 1] = `${status} ${cleanLine}`;
 

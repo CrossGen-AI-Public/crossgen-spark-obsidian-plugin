@@ -34,108 +34,101 @@ export class InlineChatDetector implements IInlineChatDetector {
     let i = 0;
 
     while (i < lines.length) {
-      const line = lines[i];
-
-      // Check for opening marker (do this before empty check)
-      const openingMatch = line?.match(this.OPENING_MARKER_REGEX);
-      if (!openingMatch) {
+      const parsed = this.tryParseInlineChat(lines, i);
+      if (!parsed) {
         i++;
         continue;
       }
 
-      // Extract status, ID, agent, and optional message from opening marker
-      // Format: <!-- spark-inline-chat:status:id:agent:message -->
-      const status = openingMatch[1] as InlineChatStatus;
-      const id = openingMatch[2] ?? '';
-      const agentInComment = openingMatch[3]; // Agent name (new format)
-      const messageInComment = openingMatch[4]; // Message embedded in comment (new format)
-      const startLine = i + 1; // Line numbers are 1-indexed
+      inlineChats.push(parsed.chat);
+      i = parsed.nextIndex;
+    }
 
-      // Find closing marker
-      let endLine = -1;
-      const contentLines: string[] = [];
+    return inlineChats;
+  }
 
-      for (let j = i + 1; j < lines.length; j++) {
-        const currentLine = lines[j];
-        if (!currentLine) {
-          contentLines.push('');
-          continue;
-        }
+  private tryParseInlineChat(
+    lines: string[],
+    startIndex: number
+  ): { chat: ParsedInlineChat; nextIndex: number } | null {
+    const openingMatch = lines[startIndex]?.match(this.OPENING_MARKER_REGEX);
+    if (!openingMatch) return null;
 
-        // Check if this is the closing marker
-        if (this.CLOSING_MARKER_REGEX.test(currentLine)) {
-          endLine = j + 1; // Line numbers are 1-indexed
-          break;
-        }
+    const status = openingMatch[1] as InlineChatStatus;
+    const id = openingMatch[2] ?? '';
+    const agentInComment = openingMatch[3];
+    const messageInComment = openingMatch[4];
 
-        // Otherwise it's content
-        contentLines.push(currentLine);
-      }
+    const closingIndex = this.findClosingMarkerIndex(lines, startIndex + 1);
+    if (closingIndex === null) return null;
 
-      // If no closing marker found, skip this opening marker
-      if (endLine === -1) {
-        i++;
-        continue;
-      }
+    const contentLines = lines.slice(startIndex + 1, closingIndex);
+    const { userMessage, aiResponse } = this.parseInlineChatContent(
+      status,
+      contentLines,
+      messageInComment
+    );
+    const resolvedUserMessage = this.applyAgentPrefix(agentInComment, userMessage);
 
-      // Parse content based on status
-      let userMessage = '';
-      let aiResponse: string | undefined;
+    const startLine = startIndex + 1; // 1-indexed
+    const endLine = closingIndex + 1; // 1-indexed
+    const raw = lines.slice(startIndex, endLine).join('\n');
+    const mentions = resolvedUserMessage
+      ? this.mentionParser.parse(resolvedUserMessage)
+      : undefined;
 
-      if (status === 'complete') {
-        // For complete status, content is the AI response
-        aiResponse = contentLines.join('\n').trim();
-      } else {
-        // For pending/processing/error, check for user message
-        // New format: message in comment (<!-- spark-inline-chat:pending:id:agent:message -->)
-        // Old format: separate line with "User: [message]"
-        if (messageInComment) {
-          // Unescape newlines that were escaped in the marker
-          userMessage = messageInComment.replace(/\\n/g, '\n');
-        } else {
-          // Fall back to old format for backward compatibility
-          const firstLine = contentLines[0] || '';
-          const userMatch = firstLine.match(/^User:\s*(.*)$/);
-          if (userMatch) {
-            userMessage = userMatch[1] || '';
-          } else {
-            // Fallback: treat entire content as user message
-            userMessage = contentLines.join('\n').trim();
-          }
-        }
-      }
-
-      // If agent is in the comment and not already in the message, prepend it
-      // Format: "@agentName message" so mentions can be parsed correctly
-      if (agentInComment && userMessage && !userMessage.startsWith('@')) {
-        userMessage = `@${agentInComment} ${userMessage}`;
-      } else if (agentInComment && !userMessage) {
-        userMessage = `@${agentInComment}`;
-      }
-
-      // Create parsed inline chat
-      const raw = lines.slice(i, endLine).join('\n');
-
-      // Parse mentions from user message (for pending/processing chats)
-      const mentions = userMessage ? this.mentionParser.parse(userMessage) : undefined;
-
-      inlineChats.push({
+    return {
+      chat: {
         startLine,
         endLine,
         id,
         status,
-        userMessage,
+        userMessage: resolvedUserMessage,
         aiResponse,
         raw,
         mentions,
-      });
+      },
+      nextIndex: endLine, // move to line after closing marker (0-indexed)
+    };
+  }
 
-      // Continue from the line after the closing marker
-      // endLine is 1-indexed line number, convert to 0-indexed for next iteration
-      i = endLine; // This sets i to the 0-indexed position of the line after closing marker
+  private findClosingMarkerIndex(lines: string[], startIndex: number): number | null {
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i];
+      if (line && this.CLOSING_MARKER_REGEX.test(line)) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  private parseInlineChatContent(
+    status: InlineChatStatus,
+    contentLines: string[],
+    messageInComment?: string
+  ): { userMessage: string; aiResponse?: string } {
+    if (status === 'complete') {
+      return { userMessage: '', aiResponse: contentLines.join('\n').trim() };
     }
 
-    return inlineChats;
+    if (messageInComment) {
+      return { userMessage: messageInComment.replace(/\\n/g, '\n') };
+    }
+
+    const firstLine = contentLines[0] || '';
+    const userMatch = firstLine.match(/^User:\s*(.*)$/);
+    if (userMatch) {
+      return { userMessage: userMatch[1] || '' };
+    }
+
+    return { userMessage: contentLines.join('\n').trim() };
+  }
+
+  private applyAgentPrefix(agentInComment: string | undefined, userMessage: string): string {
+    if (!agentInComment) return userMessage;
+    if (!userMessage) return `@${agentInComment}`;
+    if (userMessage.startsWith('@')) return userMessage;
+    return `@${agentInComment} ${userMessage}`;
   }
 
   /**

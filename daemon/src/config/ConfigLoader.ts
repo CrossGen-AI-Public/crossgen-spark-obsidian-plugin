@@ -60,27 +60,27 @@ export class ConfigLoader implements IConfigLoader {
    * @param vaultPath - Path to vault root
    * @throws SparkError if config is invalid
    */
-  public async load(vaultPath: string): Promise<SparkConfig> {
-    const configPath = join(vaultPath, '.spark', 'config.yaml');
-
-    // If no config file, return defaults
-    if (!existsSync(configPath)) {
-      return getDefaults();
-    }
-
+  public load(vaultPath: string): Promise<SparkConfig> {
     try {
+      const configPath = join(vaultPath, '.spark', 'config.yaml');
+
+      // If no config file, return defaults
+      if (!existsSync(configPath)) {
+        return Promise.resolve(getDefaults());
+      }
+
       const content = readFileSync(configPath, 'utf-8');
 
       // Handle empty file or only comments
       if (!content.trim() || !content.trim().replace(/#.*/g, '').trim()) {
-        return getDefaults();
+        return Promise.resolve(getDefaults());
       }
 
       const userConfig = parseYAML(content);
 
       // Handle empty YAML
       if (!userConfig || Object.keys(userConfig).length === 0) {
-        return getDefaults();
+        return Promise.resolve(getDefaults());
       }
 
       // Merge with defaults
@@ -89,16 +89,18 @@ export class ConfigLoader implements IConfigLoader {
       // Validate
       const validated = this.validator.validate(config);
 
-      return validated;
+      return Promise.resolve(validated);
     } catch (error) {
       if (error instanceof SparkError) {
-        throw error;
+        return Promise.reject(error);
       }
 
-      throw new SparkError(
-        `Failed to load configuration: ${(error as Error).message}`,
-        'CONFIG_LOAD_FAILED',
-        { originalError: error }
+      return Promise.reject(
+        new SparkError(
+          `Failed to load configuration: ${(error as Error).message}`,
+          'CONFIG_LOAD_FAILED',
+          { originalError: error }
+        )
       );
     }
   }

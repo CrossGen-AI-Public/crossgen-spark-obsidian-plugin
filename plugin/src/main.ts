@@ -100,7 +100,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		});
 
 		// Check daemon status and show setup modal if needed
-		this.checkDaemonStatus();
+		void this.checkDaemonStatus();
 
 		console.debug('Spark Assistant: Plugin loaded successfully');
 	}

@@ -17,34 +17,38 @@ export class ItemLoader {
 	/**
 	 * Load all commands from .spark/commands/
 	 */
-	async loadCommands(): Promise<PaletteItem[]> {
+	loadCommands(): Promise<PaletteItem[]> {
 		return this.resourceService.loadCommands();
 	}
 
 	/**
 	 * Load all agents from .spark/agents/
 	 */
-	async loadAgents(): Promise<PaletteItem[]> {
+	loadAgents(): Promise<PaletteItem[]> {
 		return this.resourceService.loadAgents();
 	}
 
 	/**
 	 * Load all markdown files from vault
 	 */
-	async loadFiles(): Promise<PaletteItem[]> {
-		return this.app.vault
-			.getMarkdownFiles()
-			.filter(file => !file.path.startsWith('.spark/'))
-			.map(file => this.createFileItem(file));
+	loadFiles(): Promise<PaletteItem[]> {
+		return Promise.resolve(
+			this.app.vault
+				.getMarkdownFiles()
+				.filter(file => !file.path.startsWith('.spark/'))
+				.map(file => this.createFileItem(file))
+		);
 	}
 
 	/**
 	 * Load all folders from vault
 	 */
-	async loadFolders(): Promise<PaletteItem[]> {
-		return this.getAllFolders(this.app.vault.getRoot())
-			.filter(folder => this.shouldIncludeFolder(folder))
-			.map(folder => this.createFolderItem(folder));
+	loadFolders(): Promise<PaletteItem[]> {
+		return Promise.resolve(
+			this.getAllFolders(this.app.vault.getRoot())
+				.filter(folder => this.shouldIncludeFolder(folder))
+				.map(folder => this.createFolderItem(folder))
+		);
 	}
 
 	/**

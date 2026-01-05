@@ -3,24 +3,41 @@
  * Shared utilities for CLI commands
  */
 
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync, readdirSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { print, printError } from './output.js';
 import { unregisterDaemon } from './registry.js';
+
+function hasObsidianConfigDir(vaultPath: string): boolean {
+  try {
+    const entries = readdirSync(vaultPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const candidateDir = path.join(vaultPath, entry.name);
+      const appJson = path.join(candidateDir, 'app.json');
+      const pluginsDir = path.join(candidateDir, 'plugins');
+      if (existsSync(appJson) && existsSync(pluginsDir)) {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Validate that a path is an Obsidian vault
  */
 export function validateVault(absolutePath: string, context: 'start' | 'dev' = 'start'): void {
-  const obsidianDir = path.join(absolutePath, '.obsidian');
-  if (!existsSync(obsidianDir)) {
-    printError('❌ Not an Obsidian vault: .obsidian directory not found');
+  if (!hasObsidianConfigDir(absolutePath)) {
+    printError('❌ Not an Obsidian vault: configuration folder not found');
     printError(`   Path: ${absolutePath}`);
     printError('');
     if (context === 'dev') {
       printError('   Dev mode must be run from an Obsidian vault directory.');
     } else {
-      printError('   An Obsidian vault must contain a .obsidian directory.');
+      printError('   An Obsidian vault must contain a configuration folder.');
     }
     printError('   Please provide the path to your Obsidian vault.');
     printError('');

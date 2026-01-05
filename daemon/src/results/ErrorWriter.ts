@@ -9,7 +9,7 @@ import { Logger } from '../logger/Logger.js';
 import { SparkError } from '../types/index.js';
 
 export interface ErrorDetails {
-  error: Error | SparkError | unknown;
+  error: unknown;
   filePath: string;
   commandLine?: number;
   commandText?: string;
@@ -266,7 +266,7 @@ export class ErrorWriter {
       // Append to JSONL file
       const { appendFileSync } = await import('node:fs');
       appendFileSync(notificationsFile, notificationLine, 'utf-8');
-    } catch (_error) {
+    } catch {
       // If file doesn't exist, create it
       try {
         writeFileSync(notificationsFile, notificationLine, 'utf-8');

@@ -84,7 +84,7 @@ export class ConfigValidator implements IConfigValidator {
     const providers = a.providers as Record<string, unknown>;
 
     // Check if defaultProvider exists in providers
-    if (!((a.defaultProvider as string) in providers)) {
+    if (!(a.defaultProvider in providers)) {
       throw new SparkError(
         `ai.defaultProvider "${a.defaultProvider}" not found in ai.providers`,
         'INVALID_AI_PROVIDER'

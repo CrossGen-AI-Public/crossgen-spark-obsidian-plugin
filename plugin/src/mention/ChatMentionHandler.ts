@@ -22,6 +22,26 @@ export class ChatMentionHandler {
 	private currentTrigger: { char: string; position: number } | null = null;
 	private chatContainer: HTMLElement | null = null;
 
+	private readonly onInput = () => {
+		this.handleInput();
+	};
+
+	private readonly onClick = (event: MouseEvent) => {
+		this.handleClick(event);
+	};
+
+	private readonly onFocus = () => {
+		this.handleFocus();
+	};
+
+	private readonly onKeydown = (event: KeyboardEvent) => {
+		this.handleKeydown(event);
+	};
+
+	private readonly onPaletteSelection = (event: Event) => {
+		this.handlePaletteSelection(event);
+	};
+
 	constructor(app: App, mentionDecorator: MentionDecorator) {
 		this.app = app;
 		this.mentionDecorator = mentionDecorator;
@@ -56,19 +76,19 @@ export class ChatMentionHandler {
 		if (!this.inputElement) return;
 
 		// Handle input changes for mention decoration
-		this.inputElement.addEventListener('input', this.handleInput.bind(this));
+		this.inputElement.addEventListener('input', this.onInput);
 
 		// Handle clicks on mentions
-		this.inputElement.addEventListener('click', this.handleClick.bind(this));
+		this.inputElement.addEventListener('click', this.onClick);
 
 		// Process on focus (in case agents/commands changed)
-		this.inputElement.addEventListener('focus', this.handleFocus.bind(this));
+		this.inputElement.addEventListener('focus', this.onFocus);
 
 		// Handle keyboard navigation for palette
-		this.inputElement.addEventListener('keydown', this.handleKeydown.bind(this));
+		this.inputElement.addEventListener('keydown', this.onKeydown);
 
 		// Listen for palette selection
-		document.addEventListener('spark-palette-select', this.handlePaletteSelection.bind(this));
+		document.addEventListener('spark-palette-select', this.onPaletteSelection);
 	}
 
 	/**
@@ -596,82 +616,74 @@ export class ChatMentionHandler {
 	private getCursorOffset(range: Range): number {
 		if (!this.inputElement) return 0;
 
-		let offset = 0;
-		const endContainer = range.endContainer;
-		const endOffset = range.endOffset;
-
 		// Special case: cursor is positioned in the input element itself (not in a child node)
-		// This happens when cursor is after a <br> or between nodes
-		if (endContainer === this.inputElement) {
-			// Walk through child nodes up to the offset
-			for (let i = 0; i < endOffset && i < this.inputElement.childNodes.length; i++) {
-				const child = this.inputElement.childNodes[i];
-				if (child.nodeType === Node.TEXT_NODE) {
-					const text = child.textContent || '';
-					const len = text.replace(/\u200B/g, '').length;
-
-					offset += len;
-				} else if (child.nodeName === 'BR') {
-					offset += 1;
-				} else if (child.nodeType === Node.ELEMENT_NODE) {
-					// Recursively count content in element
-					const len = this.getTextWithLineBreaks(child as HTMLElement).length;
-					offset += len;
-				}
-			}
-			return offset;
+		// This happens when cursor is after a <br> or between nodes.
+		if (range.endContainer === this.inputElement) {
+			return this.getCursorOffsetFromRoot(range.endOffset);
 		}
 
-		// Walk through DOM and calculate position accounting for <br> elements
+		return this.getCursorOffsetWithWalker(range);
+	}
+
+	private getCursorOffsetFromRoot(endOffset: number): number {
+		if (!this.inputElement) return 0;
+
+		let offset = 0;
+		for (let i = 0; i < endOffset && i < this.inputElement.childNodes.length; i++) {
+			offset += this.getNodeTextLength(this.inputElement.childNodes[i]);
+		}
+		return offset;
+	}
+
+	private getCursorOffsetWithWalker(range: Range): number {
+		if (!this.inputElement) return 0;
+
+		let offset = 0;
 		const walker = document.createTreeWalker(
 			this.inputElement,
-			NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
-			{
-				acceptNode: node => {
-					// Stop if we've reached the cursor position
-					if (range.endContainer === node) {
-						return NodeFilter.FILTER_ACCEPT;
-					}
-					// Check if cursor is inside this node
-					if (node.contains(range.endContainer)) {
-						return NodeFilter.FILTER_ACCEPT;
-					}
-					// Skip nodes after cursor
-					const position = range.endContainer.compareDocumentPosition(node);
-					if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
-						return NodeFilter.FILTER_REJECT;
-					}
-					return NodeFilter.FILTER_ACCEPT;
-				},
-			}
+			NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT
 		);
 
-		let currentNode = walker.nextNode();
+		let currentNode: Node | null = walker.nextNode();
 		while (currentNode) {
 			if (currentNode === range.endContainer) {
-				// We've reached the cursor position
 				if (currentNode.nodeType === Node.TEXT_NODE) {
-					// Filter out zero-width spaces
-					const text = currentNode.textContent?.substring(0, range.endOffset) || '';
-					offset += text.replace(/\u200B/g, '').length;
+					const text = (currentNode.textContent || '').slice(0, range.endOffset);
+					offset += this.getFilteredTextLength(text);
 				}
 				break;
-			} else if (currentNode.contains(range.endContainer)) {
-				// Cursor is inside this node, keep traversing
+			}
+
+			if (currentNode.contains(range.endContainer)) {
 				currentNode = walker.nextNode();
 				continue;
-			} else if (currentNode.nodeType === Node.TEXT_NODE) {
-				// Text node before cursor - filter out zero-width spaces
-				const text = currentNode.textContent || '';
-				offset += text.replace(/\u200B/g, '').length;
-			} else if (currentNode.nodeName === 'BR') {
-				// BR element - count as newline
-				offset += 1;
 			}
+
+			offset += this.getNodeTextLength(currentNode);
 			currentNode = walker.nextNode();
 		}
 
 		return offset;
+	}
+
+	private getNodeTextLength(node: Node): number {
+		if (node.nodeType === Node.TEXT_NODE) {
+			return this.getFilteredTextLength(node.textContent || '');
+		}
+
+		if (node.nodeName === 'BR') {
+			return 1;
+		}
+
+		if (node.nodeType === Node.ELEMENT_NODE) {
+			return this.getTextWithLineBreaks(node as HTMLElement).length;
+		}
+
+		return 0;
+	}
+
+	private getFilteredTextLength(text: string): number {
+		return text.replace(/\u200B/g, '').length;
 	}
 
 	/**
@@ -703,81 +715,95 @@ export class ChatMentionHandler {
 		const range = document.createRange();
 		let currentOffset = 0;
 
-		const walk = (node: Node): boolean => {
+		const walker = document.createTreeWalker(
+			element,
+			NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT
+		);
+		let node: Node | null = walker.nextNode();
+
+		while (node) {
 			if (node.nodeType === Node.TEXT_NODE) {
-				// Filter out zero-width spaces (same as getCursorOffset)
 				const text = node.textContent || '';
-				const filteredText = text.replace(/\u200B/g, '');
-				const textLength = filteredText.length;
+				const filteredLength = this.getFilteredTextLength(text);
 
-				if (currentOffset + textLength >= offset) {
-					// Map the offset back to the actual node offset (accounting for zero-width spaces)
+				if (currentOffset + filteredLength >= offset) {
 					const targetOffset = offset - currentOffset;
-					let nodeOffset = 0;
-					let filteredOffset = 0;
-					while (filteredOffset < targetOffset && nodeOffset < text.length) {
-						if (text[nodeOffset] !== '\u200B') {
-							filteredOffset++;
-						}
-						nodeOffset++;
-					}
-
+					const nodeOffset = this.mapFilteredOffsetToNodeOffset(text, targetOffset);
 					range.setStart(node, nodeOffset);
 					range.setEnd(node, nodeOffset);
-					return true;
+					return range;
 				}
-				currentOffset += textLength;
+
+				currentOffset += filteredLength;
 			} else if (node.nodeName === 'BR') {
-				// BR elements count as 1 character (newline)
-				if (currentOffset === offset) {
-					// Cursor is right before this BR
-					range.setStartBefore(node);
-					range.setEndBefore(node);
-					return true;
-				}
-				if (currentOffset + 1 === offset) {
-					// Cursor is right after this BR
-					if (node.nextSibling) {
-						// Position at start of next sibling
-						if (node.nextSibling.nodeType === Node.TEXT_NODE) {
-							range.setStart(node.nextSibling, 0);
-							range.setEnd(node.nextSibling, 0);
-						} else {
-							range.setStartBefore(node.nextSibling);
-							range.setEndBefore(node.nextSibling);
-						}
-					} else {
-						// No next sibling - need to insert a zero-width space after BR
-						const parent = node.parentNode;
-						if (parent) {
-							const zwsp = document.createTextNode('\u200B');
-							parent.insertBefore(zwsp, node.nextSibling);
-							range.setStart(zwsp, 0);
-							range.setEnd(zwsp, 0);
-						}
-					}
-					return true;
+				const found = this.trySetRangeAtBr(range, node, offset, currentOffset);
+				if (found) {
+					return range;
 				}
 				currentOffset += 1;
-			} else if (node.nodeType === Node.ELEMENT_NODE) {
-				// Walk through child nodes
-				for (let i = 0; i < node.childNodes.length; i++) {
-					if (walk(node.childNodes[i])) {
-						return true;
-					}
-				}
 			}
-			return false;
-		};
 
-		if (walk(element)) {
-			return range;
+			node = walker.nextNode();
 		}
 
 		// Fallback: place cursor at end
 		range.selectNodeContents(element);
 		range.collapse(false);
 		return range;
+	}
+
+	private mapFilteredOffsetToNodeOffset(text: string, targetOffset: number): number {
+		let nodeOffset = 0;
+		let filteredOffset = 0;
+
+		while (filteredOffset < targetOffset && nodeOffset < text.length) {
+			if (text[nodeOffset] !== '\u200B') {
+				filteredOffset++;
+			}
+			nodeOffset++;
+		}
+
+		return nodeOffset;
+	}
+
+	private trySetRangeAtBr(
+		range: Range,
+		brNode: Node,
+		offset: number,
+		currentOffset: number
+	): boolean {
+		// Cursor is right before this BR
+		if (currentOffset === offset) {
+			range.setStartBefore(brNode);
+			range.setEndBefore(brNode);
+			return true;
+		}
+
+		// Cursor is right after this BR
+		if (currentOffset + 1 === offset) {
+			const next = brNode.nextSibling;
+			if (next) {
+				if (next.nodeType === Node.TEXT_NODE) {
+					range.setStart(next, 0);
+					range.setEnd(next, 0);
+				} else {
+					range.setStartBefore(next);
+					range.setEndBefore(next);
+				}
+				return true;
+			}
+
+			const parent = brNode.parentNode;
+			if (parent) {
+				const zwsp = document.createTextNode('\u200B');
+				parent.appendChild(zwsp);
+				range.setStart(zwsp, 0);
+				range.setEnd(zwsp, 0);
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -823,12 +849,12 @@ export class ChatMentionHandler {
 	 */
 	destroy(): void {
 		if (this.inputElement) {
-			this.inputElement.removeEventListener('input', this.handleInput);
-			this.inputElement.removeEventListener('click', this.handleClick);
-			this.inputElement.removeEventListener('focus', this.handleFocus);
-			this.inputElement.removeEventListener('keydown', this.handleKeydown);
+			this.inputElement.removeEventListener('input', this.onInput);
+			this.inputElement.removeEventListener('click', this.onClick);
+			this.inputElement.removeEventListener('focus', this.onFocus);
+			this.inputElement.removeEventListener('keydown', this.onKeydown);
 		}
-		document.removeEventListener('spark-palette-select', this.handlePaletteSelection);
+		document.removeEventListener('spark-palette-select', this.onPaletteSelection);
 		this.hidePalette();
 	}
 }

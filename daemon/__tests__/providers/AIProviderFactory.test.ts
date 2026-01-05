@@ -11,6 +11,27 @@ import { Logger } from '../../src/logger/Logger.js';
 import type { AIConfig } from '../../src/types/config.js';
 import { ProviderType } from '../../src/types/provider.js';
 
+// Mock SecretsLoader so tests don't depend on real ~/.spark/secrets.yaml
+jest.mock('../../src/config/SecretsLoader.js', () => {
+    class SecretsLoader {
+        load() {}
+
+        getApiKey(providerName: string): string | undefined {
+            const envKey = `TEST_SECRET_${providerName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+            return process.env[envKey];
+        }
+
+        hasApiKey(providerName: string): boolean {
+            return this.getApiKey(providerName) !== undefined;
+        }
+
+        clear() {}
+        reload() {}
+    }
+
+    return { SecretsLoader };
+});
+
 // Mock the Claude Agent SDK
 jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
     query: jest.fn(),
@@ -53,6 +74,10 @@ describe('AIProviderFactory', () => {
 
         // Set up test API key
         process.env.ANTHROPIC_API_KEY = 'test-api-key-for-tests';
+        delete process.env.TEST_SECRET_ANTHROPIC;
+        delete process.env.TEST_SECRET_CLAUDE_AGENT;
+        delete process.env.TEST_SECRET_CLAUDE_CLIENT;
+        delete process.env.TEST_SECRET_CLAUDE_CODE;
 
         // Register providers manually
         const registry = ProviderRegistry.getInstance();
@@ -85,6 +110,24 @@ describe('AIProviderFactory', () => {
             // Test passes config validation
             expect(mockConfig.defaultProvider).toBe('claude-agent');
             expect(mockConfig.providers['claude-client']).toBeDefined();
+        });
+
+        it('should create provider when a direct provider key is available', () => {
+            process.env.TEST_SECRET_CLAUDE_CLIENT = 'direct-key';
+            const provider = factory.createFromConfig(mockConfig, 'claude-client');
+            expect(provider).toBeInstanceOf(ClaudeDirectProvider);
+        });
+
+        it('should fall back to generic anthropic key for claude-* providers', () => {
+            process.env.TEST_SECRET_ANTHROPIC = 'shared-key';
+            const provider = factory.createFromConfig(mockConfig, 'claude-agent');
+            expect(provider).toBeInstanceOf(ClaudeAgentProvider);
+        });
+
+        it('should fall back to another Anthropic provider key when generic key is missing', () => {
+            process.env.TEST_SECRET_CLAUDE_CLIENT = 'shared-from-client';
+            const provider = factory.createFromConfig(mockConfig, 'claude-agent');
+            expect(provider).toBeInstanceOf(ClaudeAgentProvider);
         });
     });
 
