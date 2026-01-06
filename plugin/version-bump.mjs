@@ -13,3 +13,9 @@ let versions = JSON.parse(readFileSync("versions.json", "utf8"));
 versions[targetVersion] = minAppVersion;
 writeFileSync("versions.json", JSON.stringify(versions, null, "\t"));
 
+// Obsidian community plugin indexer expects versions.json at repo root.
+// Keep a repo-root copy in sync (monorepo layout convenience).
+let rootVersions = JSON.parse(readFileSync("../versions.json", "utf8"));
+rootVersions[targetVersion] = minAppVersion;
+writeFileSync("../versions.json", JSON.stringify(rootVersions, null, "\t"));
+
