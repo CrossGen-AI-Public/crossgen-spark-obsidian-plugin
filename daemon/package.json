@@ -1,6 +1,6 @@
 {
   "name": "spark-daemon",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Spark Assistant Daemon - Intelligence layer for Obsidian Spark",
   "main": "dist/index.js",
   "type": "module",
