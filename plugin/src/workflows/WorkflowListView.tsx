@@ -4,9 +4,10 @@
 
 import { type App, ItemView, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ISparkPlugin } from '../types';
-import type { WorkflowDefinition } from './types';
+import type { WorkflowDefinition, WorkflowLastRunSummary, WorkflowRunsIndex } from './types';
+import { generateId } from './types';
 import { WorkflowStorage } from './WorkflowStorage';
 
 export const WORKFLOW_LIST_VIEW_TYPE = 'spark-workflow-list-view';
@@ -20,13 +21,18 @@ interface WorkflowListProps {
 
 function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: WorkflowListProps) {
 	const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
+	const [runsIndex, setRunsIndex] = useState<WorkflowRunsIndex | null>(null);
 	const [loading, setLoading] = useState(true);
-	const storage = new WorkflowStorage(app);
+	const storage = useMemo(() => new WorkflowStorage(app), [app]);
 
 	const loadWorkflows = useCallback(async () => {
 		setLoading(true);
-		const list = await storage.listWorkflows();
+		const [list, index] = await Promise.all([
+			storage.listWorkflows(),
+			storage.loadRunsIndex(),
+		]);
 		setWorkflows(list);
+		setRunsIndex(index);
 		setLoading(false);
 	}, []);
 
@@ -65,6 +71,86 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 		const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 		return `${EN_MONTHS[date.getMonth()]} ${date.getDate()}${date.getFullYear() !== now.getFullYear() ? `, ${date.getFullYear()}` : ''}`;
 	};
+
+	const formatRunTime = (ts: number) => {
+		const date = new Date(ts);
+		const now = new Date();
+		const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+		const diffDays = Math.floor((startOfDay(now) - startOfDay(date)) / (1000 * 60 * 60 * 24));
+
+		if (diffDays === 0) {
+			return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+		} else if (diffDays === 1) {
+			return `Yesterday ${date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+		} else if (diffDays < 7) {
+			return `${diffDays} days ago`;
+		}
+		const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+		return `${EN_MONTHS[date.getMonth()]} ${date.getDate()}${date.getFullYear() !== now.getFullYear() ? `, ${date.getFullYear()}` : ''}`;
+	};
+
+	const statusIcon = (status: WorkflowLastRunSummary['status']) => {
+		switch (status) {
+			case 'completed':
+				return '✓';
+			case 'failed':
+				return '✗';
+			case 'running':
+				return '⏳';
+			case 'cancelled':
+				return '⦸';
+			default:
+				return '○';
+		}
+	};
+
+	const handleRun = useCallback(
+		async (e: React.MouseEvent, workflowId: string) => {
+			e.stopPropagation();
+			const runId = generateId('run');
+			await storage.queueWorkflow(workflowId, runId);
+
+			// Optimistically show a running last-run pill immediately.
+			setRunsIndex((prev) => {
+				const base: WorkflowRunsIndex = prev ?? { version: 1, updatedAt: Date.now(), workflows: {} };
+				return {
+					...base,
+					updatedAt: Date.now(),
+					workflows: {
+						...base.workflows,
+						[workflowId]: {
+							lastRunId: runId,
+							status: 'running',
+							startTime: Date.now(),
+						},
+					},
+				};
+			});
+
+			// Then refresh from disk a few times to pick up engine-written index updates.
+			for (const delayMs of [250, 750, 1500]) {
+				globalThis.setTimeout(async () => {
+					const index = await storage.loadRunsIndex();
+					if (index) setRunsIndex(index);
+				}, delayMs);
+			}
+		},
+		[storage]
+	);
+
+	// While something is running, poll the on-disk index so the list updates without manual refresh.
+	useEffect(() => {
+		if (!runsIndex) return;
+		const anyRunning = Object.values(runsIndex.workflows || {}).some((w) => w.status === 'running');
+		if (!anyRunning) return;
+
+		const interval = globalThis.setInterval(async () => {
+			const index = await storage.loadRunsIndex();
+			if (index) setRunsIndex(index);
+		}, 1000);
+
+		return () => globalThis.clearInterval(interval);
+	}, [runsIndex, storage]);
 
 	if (loading) {
 		return (
@@ -130,6 +216,9 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 			) : (
 				<div className="spark-workflow-list">
 					{workflows.map((workflow) => (
+						(() => {
+							const last = runsIndex?.workflows?.[workflow.id];
+							return (
 						<div
 							key={workflow.id}
 							className="spark-workflow-list-item"
@@ -166,8 +255,38 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 									</span>
 									<span>·</span>
 									<span>{formatDate(workflow.updated)}</span>
+									<span>·</span>
+									{last ? (
+										<span className={`spark-workflow-last-run spark-workflow-last-run-${last.status}`}>
+											<span className="spark-workflow-last-run-icon">{statusIcon(last.status)}</span>
+											<span className="spark-workflow-last-run-time">{formatRunTime(last.startTime)}</span>
+										</span>
+									) : (
+										<span className="spark-workflow-last-run spark-workflow-last-run-none">No runs</span>
+									)}
 								</div>
 							</div>
+							<button
+								type="button"
+								className="spark-workflow-list-item-run clickable-icon"
+								onClick={(e) => handleRun(e, workflow.id)}
+								aria-label="Run workflow"
+								title="Run workflow"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								>
+									<polygon points="6 3 20 12 6 21 6 3" />
+								</svg>
+							</button>
 							<button
 								type="button"
 								className="spark-workflow-list-item-delete clickable-icon"
@@ -194,6 +313,8 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 								</svg>
 							</button>
 						</div>
+							);
+						})()
 					))}
 				</div>
 			)}

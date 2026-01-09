@@ -77,3 +77,4 @@ coverage/
 .cursor/*
 CLAUDE.md
 specs/*
+.context/

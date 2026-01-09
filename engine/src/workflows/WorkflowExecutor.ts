@@ -28,6 +28,7 @@ import type {
   WorkflowQueueItem,
   WorkflowRun,
 } from './types.js';
+import { updateRunsIndexFromRun } from './WorkflowRunsIndex.js';
 
 const WORKFLOWS_DIR = '.spark/workflows';
 const WORKFLOW_RUNS_DIR = '.spark/workflow-runs';
@@ -517,5 +518,16 @@ export class WorkflowExecutor {
 
     const path = join(runsDir, `${run.id}.json`);
     writeFileSync(path, JSON.stringify(run, null, 2));
+
+    // Maintain last-run summary index for fast UI listing (workflow library)
+    try {
+      updateRunsIndexFromRun(this.vaultPath, run);
+    } catch (error) {
+      this.logger.warn('Failed to update workflow runs index', {
+        workflowId: run.workflowId,
+        runId: run.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }

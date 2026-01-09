@@ -3,14 +3,20 @@
  */
 
 import type { App } from 'obsidian';
-import type { WorkflowDefinition, WorkflowQueueItem, WorkflowRun } from './types';
+import type {
+	WorkflowDefinition,
+	WorkflowQueueItem,
+	WorkflowRun,
+	WorkflowRunsIndex,
+} from './types';
 
 const WORKFLOWS_DIR = '.spark/workflows';
 const WORKFLOW_RUNS_DIR = '.spark/workflow-runs';
 const WORKFLOW_QUEUE_DIR = '.spark/workflow-queue';
+const WORKFLOW_RUNS_INDEX_PATH = '.spark/workflow-runs/index.json';
 
 export class WorkflowStorage {
-	private app: App;
+	private readonly app: App;
 
 	constructor(app: App) {
 		this.app = app;
@@ -140,9 +146,26 @@ export class WorkflowStorage {
 			}
 		}
 
-		const sorted = runs.sort((a, b) => b.startTime - a.startTime);
+		const sorted = [...runs].sort((a, b) => b.startTime - a.startTime);
 
 		return sorted;
+	}
+
+	/**
+	 * Load engine-maintained workflow runs index (last-run summary per workflow).
+	 */
+	async loadRunsIndex(): Promise<WorkflowRunsIndex | null> {
+		// Use adapter directly for .spark/ internal files
+		const exists = await this.app.vault.adapter.exists(WORKFLOW_RUNS_INDEX_PATH);
+		if (!exists) return null;
+
+		try {
+			const content = await this.app.vault.adapter.read(WORKFLOW_RUNS_INDEX_PATH);
+			return JSON.parse(content) as WorkflowRunsIndex;
+		} catch (error) {
+			console.error('Failed to load workflow runs index:', error);
+			return null;
+		}
 	}
 
 	/**
@@ -158,6 +181,46 @@ export class WorkflowStorage {
 
 		// Use adapter directly for .spark/ internal files
 		await this.app.vault.adapter.write(path, content);
+	}
+
+	/**
+	 * Delete a single run for a workflow
+	 */
+	async deleteRun(workflowId: string, runId: string): Promise<void> {
+		const path = `${WORKFLOW_RUNS_DIR}/${workflowId}/${runId}.json`;
+
+		// Use adapter directly for .spark/ internal files
+		const exists = await this.app.vault.adapter.exists(path);
+		if (exists) {
+			await this.app.vault.adapter.remove(path);
+		}
+
+		// Keep the engine-maintained index consistent when runs are deleted from the UI.
+		// If the deleted run was the indexed last run, recompute the new last run from remaining runs.
+		const index = await this.loadRunsIndex();
+		if (!index) return;
+
+		const existing = index.workflows?.[workflowId];
+		if (!existing) return;
+		if (existing.lastRunId !== runId) return;
+
+		const remainingRuns = await this.loadRuns(workflowId);
+		if (remainingRuns.length === 0) {
+			delete index.workflows[workflowId];
+		} else {
+			const last = remainingRuns[0];
+			const lastStatus = last.status === 'idle' ? 'completed' : last.status;
+			index.workflows[workflowId] = {
+				lastRunId: last.id,
+				status: lastStatus,
+				startTime: last.startTime,
+				endTime: last.endTime,
+				error: last.error,
+			};
+		}
+
+		index.updatedAt = Date.now();
+		await this.app.vault.adapter.write(WORKFLOW_RUNS_INDEX_PATH, JSON.stringify(index, null, 2));
 	}
 
 	/**

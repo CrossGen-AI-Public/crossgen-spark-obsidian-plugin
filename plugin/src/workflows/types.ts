@@ -144,6 +144,24 @@ export interface WorkflowQueueItem {
 }
 
 /**
+ * Workflow runs index (stored in .spark/workflow-runs/index.json)
+ * Engine-maintained summary to avoid scanning run files.
+ */
+export interface WorkflowLastRunSummary {
+	lastRunId: string;
+	status: Exclude<WorkflowStatus, 'idle'>;
+	startTime: number;
+	endTime?: number;
+	error?: string;
+}
+
+export interface WorkflowRunsIndex {
+	version: 1;
+	updatedAt: number;
+	workflows: Record<string, WorkflowLastRunSummary>;
+}
+
+/**
  * Sidebar tab types
  */
 export type SidebarTab = 'properties' | 'prompt' | 'code' | 'runs';

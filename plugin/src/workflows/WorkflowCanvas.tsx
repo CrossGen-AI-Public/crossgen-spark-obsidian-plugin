@@ -28,7 +28,6 @@ import {
 	type WorkflowNode,
 	type WorkflowEdge,
 	type WorkflowRun,
-	type WorkflowNodeData,
 	type StepStatus,
 	generateId,
 	createEmptyWorkflow,
@@ -38,6 +37,7 @@ import { PromptNode } from './nodes/PromptNode';
 import { CodeNode } from './nodes/CodeNode';
 import { ConditionNode } from './nodes/ConditionNode';
 import { Sidebar } from './Sidebar';
+import { WorkflowRunsSidebar } from './WorkflowRunsSidebar';
 import { WorkflowStorage } from './WorkflowStorage';
 
 interface WorkflowCanvasProps {
@@ -139,7 +139,7 @@ function ensureEdgeClassName(edge: WorkflowEdge): WorkflowEdge {
 	return edge;
 }
 
-export function WorkflowCanvas(props: WorkflowCanvasProps) {
+export function WorkflowCanvas(props: Readonly<WorkflowCanvasProps>) {
 	return (
 		<ReactFlowProvider>
 			<WorkflowCanvasInner {...props} />
@@ -153,7 +153,7 @@ function WorkflowCanvasInner({
 	workflow: initialWorkflow,
 	onWorkflowChange,
 	onNavigateToList,
-}: WorkflowCanvasProps) {
+}: Readonly<WorkflowCanvasProps>) {
 	// React Flow instance for viewport control
 	const reactFlowInstance = useReactFlow();
 
@@ -206,7 +206,7 @@ function WorkflowCanvasInner({
 
 	// UI state - store ID only, derive node from nodes array to stay in sync
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [sidebarMode, setSidebarMode] = useState<'node' | 'workflowRuns' | null>(null);
 
 	// Auto-select initial action node on empty workflow (first load)
 	const hasAutoSelectedRef = useRef(false);
@@ -218,7 +218,7 @@ function WorkflowCanvasInner({
 		if (nodes.length === 1 && nodes[0].type === 'action' && !selectedNodeId) {
 			hasAutoSelectedRef.current = true;
 			setSelectedNodeId(nodes[0].id);
-			setIsSidebarOpen(true);
+			setSidebarMode('node');
 			// Center on the initial node
 			setTimeout(() => {
 				reactFlowInstance.setCenter(nodes[0].position.x + 100, nodes[0].position.y + 40, {
@@ -245,11 +245,13 @@ function WorkflowCanvasInner({
 
 	// Clear selection if selected node was deleted (e.g., via keyboard delete)
 	useEffect(() => {
-		if (selectedNodeId && !nodes.find((n) => n.id === selectedNodeId)) {
+		if (selectedNodeId && !nodes.some((n) => n.id === selectedNodeId)) {
 			setSelectedNodeId(null);
-			setIsSidebarOpen(false);
+			if (sidebarMode === 'node') {
+				setSidebarMode(null);
+			}
 		}
-	}, [nodes, selectedNodeId]);
+	}, [nodes, selectedNodeId, sidebarMode]);
 
 	/**
 	 * Handle selection changes (box select, shift+click multi-select)
@@ -260,11 +262,11 @@ function WorkflowCanvasInner({
 			if (selectedNodes.length === 1) {
 				// Single node selected - show in sidebar
 				setSelectedNodeId(selectedNodes[0].id);
-				setIsSidebarOpen(true);
+				setSidebarMode('node');
 			} else if (selectedNodes.length > 1) {
 				// Multiple nodes selected - close sidebar
 				setSelectedNodeId(null);
-				setIsSidebarOpen(false);
+				setSidebarMode(null);
 			}
 			// Note: when 0 nodes selected, onPaneClick handles it
 		},
@@ -276,6 +278,14 @@ function WorkflowCanvasInner({
 
 	// Storage ref
 	const storageRef = useRef<WorkflowStorage>(new WorkflowStorage(app));
+
+	/**
+	 * Load workflow runs history
+	 */
+	const loadRuns = useCallback(async () => {
+		const workflowRuns = await storageRef.current.loadRuns(workflow.id);
+		setRuns(workflowRuns);
+	}, [workflow.id]);
 
 	// Auto-save on changes (debounced)
 	useAutoSave(
@@ -302,17 +312,9 @@ function WorkflowCanvasInner({
 	// Load runs when workflow changes
 	useEffect(() => {
 		if (workflow.id) {
-			void loadRuns();
+			loadRuns().catch(() => { });
 		}
-	}, [workflow.id]);
-
-	/**
-	 * Load workflow runs history
-	 */
-	const loadRuns = async () => {
-		const workflowRuns = await storageRef.current.loadRuns(workflow.id);
-		setRuns(workflowRuns);
-	};
+	}, [workflow.id, loadRuns]);
 
 	/**
 	 * Handle new edge connections
@@ -358,7 +360,7 @@ function WorkflowCanvasInner({
 	// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
 	const onNodeClick = useCallback((_event: React.MouseEvent, node: any) => {
 		setSelectedNodeId(node.id);
-		setIsSidebarOpen(true);
+		setSidebarMode('node');
 		// Smoothly pan to center on clicked node (no zoom change)
 		// Account for sidebar: center in remaining space (left edge to sidebar)
 		const zoom = reactFlowInstance.getZoom();
@@ -378,6 +380,29 @@ function WorkflowCanvasInner({
 		}
 	}, [reactFlowInstance]);
 
+	const jumpToNode = useCallback(
+		(nodeId: string) => {
+			const targetNode = (nodes as unknown as WorkflowNode[]).find((n) => n.id === nodeId);
+			if (!targetNode) return;
+
+			setSelectedNodeId(nodeId);
+			setSidebarMode('node');
+
+			const zoom = reactFlowInstance.getZoom();
+			const { x: viewX, y: viewY } = reactFlowInstance.getViewport();
+			const container = containerRef.current;
+			if (!container) return;
+			const { width, height } = container.getBoundingClientRect();
+			const availableWidth = width - sidebarWidthRef.current;
+			const targetX = -targetNode.position.x * zoom + availableWidth / 2 - 50 * zoom;
+			const targetY = -targetNode.position.y * zoom + height / 2 - 20 * zoom;
+			if (Math.abs(targetX - viewX) > 50 || Math.abs(targetY - viewY) > 50) {
+				reactFlowInstance.setViewport({ x: targetX, y: targetY, zoom }, { duration: 300 });
+			}
+		},
+		[nodes, reactFlowInstance]
+	);
+
 	/**
 	 * Handle background click to deselect
 	 */
@@ -388,8 +413,11 @@ function WorkflowCanvasInner({
 			return;
 		}
 		setSelectedNodeId(null);
-		setIsSidebarOpen(false);
-	}, []);
+		// Keep workflow-level Runs panel open when it is active.
+		if (sidebarMode === 'node') {
+			setSidebarMode(null);
+		}
+	}, [sidebarMode]);
 
 	const handleSidebarResizePointerDown = useCallback(
 		(e: React.PointerEvent) => {
@@ -416,15 +444,15 @@ function WorkflowCanvasInner({
 				if (!isResizingRef.current) return;
 				isResizingRef.current = false;
 				resizeStartRef.current = null;
-				window.removeEventListener('pointermove', onMove);
-				window.removeEventListener('pointerup', onUp);
+				globalThis.removeEventListener('pointermove', onMove);
+				globalThis.removeEventListener('pointerup', onUp);
 
 				plugin.settings.workflowSidebarWidth = sidebarWidthRef.current;
 				await plugin.saveSettings();
 			};
 
-			window.addEventListener('pointermove', onMove);
-			window.addEventListener('pointerup', onUp);
+			globalThis.addEventListener('pointermove', onMove);
+			globalThis.addEventListener('pointerup', onUp);
 		},
 		[plugin]
 	);
@@ -480,10 +508,12 @@ function WorkflowCanvasInner({
 			setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
 			if (selectedNodeId === nodeId) {
 				setSelectedNodeId(null);
-				setIsSidebarOpen(false);
+				if (sidebarMode === 'node') {
+					setSidebarMode(null);
+				}
 			}
 		},
-		[setNodes, setEdges, selectedNodeId]
+		[setNodes, setEdges, selectedNodeId, sidebarMode]
 	);
 
 	/**
@@ -569,7 +599,7 @@ function WorkflowCanvasInner({
 
 			// Select the new node and open sidebar
 			setSelectedNodeId(newNode.id);
-			setIsSidebarOpen(true);
+			setSidebarMode('node');
 
 			// Center viewport on the new node
 			setTimeout(() => {
@@ -674,6 +704,22 @@ function WorkflowCanvasInner({
 	// Track execution status for each node
 	const [nodeExecutionStatus, setNodeExecutionStatus] = useState<Record<string, StepStatus>>({});
 
+	/**
+	 * Keep runs in sync when a run is queued elsewhere (e.g. workflow list).
+	 * We only poll while a sidebar is open and the editor isn't already polling a known run.
+	 */
+	useEffect(() => {
+		if (!workflow.id) return;
+		if (sidebarMode === null) return;
+		if (currentRunId && isRunning) return;
+
+		const interval = globalThis.setInterval(() => {
+			loadRuns().catch(() => { });
+		}, 1000);
+
+		return () => globalThis.clearInterval(interval);
+	}, [workflow.id, sidebarMode, currentRunId, isRunning, loadRuns]);
+
 	// Poll for run completion when we have an active run
 	useEffect(() => {
 		if (!currentRunId || !isRunning) return;
@@ -726,6 +772,11 @@ function WorkflowCanvasInner({
 		// Set current run to trigger polling
 		setCurrentRunId(runId);
 	}, [workflow.id, saveWorkflowNow]);
+
+	const openWorkflowRuns = useCallback(() => {
+		setSelectedNodeId(null);
+		setSidebarMode((mode) => (mode === 'workflowRuns' ? null : 'workflowRuns'));
+	}, []);
 
 	/**
 	 * Update workflow name
@@ -857,6 +908,28 @@ function WorkflowCanvasInner({
 					</button>
 					<button
 						type="button"
+						className={`spark-workflow-icon-btn${sidebarMode === 'workflowRuns' ? ' spark-workflow-icon-btn-active' : ''}`}
+						onClick={openWorkflowRuns}
+						title="Run history"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M3 3v5h5" />
+							<path d="M3.05 13a9 9 0 1 0 .5-4.5L3 8" />
+							<path d="M12 7v5l4 2" />
+						</svg>
+					</button>
+					<button
+						type="button"
 						className={`spark-workflow-icon-btn spark-workflow-icon-btn-primary${isRunning ? ' spark-workflow-icon-btn-running' : ''}`}
 						onClick={runWorkflow}
 						disabled={isRunning}
@@ -902,34 +975,42 @@ function WorkflowCanvasInner({
 			</ReactFlow>
 
 			{/* Sidebar */}
-			{isSidebarOpen && selectedNode && (
+			{(sidebarMode === 'workflowRuns' || (sidebarMode === 'node' && selectedNode)) && (
 				<div className="spark-workflow-sidebar-wrapper" style={{ width: `${sidebarWidth}px` }}>
-					<div
-						className="spark-workflow-sidebar-resizer"
-						role="separator"
-						aria-orientation="vertical"
-						aria-label="Resize sidebar"
-						onPointerDown={handleSidebarResizePointerDown}
-					/>
-					<Sidebar
-						app={app}
-						plugin={plugin}
-						node={selectedNode}
-						// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-						nodes={nodes as any as WorkflowNode[]}
-						// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-						edges={edges as any as WorkflowEdge[]}
-						runs={runs.filter((r) =>
-							r.stepResults.some((s) => s.nodeId === selectedNode.id)
-						)}
-						onUpdateNode={updateNode}
-						onTransformNode={transformNode}
-						onDeleteNode={deleteNode}
-						onClose={() => {
-							setIsSidebarOpen(false);
-							setSelectedNodeId(null);
-						}}
-					/>
+					<hr className="spark-workflow-sidebar-resizer" aria-label="Resize sidebar" onPointerDown={handleSidebarResizePointerDown} />
+					{sidebarMode === 'node' && selectedNode && (
+						<Sidebar
+							app={app}
+							plugin={plugin}
+							node={selectedNode}
+							// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
+							nodes={nodes as any as WorkflowNode[]}
+							// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
+							edges={edges as any as WorkflowEdge[]}
+							runs={runs.filter((r) => r.stepResults.some((s) => s.nodeId === selectedNode.id))}
+							onUpdateNode={updateNode}
+							onTransformNode={transformNode}
+							onDeleteNode={deleteNode}
+							onClose={() => {
+								setSelectedNodeId(null);
+								setSidebarMode(null);
+							}}
+						/>
+					)}
+
+					{sidebarMode === 'workflowRuns' && (
+						<WorkflowRunsSidebar
+							workflow={workflow}
+							runs={runs}
+							onRerun={runWorkflow}
+							onDeleteRun={async (runId) => {
+								await storageRef.current.deleteRun(workflow.id, runId);
+								await loadRuns();
+							}}
+							onJumpToNode={jumpToNode}
+							onClose={() => setSidebarMode(null)}
+						/>
+					)}
 				</div>
 			)}
 		</div>
