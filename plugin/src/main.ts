@@ -4,7 +4,7 @@ import { CommandPaletteManager } from './command-palette/CommandPaletteManager';
 import { InlineChatManager } from './inline-chat/InlineChatManager';
 import { MentionDecorator } from './mention/MentionDecorator';
 import { SetupModal } from './modals/SetupModal';
-import { DaemonService } from './services/DaemonService';
+import { EngineService } from './services/EngineService';
 import { ResourceService } from './services/ResourceService';
 import { DEFAULT_SETTINGS, SparkSettingTab } from './settings';
 import type { ISparkPlugin, SparkSettings } from './types';
@@ -108,12 +108,12 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		}); // Add settings tab
 		this.addSettingTab(new SparkSettingTab(this.app, this));
 
-		// Add status bar item with daemon status
+		// Add status bar item with engine status
 		this.statusBarItem = this.addStatusBarItem();
 		this.statusBarItem.addClass('spark-status-bar');
 		this.updateStatusBar();
 
-		// Periodically check daemon status (every 10 seconds)
+		// Periodically check engine status (every 10 seconds)
 		this.statusCheckInterval = window.setInterval(() => {
 			this.updateStatusBar();
 		}, 10000);
@@ -132,19 +132,19 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 			ribbonIcon.parentElement?.appendChild(ribbonIcon);
 		});
 
-		// Check daemon status and show setup modal if needed
-		void this.checkDaemonStatus();
+		// Check engine status and show setup modal if needed
+		void this.checkEngineStatus();
 
 		console.debug('Spark Assistant: Plugin loaded successfully');
 	}
 
 	/**
-	 * Update status bar with daemon status
+	 * Update status bar with engine status
 	 */
 	public updateStatusBar(): void {
-		const daemonService = DaemonService.getInstance(this.app);
-		const isInstalled = daemonService.isDaemonInstalled();
-		const isRunning = isInstalled && daemonService.isDaemonRunning();
+		const engineService = EngineService.getInstance(this.app);
+		const isInstalled = engineService.isEngineInstalled();
+		const isRunning = isInstalled && engineService.isEngineRunning();
 
 		this.statusBarItem.empty();
 
@@ -154,7 +154,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 			this.statusBarItem.removeClass('spark-status-online');
 			this.statusBarItem.setAttribute(
 				'aria-label',
-				'Spark daemon not installed. Click to open chat.'
+				'Spark engine not installed. Click to open chat.'
 			);
 		} else if (!isRunning) {
 			this.statusBarItem.setText('⚡ Spark (offline)');
@@ -162,58 +162,58 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 			this.statusBarItem.removeClass('spark-status-online');
 			this.statusBarItem.setAttribute(
 				'aria-label',
-				'Spark daemon not running. Click to open chat.'
+				'Spark engine not running. Click to open chat.'
 			);
 		} else {
 			this.statusBarItem.setText('⚡ Spark');
 			this.statusBarItem.addClass('spark-status-online');
 			this.statusBarItem.removeClass('spark-status-offline');
-			this.statusBarItem.setAttribute('aria-label', 'Spark daemon running. Click to open chat.');
+			this.statusBarItem.setAttribute('aria-label', 'Spark engine running. Click to open chat.');
 		}
 	}
 
 	/**
-	 * Check if daemon is installed and running, show setup modal if needed
+	 * Check if engine is installed and running, show setup modal if needed
 	 */
-	private async checkDaemonStatus(): Promise<void> {
-		const daemonService = DaemonService.getInstance(this.app);
+	private async checkEngineStatus(): Promise<void> {
+		const engineService = EngineService.getInstance(this.app);
 
-		// Check if daemon is installed
-		if (!daemonService.isDaemonInstalled()) {
+		// Check if engine is installed
+		if (!engineService.isEngineInstalled()) {
 			// Show install modal if not dismissed
-			if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
+			if (!this.settings.dismissedEngineSetup && !SetupModal.isModalOpen()) {
 				const handleDismiss = (dontShowAgain: boolean) => {
 					if (!dontShowAgain) return;
-					this.settings.dismissedDaemonSetup = true;
+					this.settings.dismissedEngineSetup = true;
 					void this.saveSettings();
 				};
-				new SetupModal(this.app, this, daemonService, 'install', handleDismiss).open();
+				new SetupModal(this.app, this, engineService, 'install', handleDismiss).open();
 			}
 			return;
 		}
 
-		// Daemon is installed, check if running
-		if (daemonService.isDaemonRunning()) {
-			console.debug('[Spark] Daemon is already running');
+		// Engine is installed, check if running
+		if (engineService.isEngineRunning()) {
+			console.debug('[Spark] Engine is already running');
 			return;
 		}
 
-		// Daemon not running - try auto-launch if enabled
-		if (this.settings.autoLaunchDaemon) {
-			console.debug('[Spark] Auto-launching daemon...');
-			await daemonService.startDaemonBackground();
+		// Engine not running - try auto-launch if enabled
+		if (this.settings.autoLaunchEngine) {
+			console.debug('[Spark] Auto-launching engine...');
+			await engineService.startEngineBackground();
 			this.updateStatusBar(); // Update after auto-launch
 			return;
 		}
 
 		// Show start modal if not dismissed
-		if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
+		if (!this.settings.dismissedEngineSetup && !SetupModal.isModalOpen()) {
 			const handleDismiss = (dontShowAgain: boolean) => {
 				if (!dontShowAgain) return;
-				this.settings.dismissedDaemonSetup = true;
+				this.settings.dismissedEngineSetup = true;
 				void this.saveSettings();
 			};
-			new SetupModal(this.app, this, daemonService, 'start', handleDismiss).open();
+			new SetupModal(this.app, this, engineService, 'start', handleDismiss).open();
 		}
 	}
 

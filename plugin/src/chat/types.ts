@@ -23,5 +23,5 @@ export interface ChatState {
 	isProcessing: boolean;
 	mentionedAgents: Set<string>;
 	lastMentionedAgent: string | null; // Most recently mentioned agent (for conversation continuity)
-	conversationName: string | null; // Auto-generated name from daemon
+	conversationName: string | null; // Auto-generated name from engine
 }

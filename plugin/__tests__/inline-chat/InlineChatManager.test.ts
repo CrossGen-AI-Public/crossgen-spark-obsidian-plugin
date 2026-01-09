@@ -85,7 +85,7 @@ describe('InlineChatManager', () => {
 
     describe('Marker Writing (Step 2)', () => {
         describe('handleSend - Basic functionality', () => {
-            it('should replace positioning markers with final daemon-readable format', () => {
+            it('should replace positioning markers with final engine-readable format', () => {
                 // Setup: Initialize and create positioning markers
                 manager.initialize();
 
@@ -586,7 +586,7 @@ describe('InlineChatManager', () => {
                 expect(modifiedContent).toBe('Some text\nMore text');
             });
 
-            it('should remove daemon format markers from current file', async () => {
+            it('should remove engine format markers from current file', async () => {
                 manager.initialize();
 
                 const fileContent = [
@@ -735,12 +735,12 @@ describe('InlineChatManager', () => {
 
                 const mockFiles = [
                     new (TFile as any)('temp-markers.md'),
-                    new (TFile as any)('daemon-markers.md'),
+                    new (TFile as any)('engine-markers.md'),
                 ];
 
                 const fileContents: Record<string, string> = {
                     'temp-markers.md': '<!-- spark-inline-abc-start -->\n\n<!-- spark-inline-abc-end -->',
-                    'daemon-markers.md': '<!-- spark-inline-chat:pending:uuid:agent:msg -->\n\n<!-- /spark-inline-chat -->',
+                    'engine-markers.md': '<!-- spark-inline-chat:pending:uuid:agent:msg -->\n\n<!-- /spark-inline-chat -->',
                 };
 
                 const mockVault = {
@@ -760,7 +760,7 @@ describe('InlineChatManager', () => {
                 await (manager as any).cleanupOrphanedMarkers();
 
                 expect(cleanedFiles).toContain('temp-markers.md');
-                expect(cleanedFiles).toContain('daemon-markers.md');
+                expect(cleanedFiles).toContain('engine-markers.md');
             });
 
             it('should not fail if a file cannot be read', async () => {

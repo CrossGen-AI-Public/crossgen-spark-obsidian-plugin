@@ -1,7 +1,7 @@
 import { type App, normalizePath } from 'obsidian';
 
 /**
- * Manages writing chat messages to the queue for daemon processing
+ * Manages writing chat messages to the queue for engine processing
  */
 export class ChatQueue {
 	private app: App;
@@ -12,7 +12,7 @@ export class ChatQueue {
 	}
 
 	/**
-	 * Write a chat message to the queue for daemon processing
+	 * Write a chat message to the queue for engine processing
 	 * @param conversationId - The conversation ID
 	 * @param userMessage - The user's message content
 	 * @param conversationHistory - Previous messages for context

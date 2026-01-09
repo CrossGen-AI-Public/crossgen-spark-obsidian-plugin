@@ -1,7 +1,7 @@
 import { type App, type Editor, TFile } from 'obsidian';
 import {
 	AGENT_PREFIX_REGEX,
-	DAEMON_MARKER_BLOCK_REGEX,
+	ENGINE_MARKER_BLOCK_REGEX,
 	NEWLINE_REGEX,
 	TEMP_MARKER_BLOCK_REGEX,
 } from '../constants';
@@ -25,7 +25,7 @@ export class ResultWriter {
 	}
 
 	/**
-	 * Replace positioning markers with final daemon-readable format
+	 * Replace positioning markers with final engine-readable format
 	 */
 	public replaceMarkersWithFinalFormat(
 		editor: Editor,
@@ -104,8 +104,8 @@ export class ResultWriter {
 				// Pattern 1: Remove temporary positioning markers
 				modifiedContent = modifiedContent.replace(TEMP_MARKER_BLOCK_REGEX, '');
 
-				// Pattern 2: Remove daemon format markers
-				modifiedContent = modifiedContent.replace(DAEMON_MARKER_BLOCK_REGEX, '');
+				// Pattern 2: Remove engine format markers
+				modifiedContent = modifiedContent.replace(ENGINE_MARKER_BLOCK_REGEX, '');
 
 				return modifiedContent;
 			});

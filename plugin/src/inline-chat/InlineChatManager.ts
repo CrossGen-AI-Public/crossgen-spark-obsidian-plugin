@@ -33,7 +33,7 @@ export class InlineChatManager {
 	private currentEditor: Editor | null = null;
 	private editorChangeHandler: ((editor: Editor) => void) | null = null;
 	private markerId: string = ''; // Unique ID for this inline chat instance
-	private pendingChats: Map<string, PendingChat> = new Map(); // Track chats waiting for daemon
+	private pendingChats: Map<string, PendingChat> = new Map(); // Track chats waiting for engine
 	private fileModifyHandler: ((file: TFile) => void) | null = null;
 	private agentMentionCompleteHandler: EventListener | null = null;
 	private currentFilePath: string = ''; // Track current file with active markers
@@ -65,7 +65,7 @@ export class InlineChatManager {
 		// Register with workspace
 		this.app.workspace.on('editor-change', this.editorChangeHandler);
 
-		// Create file modification handler to detect when daemon completes
+		// Create file modification handler to detect when engine completes
 		this.fileModifyHandler = (file: TFile) => {
 			void this.handleFileModify(file);
 		};
@@ -140,7 +140,7 @@ export class InlineChatManager {
 
 	/**
 	 * Handle file modification event
-	 * Detects when daemon completes inline chat requests
+	 * Detects when engine completes inline chat requests
 	 */
 	private async handleFileModify(file: TFile): Promise<void> {
 		// Only process if we have pending chats
@@ -161,13 +161,13 @@ export class InlineChatManager {
 		const content = await this.app.vault.read(file);
 
 		// Check each pending chat to see if it's complete
-		// Since daemon now removes all markers, we detect completion by the absence of pending marker
+		// Since engine now removes all markers, we detect completion by the absence of pending marker
 		for (const pendingChat of pendingForFile) {
 			const pendingMarker = `<!-- spark-inline-chat:pending:${pendingChat.uuid}`;
 
-			// If pending marker is gone, the daemon has processed it
+			// If pending marker is gone, the engine has processed it
 			if (!content.includes(pendingMarker)) {
-				// Chat completed (daemon removed markers and inserted response)
+				// Chat completed (engine removed markers and inserted response)
 				const elapsed = Date.now() - pendingChat.timestamp;
 
 				// Hide the processing widget if it's for this chat
@@ -429,7 +429,7 @@ export class InlineChatManager {
 			return;
 		}
 
-		// Generate UUID for daemon tracking
+		// Generate UUID for engine tracking
 		const uuid = window.crypto.randomUUID();
 
 		// Track this pending chat for completion detection
@@ -534,9 +534,9 @@ export class InlineChatManager {
 
 				// Check if file has any inline chat markers
 				const hasTempMarkers = INLINE_CHAT_START_MARKER_REGEX.test(content);
-				const hasDaemonMarkers = INLINE_CHAT_PENDING_MARKER_REGEX.test(content);
+				const hasEngineMarkers = INLINE_CHAT_PENDING_MARKER_REGEX.test(content);
 
-				if (hasTempMarkers || hasDaemonMarkers) {
+				if (hasTempMarkers || hasEngineMarkers) {
 					await ResultWriter.getInstance(this.app).cleanupMarkersFromFile(file.path);
 				}
 			} catch (error) {
