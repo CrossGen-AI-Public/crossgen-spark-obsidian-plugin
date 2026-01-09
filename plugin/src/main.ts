@@ -23,7 +23,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 	private workflowManager: WorkflowManager;
 
 	async onload() {
-		console.log('Spark Assistant: Loading plugin...');
+		console.debug('Spark Assistant: Loading plugin...');
 
 		// Load settings
 		await this.loadSettings();
@@ -48,19 +48,13 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		this.inlineChatManager = InlineChatManager.getInstance(this.app, this.mentionDecorator);
 		this.inlineChatManager.initialize();
 
-		// Register chat hotkey (Cmd+K)
+		// Register chat toggle command
 		this.addCommand({
 			id: 'toggle-chat',
-			name: 'Toggle Chat Window',
+			name: 'Toggle chat window',
 			editorCallback: () => {
 				this.chatManager.toggleChat();
 			},
-			hotkeys: [
-				{
-					modifiers: ['Mod'],
-					key: 'k',
-				},
-			],
 		});
 
 		// Initialize workflow manager and register views
@@ -73,7 +67,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		// Register workflow commands
 		this.addCommand({
 			id: 'open-workflows',
-			name: 'Open Workflows',
+			name: 'Open workflows',
 			callback: () => {
 				void this.workflowManager.showWorkflowList();
 			},
@@ -81,14 +75,14 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
 		this.addCommand({
 			id: 'create-workflow',
-			name: 'Create New Workflow',
+			name: 'Create new workflow',
 			callback: () => {
 				void this.workflowManager.createWorkflow();
 			},
 		});
 
 		// Add ribbon icon for workflows
-		this.addRibbonIcon('workflow', 'Open Workflows', () => {
+		this.addRibbonIcon('workflow', 'Open workflows', () => {
 			void this.workflowManager.showWorkflowList();
 		});
 
@@ -139,9 +133,9 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		});
 
 		// Check daemon status and show setup modal if needed
-		this.checkDaemonStatus();
+		void this.checkDaemonStatus();
 
-		console.log('Spark Assistant: Plugin loaded successfully');
+		console.debug('Spark Assistant: Plugin loaded successfully');
 	}
 
 	/**
@@ -188,11 +182,10 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		if (!daemonService.isDaemonInstalled()) {
 			// Show install modal if not dismissed
 			if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
-				const handleDismiss = async (dontShowAgain: boolean) => {
-					if (dontShowAgain) {
-						this.settings.dismissedDaemonSetup = true;
-						await this.saveSettings();
-					}
+				const handleDismiss = (dontShowAgain: boolean) => {
+					if (!dontShowAgain) return;
+					this.settings.dismissedDaemonSetup = true;
+					void this.saveSettings();
 				};
 				new SetupModal(this.app, this, daemonService, 'install', handleDismiss).open();
 			}
@@ -201,13 +194,13 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
 		// Daemon is installed, check if running
 		if (daemonService.isDaemonRunning()) {
-			console.log('[Spark] Daemon is already running');
+			console.debug('[Spark] Daemon is already running');
 			return;
 		}
 
 		// Daemon not running - try auto-launch if enabled
 		if (this.settings.autoLaunchDaemon) {
-			console.log('[Spark] Auto-launching daemon...');
+			console.debug('[Spark] Auto-launching daemon...');
 			await daemonService.startDaemonBackground();
 			this.updateStatusBar(); // Update after auto-launch
 			return;
@@ -215,22 +208,21 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 
 		// Show start modal if not dismissed
 		if (!this.settings.dismissedDaemonSetup && !SetupModal.isModalOpen()) {
-			const handleDismiss = async (dontShowAgain: boolean) => {
-				if (dontShowAgain) {
-					this.settings.dismissedDaemonSetup = true;
-					await this.saveSettings();
-				}
+			const handleDismiss = (dontShowAgain: boolean) => {
+				if (!dontShowAgain) return;
+				this.settings.dismissedDaemonSetup = true;
+				void this.saveSettings();
 			};
 			new SetupModal(this.app, this, daemonService, 'start', handleDismiss).open();
 		}
 	}
 
-	async onunload() {
+	onunload(): void {
 		this.commandPaletteManager?.unload();
 		this.chatManager?.unload();
-		await this.inlineChatManager?.cleanup();
+		void this.inlineChatManager?.cleanup();
 		this.mentionDecorator?.stopTableObserver();
-		console.log('Spark Assistant: Plugin unloaded');
+		console.debug('Spark Assistant: Plugin unloaded');
 	}
 
 	async loadSettings() {

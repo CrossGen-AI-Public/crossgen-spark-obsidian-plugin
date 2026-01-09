@@ -115,7 +115,7 @@ export class PromptRunner {
    * Extract JSON object from text that may have surrounding content
    * Handles cases where AI adds explanation before/after the JSON
    */
-  private extractJsonFromText(text: string): unknown | null {
+  private extractJsonFromText(text: string): unknown {
     // Find the first { and try to find its matching }
     const startIdx = text.indexOf('{');
     if (startIdx === -1) return null;

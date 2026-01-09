@@ -15,7 +15,6 @@ export const DEFAULT_SPARK_CONFIG: SparkConfig = {
       patterns: ['**/*.md'],
       ignore: [
         '.git/**',
-        '.obsidian/**',
         'node_modules/**',
         '.spark/agents/**',
         '.spark/commands/**',

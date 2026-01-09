@@ -89,7 +89,7 @@ export interface WorkflowEdge {
  * Workflow settings
  * Note: Global limits (maxGlobalCycles, timeout) removed - will be user-configurable in plugin
  */
-export type WorkflowSettings = {};
+export type WorkflowSettings = Record<string, never>;
 
 /**
  * Workflow definition

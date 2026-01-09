@@ -1,4 +1,5 @@
 import type { PaletteItem } from '../types/command-palette';
+import { setCssProps } from '../utils/setCssProps';
 
 /**
  * Manages the visual palette UI
@@ -59,13 +60,11 @@ export class PaletteView {
 
 				if (spaceBelow >= paletteHeight) {
 					// Enough space below - open downwards
-					container.style.top = '100%';
-					container.style.bottom = 'auto';
+					setCssProps(container, { top: '100%', bottom: 'auto' });
 					chatContainer.addClass('spark-palette-open-below');
 				} else {
 					// Not enough space below - open upwards
-					container.style.bottom = '100%';
-					container.style.top = 'auto';
+					setCssProps(container, { bottom: '100%', top: 'auto' });
 					container.addClass('spark-palette-above');
 					chatContainer.addClass('spark-palette-open-above');
 				}
@@ -78,7 +77,7 @@ export class PaletteView {
 			if (inputContainer) {
 				const inputHeight = (inputContainer as HTMLElement).offsetHeight;
 				// Position palette directly above input (no gap)
-				container.style.bottom = `${inputHeight}px`;
+				setCssProps(container, { bottom: `${inputHeight}px` });
 			}
 
 			return container;
@@ -88,8 +87,10 @@ export class PaletteView {
 		const container = document.body.createDiv('spark-palette');
 
 		// Use fixed positioning relative to viewport
-		container.style.position = 'fixed';
-		container.style.zIndex = '1000';
+		setCssProps(container, {
+			position: 'fixed',
+			zIndex: '1000',
+		});
 
 		// Calculate left position with viewport boundary check
 		const paletteWidth = 350; // min-width from CSS
@@ -101,17 +102,17 @@ export class PaletteView {
 		if (left + paletteWidth > viewportWidth - rightEdgeMargin) {
 			left = Math.max(rightEdgeMargin, viewportWidth - paletteWidth - rightEdgeMargin);
 		}
-		container.style.left = `${left}px`;
+		setCssProps(container, { left: `${left}px` });
 
 		if (positionAbove) {
 			// Position from bottom when above cursor
 			// Distance from bottom of viewport to cursor, plus offset
 			const distanceFromBottom = window.innerHeight - coords.top + 20;
-			container.style.bottom = `${distanceFromBottom}px`;
+			setCssProps(container, { bottom: `${distanceFromBottom}px` });
 			container.classList.add('spark-palette-above');
 		} else {
 			// Position from top when below cursor
-			container.style.top = `${coords.top + 20}px`;
+			setCssProps(container, { top: `${coords.top + 20}px` });
 		}
 
 		return container;

@@ -220,11 +220,13 @@ export class ContextLoader implements IContextLoader {
     const parts: string[] = [];
 
     if (metadata.name) {
-      parts.push(`Name: ${metadata.name}`);
+      const name = Array.isArray(metadata.name) ? metadata.name.join(', ') : metadata.name;
+      parts.push(`Name: ${name}`);
     }
 
     if (metadata.role) {
-      parts.push(`Role: ${metadata.role}`);
+      const role = Array.isArray(metadata.role) ? metadata.role.join(', ') : metadata.role;
+      parts.push(`Role: ${role}`);
     }
 
     if (metadata.expertise && Array.isArray(metadata.expertise) && metadata.expertise.length > 0) {

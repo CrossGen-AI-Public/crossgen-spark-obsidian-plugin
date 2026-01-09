@@ -61,18 +61,18 @@ export class WorkflowStorage {
 	 */
 	async loadWorkflow(id: string): Promise<WorkflowDefinition | null> {
 		const path = `${WORKFLOWS_DIR}/${id}.json`;
-		console.log('[WorkflowStorage] Loading workflow:', id, 'from', path);
+		console.debug('[WorkflowStorage] Loading workflow:', id, 'from', path);
 
 		try {
 			// Use adapter directly for .spark/ internal files
 			const exists = await this.app.vault.adapter.exists(path);
 			if (!exists) {
-				console.log('[WorkflowStorage] File not found');
+				console.debug('[WorkflowStorage] File not found');
 				return null;
 			}
 
 			const content = await this.app.vault.adapter.read(path);
-			console.log('[WorkflowStorage] Load complete, content length:', content.length);
+			console.debug('[WorkflowStorage] Load complete, content length:', content.length);
 			return JSON.parse(content) as WorkflowDefinition;
 		} catch (error) {
 			console.error(`Failed to load workflow ${id}:`, error);
@@ -89,11 +89,11 @@ export class WorkflowStorage {
 		const path = `${WORKFLOWS_DIR}/${workflow.id}.json`;
 		const content = JSON.stringify(workflow, null, 2);
 
-		console.log('[WorkflowStorage] Saving workflow:', workflow.id, 'to', path);
+		console.debug('[WorkflowStorage] Saving workflow:', workflow.id, 'to', path);
 
 		// Use adapter directly for .spark/ internal files
 		await this.app.vault.adapter.write(path, content);
-		console.log('[WorkflowStorage] Save complete');
+		console.debug('[WorkflowStorage] Save complete');
 	}
 
 	/**

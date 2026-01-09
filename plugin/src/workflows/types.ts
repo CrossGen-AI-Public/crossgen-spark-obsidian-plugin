@@ -52,9 +52,7 @@ export interface ConditionNodeData extends BaseNodeData {
 /**
  * Action step data (placeholder before type is selected)
  */
-export interface ActionNodeData extends BaseNodeData {
-	// No additional fields - just a placeholder
-}
+export type ActionNodeData = BaseNodeData;
 
 /**
  * Union type for all node data
@@ -87,7 +85,7 @@ export interface WorkflowEdge extends Edge {
  * Workflow settings
  * Note: Global limits (maxGlobalCycles, timeout) removed - will be user-configurable later
  */
-export type WorkflowSettings = {};
+export type WorkflowSettings = Record<string, never>;
 
 /**
  * Workflow definition (stored in .spark/workflows/{id}.json)

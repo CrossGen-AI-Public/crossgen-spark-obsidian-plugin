@@ -8,7 +8,12 @@ import { ClaudeClient } from '../ai/ClaudeClient.js';
 import { Logger } from '../logger/Logger.js';
 import type { AICompletionResult } from '../types/ai.js';
 import { SparkError } from '../types/index.js';
-import type { IAIProvider, ProviderCompletionOptions, ProviderConfig } from '../types/provider.js';
+import type {
+  IAIProvider,
+  ProviderCompletionOptions,
+  ProviderConfig,
+  ProviderContextFile,
+} from '../types/provider.js';
 import { ProviderType } from '../types/provider.js';
 
 export class ClaudeDirectProvider implements IAIProvider {
@@ -72,87 +77,64 @@ export class ClaudeDirectProvider implements IAIProvider {
   private buildPrompt(options: ProviderCompletionOptions): string {
     const sections: string[] = [];
 
-    // System prompt
-    if (options.systemPrompt || this.config.systemPrompt) {
-      const systemPrompt =
-        typeof this.config.systemPrompt === 'string'
-          ? this.config.systemPrompt
-          : options.systemPrompt || '';
-      if (systemPrompt) {
-        sections.push('<system>', systemPrompt, '</system>', '');
-      }
-    }
-
-    // Agent persona
-    if (options.context?.agentPersona) {
-      sections.push('<agent_persona>', options.context.agentPersona, '</agent_persona>', '');
-    }
-
-    // Additional instructions
-    if (options.context?.additionalInstructions) {
-      sections.push(
-        '<additional_instructions>',
-        options.context.additionalInstructions,
-        '</additional_instructions>',
-        ''
-      );
-    }
-
-    // Files context
-    if (options.context?.files && options.context.files.length > 0) {
-      const filesByPriority = {
-        high: options.context.files.filter((f) => f.priority === 'high'),
-        medium: options.context.files.filter((f) => f.priority === 'medium'),
-        low: options.context.files.filter((f) => f.priority === 'low'),
-      };
-
-      // High priority files
-      if (filesByPriority.high.length > 0) {
-        sections.push('<context priority="high">');
-        filesByPriority.high.forEach((file) => {
-          sections.push(
-            `<file path="${file.path}"${file.note ? ` note="${file.note}"` : ''}>`,
-            file.content,
-            '</file>',
-            ''
-          );
-        });
-        sections.push('</context>', '');
-      }
-
-      // Medium priority files
-      if (filesByPriority.medium.length > 0) {
-        sections.push('<context priority="medium">');
-        filesByPriority.medium.forEach((file) => {
-          sections.push(
-            `<file path="${file.path}"${file.note ? ` note="${file.note}"` : ''}>`,
-            file.content,
-            '</file>',
-            ''
-          );
-        });
-        sections.push('</context>', '');
-      }
-
-      // Low priority files
-      if (filesByPriority.low.length > 0) {
-        sections.push('<context priority="low">');
-        filesByPriority.low.forEach((file) => {
-          sections.push(
-            `<file path="${file.path}"${file.note ? ` note="${file.note}"` : ''}>`,
-            file.content,
-            '</file>',
-            ''
-          );
-        });
-        sections.push('</context>', '');
-      }
-    }
+    this.appendSystemPrompt(sections, options);
+    this.appendOptionalTag(sections, 'agent_persona', options.context?.agentPersona);
+    this.appendOptionalTag(
+      sections,
+      'additional_instructions',
+      options.context?.additionalInstructions
+    );
+    this.appendFilesContext(sections, options.context?.files);
 
     // Main prompt/instructions
     sections.push(options.prompt);
 
     return sections.join('\n');
+  }
+
+  private appendSystemPrompt(sections: string[], options: ProviderCompletionOptions): void {
+    const systemPrompt = this.getSystemPrompt(options);
+    if (!systemPrompt) return;
+    sections.push('<system>', systemPrompt, '</system>', '');
+  }
+
+  private getSystemPrompt(options: ProviderCompletionOptions): string {
+    const configPrompt =
+      typeof this.config.systemPrompt === 'string' ? this.config.systemPrompt : '';
+    return configPrompt || options.systemPrompt || '';
+  }
+
+  private appendOptionalTag(sections: string[], tagName: string, value: string | undefined): void {
+    if (!value) return;
+    sections.push(`<${tagName}>`, value, `</${tagName}>`, '');
+  }
+
+  private appendFilesContext(sections: string[], files: ProviderContextFile[] | undefined): void {
+    if (!files || files.length === 0) return;
+
+    this.appendFilesContextForPriority(sections, files, 'high');
+    this.appendFilesContextForPriority(sections, files, 'medium');
+    this.appendFilesContextForPriority(sections, files, 'low');
+  }
+
+  private appendFilesContextForPriority(
+    sections: string[],
+    files: ProviderContextFile[],
+    priority: 'high' | 'medium' | 'low'
+  ): void {
+    const priorityFiles = files.filter((f) => f.priority === priority);
+    if (priorityFiles.length === 0) return;
+
+    sections.push(`<context priority="${priority}">`);
+    priorityFiles.forEach((file) => {
+      sections.push(this.buildFileOpenTag(file), file.content, '</file>', '');
+    });
+    sections.push('</context>', '');
+  }
+
+  private buildFileOpenTag(file: { path: string; note?: string }): string {
+    const noteAttr = file.note ? ` note="${file.note}"` : '';
+    return `<file path="${file.path}"${noteAttr}>`;
   }
 
   /**

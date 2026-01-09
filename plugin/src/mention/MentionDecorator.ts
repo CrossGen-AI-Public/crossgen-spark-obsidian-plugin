@@ -177,7 +177,7 @@ export class MentionDecorator {
 		for (const replacement of replacements) {
 			// Add text before the mention
 			if (replacement.start > lastIndex) {
-				fragment.appendChild(document.createTextNode(text.substring(lastIndex, replacement.start)));
+				fragment.appendChild(document.createTextNode(text.slice(lastIndex, replacement.start)));
 			}
 
 			// Add the mention span
@@ -293,54 +293,77 @@ export class MentionDecorator {
 	/**
 	 * Process a single inactive table cell to add mention styling
 	 */
-	private processTableCell(cell: HTMLElement) {
-		// Skip if cell is being edited (contains CodeMirror)
-		if (cell.querySelector('.cm-content, .cm-editor')) {
-			cell.removeAttribute('data-spark-processed');
-			cell.removeAttribute('data-spark-text');
+	private processTableCell(cell: HTMLElement): void {
+		if (this.isCellBeingEdited(cell)) {
+			this.resetCellProcessingState(cell);
 			return;
 		}
 
-		// Skip if contenteditable element is currently focused
-		if (cell.isContentEditable && document.activeElement === cell) {
+		if (this.isCellFocused(cell)) {
 			return;
 		}
 
-		// Skip if already processed and content hasn't changed
-		const currentText = cell.textContent || '';
-		const lastProcessedText = cell.getAttribute('data-spark-text');
-		if (cell.hasAttribute('data-spark-processed') && lastProcessedText === currentText) {
+		const text = cell.textContent || '';
+		if (this.isUnchangedProcessedCell(cell, text)) {
 			return;
 		}
 
-		const text = currentText;
-		if (!text.includes('@') && !text.includes('/')) {
-			cell.removeAttribute('data-spark-processed');
-			cell.removeAttribute('data-spark-text');
+		if (!this.shouldDecorateText(text)) {
+			this.resetCellProcessingState(cell);
 			return;
 		}
 
-		// Find all tokens (mentions and commands)
 		const tokens = this.findTokens(text);
-
 		if (tokens.length === 0) {
-			cell.removeAttribute('data-spark-processed');
-			cell.removeAttribute('data-spark-text');
+			this.resetCellProcessingState(cell);
 			return;
 		}
 
-		// Build DOM with styled tokens
+		this.renderDecoratedCellText(cell, text, tokens);
+		this.markCellProcessed(cell, text);
+	}
+
+	private isCellBeingEdited(cell: HTMLElement): boolean {
+		return !!cell.querySelector('.cm-content, .cm-editor');
+	}
+
+	private isCellFocused(cell: HTMLElement): boolean {
+		return cell.isContentEditable && document.activeElement === cell;
+	}
+
+	private isUnchangedProcessedCell(cell: HTMLElement, text: string): boolean {
+		const lastProcessedText = cell.getAttribute('data-spark-text');
+		return cell.hasAttribute('data-spark-processed') && lastProcessedText === text;
+	}
+
+	private shouldDecorateText(text: string): boolean {
+		return text.includes('@') || text.includes('/');
+	}
+
+	private resetCellProcessingState(cell: HTMLElement): void {
+		cell.removeAttribute('data-spark-processed');
+		cell.removeAttribute('data-spark-text');
+	}
+
+	private markCellProcessed(cell: HTMLElement, text: string): void {
+		cell.setAttribute('data-spark-processed', 'true');
+		cell.setAttribute('data-spark-text', text);
+	}
+
+	private renderDecoratedCellText(
+		cell: HTMLElement,
+		text: string,
+		tokens: Array<{ text: string; start: number; end: number; type: TokenType | null }>
+	): void {
 		cell.empty();
 		let lastIndex = 0;
 
 		for (const token of tokens) {
-			// Add text before token
-			const beforeText = text.substring(lastIndex, token.start);
+			const beforeText = text.slice(lastIndex, token.start);
 			if (beforeText) {
 				cell.appendText(beforeText);
 			}
 
-			// Add styled token or plain text
 			if (token.type) {
 				const span = cell.createSpan({
 					cls: `spark-token spark-token-${token.type}`,
@@ -355,19 +378,14 @@ export class MentionDecorator {
 			lastIndex = token.end;
 		}
 
-		// Add remaining text
-		const remainingText = text.substring(lastIndex);
+		const remainingText = text.slice(lastIndex);
 		if (remainingText) {
 			cell.appendText(remainingText);
 		}
 
-		// Ensure cell has content (for cursor positioning)
 		if (!cell.hasChildNodes()) {
 			cell.createEl('br');
 		}
-
-		cell.setAttribute('data-spark-processed', 'true');
-		cell.setAttribute('data-spark-text', text);
 	}
 
 	/**
@@ -512,19 +530,19 @@ export class MentionDecorator {
 	 * Create the editor extension for CodeMirror
 	 */
 	createExtension() {
-		const mentionDecorator = this;
+		const buildDecorations = (view: EditorView) => this.buildDecorations(view);
 
 		return ViewPlugin.fromClass(
 			class {
 				decorations: DecorationSet;
 
 				constructor(view: EditorView) {
-					this.decorations = mentionDecorator.buildDecorations(view);
+					this.decorations = buildDecorations(view);
 				}
 
 				update(update: ViewUpdate) {
 					if (update.docChanged || update.viewportChanged) {
-						this.decorations = mentionDecorator.buildDecorations(update.view);
+						this.decorations = buildDecorations(update.view);
 					}
 				}
 			},
@@ -537,53 +555,60 @@ export class MentionDecorator {
 	/**
 	 * Handle clicks on mentions
 	 */
-	public handleMentionClick(event: MouseEvent) {
+	public handleMentionClick(event: MouseEvent): void {
 		const target = event.target as HTMLElement;
-
-		if (!target.classList.contains('spark-token')) {
-			return;
-		}
+		if (!target.classList.contains('spark-token')) return;
 
 		const token = target.getAttribute('data-token');
 		const type = target.getAttribute('data-type');
-
 		if (!token) return;
 
-		// Handle commands differently
-		if (type === 'command') {
-			console.debug('Command clicked:', token);
-			// TODO: Show command documentation or execute command
-			return;
-		}
-
-		// Check if Cmd (Mac) or Ctrl (Windows/Linux) is pressed
+		// Cmd (Mac) / Ctrl (Windows/Linux) opens in new tab
 		const newTab = event.metaKey || event.ctrlKey;
 
-		// Remove the @ prefix for mentions
-		const path = token.substring(1);
-
-		if (type === 'folder') {
-			// For folders, show a file picker
-			const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(path));
-			if (files.length > 0) {
-				new FolderFileSuggestModal(this.app, files, newTab).open();
-			}
-		} else if (type === 'agent') {
-			// For agent mentions, open chat with the agent pre-mentioned
-			if (this.plugin?.chatManager) {
-				this.plugin.chatManager.openChatWithAgent(path);
-			}
-			return;
-		} else {
-			// For file mentions
-			const file = this.app.vault.getMarkdownFiles().find(f => f.basename === path);
-			if (file) {
-				const leaf = newTab ? this.app.workspace.getLeaf('tab') : this.app.workspace.getLeaf();
-				void leaf.openFile(file);
-			}
+		switch (type) {
+			case 'command':
+				this.handleCommandClick(token);
+				return;
+			case 'folder':
+				this.handleFolderClick(token, newTab);
+				break;
+			case 'agent':
+				this.handleAgentClick(token);
+				return;
+			default:
+				this.handleFileClick(token, newTab);
+				break;
 		}
 
 		event.preventDefault();
+	}
+
+	private handleCommandClick(token: string): void {
+		console.debug('Command clicked:', token);
+		// TODO: Show command documentation or execute command
+	}
+
+	private handleFolderClick(token: string, newTab: boolean): void {
+		const path = token.slice(1); // Remove @ prefix
+		const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(path));
+		if (files.length > 0) {
+			new FolderFileSuggestModal(this.app, files, newTab).open();
+		}
+	}
+
+	private handleAgentClick(token: string): void {
+		const agentName = token.slice(1); // Remove @ prefix
+		this.plugin?.chatManager?.openChatWithAgent(agentName);
+	}
+
+	private handleFileClick(token: string, newTab: boolean): void {
+		const basename = token.slice(1); // Remove @ prefix
+		const file = this.app.vault.getMarkdownFiles().find(f => f.basename === basename);
+		if (!file) return;
+
+		const leaf = newTab ? this.app.workspace.getLeaf('tab') : this.app.workspace.getLeaf();
+		void leaf.openFile(file);
 	}
 }
 

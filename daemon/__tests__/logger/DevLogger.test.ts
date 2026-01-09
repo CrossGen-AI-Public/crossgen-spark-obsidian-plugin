@@ -7,7 +7,7 @@ import { DevLogger } from '../../src/logger/DevLogger.js';
 import { Logger } from '../../src/logger/Logger.js';
 
 describe('DevLogger', () => {
-    let consoleLogSpy: jest.SpiedFunction<typeof console.log>;
+    let consoleDebugSpy: jest.SpiedFunction<typeof console.debug>;
     let consoleWarnSpy: jest.SpiedFunction<typeof console.warn>;
     let consoleErrorSpy: jest.SpiedFunction<typeof console.error>;
 
@@ -15,14 +15,14 @@ describe('DevLogger', () => {
         // Reset logger singleton
         Logger.resetInstance();
 
-        // Spy on console methods
-        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
+        // Spy on console methods (DevLogger uses console.debug for debug/info levels)
+        consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => { });
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     });
 
     afterEach(() => {
-        consoleLogSpy.mockRestore();
+        consoleDebugSpy.mockRestore();
         consoleWarnSpy.mockRestore();
         consoleErrorSpy.mockRestore();
         Logger.resetInstance();
@@ -35,8 +35,8 @@ describe('DevLogger', () => {
 
             logger.info('Test message');
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('[TestComponent]');
             expect(logMessage).toContain('Test message');
         });
@@ -46,8 +46,8 @@ describe('DevLogger', () => {
 
             logger.debug('Debug info');
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('[MyModule]');
             expect(logMessage).toContain('Debug info');
         });
@@ -81,8 +81,8 @@ describe('DevLogger', () => {
 
             logger.debug('Processing file', { filename: 'test.md', size: 1024 });
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('filename');
             expect(logMessage).toContain('test.md');
         });
@@ -92,8 +92,8 @@ describe('DevLogger', () => {
 
             logger.info('File changed', { path: '/test/file.md' });
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('path');
         });
     });
@@ -104,10 +104,10 @@ describe('DevLogger', () => {
 
             logger.time('operation');
 
-            expect(consoleLogSpy).toHaveBeenCalledWith(
+            expect(consoleDebugSpy).toHaveBeenCalledWith(
                 expect.stringContaining('[PerfTest]')
             );
-            expect(consoleLogSpy).toHaveBeenCalledWith(
+            expect(consoleDebugSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Timer started: operation')
             );
         });
@@ -116,14 +116,14 @@ describe('DevLogger', () => {
             const logger = new DevLogger('PerfTest', { level: 'debug', console: true });
 
             logger.time('operation');
-            consoleLogSpy.mockClear();
+            consoleDebugSpy.mockClear();
 
             logger.timeEnd('operation');
 
-            expect(consoleLogSpy).toHaveBeenCalledWith(
+            expect(consoleDebugSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Timer ended: operation')
             );
-            expect(consoleLogSpy).toHaveBeenCalledWith(
+            expect(consoleDebugSpy).toHaveBeenCalledWith(
                 expect.stringContaining('duration')
             );
         });
@@ -160,8 +160,8 @@ describe('DevLogger', () => {
                 data: { count: 42 },
             });
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('[TestComponent]');
             expect(logMessage).toContain('_namespace');
             expect(logMessage).toContain('_timestamp');
@@ -175,8 +175,8 @@ describe('DevLogger', () => {
 
             child.info('Child message');
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('[ParentComponent:ChildModule]');
             expect(logMessage).toContain('Child message');
         });
@@ -188,8 +188,8 @@ describe('DevLogger', () => {
 
             grandchild.info('Nested message');
 
-            expect(consoleLogSpy).toHaveBeenCalled();
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalled();
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('[Parent:Child:Grandchild]');
         });
     });
@@ -202,8 +202,8 @@ describe('DevLogger', () => {
             logger.info('Info message');
 
             // Debug should be filtered out
-            expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-            const logMessage = consoleLogSpy.mock.calls[0]?.[0] as string;
+            expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+            const logMessage = consoleDebugSpy.mock.calls[0]?.[0] as string;
             expect(logMessage).toContain('Info message');
         });
 
@@ -215,7 +215,7 @@ describe('DevLogger', () => {
             logger.warn('Warning message');
 
             // Only warn should log
-            expect(consoleLogSpy).toHaveBeenCalledTimes(0);
+            expect(consoleDebugSpy).toHaveBeenCalledTimes(0);
             expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
         });
     });
@@ -229,7 +229,7 @@ describe('DevLogger', () => {
             logger.warn('Warning message');
             logger.error('Error message');
 
-            expect(consoleLogSpy).not.toHaveBeenCalled();
+            expect(consoleDebugSpy).not.toHaveBeenCalled();
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).not.toHaveBeenCalled();
         });

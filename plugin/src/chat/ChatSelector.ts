@@ -1,4 +1,5 @@
 import { type App, SuggestModal, setIcon } from 'obsidian';
+import { setCssProps } from '../utils/setCssProps';
 import type { ConversationStorage } from './ConversationStorage';
 import type { ChatConversation } from './types';
 
@@ -70,7 +71,7 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 			noteEl.setText(preview);
 		} else {
 			noteEl.setText('Empty conversation');
-			noteEl.style.opacity = '0.5';
+			setCssProps(noteEl, { opacity: '0.5' });
 		}
 
 		// Add delete button
@@ -79,9 +80,9 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 		});
 		setIcon(deleteBtn, 'trash-2');
 		deleteBtn.title = 'Delete conversation';
-		deleteBtn.onclick = async (e: MouseEvent) => {
+		deleteBtn.onclick = (e: MouseEvent) => {
 			e.stopPropagation();
-			await this.deleteConversation(conversation.id, el);
+			void this.deleteConversation(conversation.id, el);
 		};
 
 		el.dataset.conversationId = conversation.id;
@@ -97,8 +98,7 @@ class ConversationSelectModal extends SuggestModal<ChatConversation> {
 			this.selector?.onConversationDeleted(conversationId);
 
 			// Remove from UI with animation
-			element.style.opacity = '0';
-			element.style.transform = 'translateX(-100%)';
+			setCssProps(element, { opacity: '0', transform: 'translateX(-100%)' });
 			window.setTimeout(() => {
 				element.remove();
 				if (this.inputEl) {
@@ -189,8 +189,10 @@ export class ChatSelector {
 		const dropdownBtn = document.createElement('button');
 		dropdownBtn.className = 'spark-chat-dropdown-btn';
 		dropdownBtn.textContent = '☰';
-		dropdownBtn.title = 'Select Conversation';
-		dropdownBtn.onclick = async () => await this.showConversationModal();
+		dropdownBtn.title = 'Select conversation';
+		dropdownBtn.onclick = () => {
+			void this.showConversationModal();
+		};
 
 		containerEl.appendChild(dropdownBtn);
 	}
@@ -202,7 +204,7 @@ export class ChatSelector {
 		const newChatBtn = document.createElement('button');
 		newChatBtn.className = 'spark-chat-new-btn';
 		newChatBtn.textContent = '+';
-		newChatBtn.title = 'New Chat';
+		newChatBtn.title = 'New chat';
 		newChatBtn.onclick = () => this.onNewChat();
 
 		containerEl.appendChild(newChatBtn);

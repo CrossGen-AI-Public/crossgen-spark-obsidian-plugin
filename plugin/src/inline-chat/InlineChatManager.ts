@@ -211,7 +211,7 @@ export class InlineChatManager {
 		}
 
 		// Generate unique marker ID
-		this.markerId = `spark-inline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		this.markerId = `spark-inline-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
 		// Set flag to ignore editor change events from our modifications
 		this.isAdjustingContent = true;
@@ -351,8 +351,7 @@ export class InlineChatManager {
 		editor: Editor
 	): { top: number; left: number; parentElement: HTMLElement } | null {
 		// Get editor container (CodeMirror 6 structure)
-		// biome-ignore lint/suspicious/noExplicitAny: CodeMirror internal property access
-		const editorEl = (editor as any).cm?.dom as HTMLElement | undefined;
+		const editorEl = this.getCodeMirrorDom(editor);
 		if (!editorEl) {
 			return null;
 		}
@@ -402,6 +401,12 @@ export class InlineChatManager {
 		};
 	}
 
+	private getCodeMirrorDom(editor: Editor): HTMLElement | null {
+		const maybe = editor as unknown as { cm?: { dom?: unknown } };
+		const dom = maybe.cm?.dom;
+		return dom instanceof HTMLElement ? dom : null;
+	}
+
 	/**
 	 * Clean up markers from document (removes all lines between and including markers)
 	 */
@@ -420,7 +425,7 @@ export class InlineChatManager {
 		// Get current file path
 		const activeFile = this.app.workspace.getActiveFile();
 		if (!activeFile) {
-			new Notice('Error: No active file');
+			new Notice('Error: no active file');
 			return;
 		}
 

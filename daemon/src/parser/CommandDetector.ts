@@ -9,6 +9,12 @@ import { MentionParser } from './MentionParser.js';
 export class CommandDetector implements ICommandDetector {
   private mentionParser: MentionParser;
 
+  private state = {
+    inCodeBlock: false,
+    inSparkResult: false,
+    inInlineChat: false,
+  };
+
   constructor() {
     this.mentionParser = new MentionParser();
   }
@@ -16,91 +22,97 @@ export class CommandDetector implements ICommandDetector {
   public detectInFile(content: string): ParsedCommand[] {
     const lines = content.split('\n');
     const commands: ParsedCommand[] = [];
-    let inCodeBlock = false;
-    let inSparkResult = false; // Track if we're inside an AI response
-    let inInlineChat = false; // Track if we're inside an inline chat marker
+    // Reset state for this file
+    this.state.inCodeBlock = false;
+    this.state.inSparkResult = false;
+    this.state.inInlineChat = false;
 
-    lines.forEach((line, index) => {
-      // Skip AI responses to prevent feedback loop
-      if (line.trim() === '<!-- spark-result-start -->') {
-        inSparkResult = true;
-        return;
-      }
-      if (line.trim() === '<!-- spark-result-end -->') {
-        inSparkResult = false;
-        return;
-      }
-      if (inSparkResult) {
-        return; // Skip lines inside AI responses
-      }
-
-      // Skip inline chat markers to prevent conflict with inline chat system
-      if (line.trim().match(/<!--\s*spark-inline-chat:/)) {
-        inInlineChat = true;
-        return;
-      }
-      if (line.trim().match(/<!--\s*\/spark-inline-chat\s*-->/)) {
-        inInlineChat = false;
-        return;
-      }
-      if (inInlineChat) {
-        return; // Skip lines inside inline chat markers
-      }
-      // Track code blocks
-      if (line.trim().startsWith('```')) {
-        inCodeBlock = !inCodeBlock;
-        return;
-      }
-
-      // Skip lines inside code blocks
-      if (inCodeBlock) {
-        return;
-      }
-      // Skip empty lines
-      if (!line.trim()) {
-        return;
-      }
-
-      // Check if line has Spark syntax
-      if (!this.mentionParser.hasSparkSyntax(line)) {
-        return;
-      }
-
-      // Parse mentions in this line
-      const mentions = this.mentionParser.parseLine(line);
-
-      if (mentions.length === 0) {
-        return;
-      }
-
-      // Determine command type
-      const commandMention = mentions.find((m) => m.type === 'command');
-
-      // Only process slash commands (not bare agent mentions)
-      // Agent mentions should use the inline chat system
-      if (!commandMention) {
-        return;
-      }
-
-      // Check if line is already processed (has status emoji)
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index] as string;
       const trimmed = line.trim();
-      // Match [x] first before individual characters
-      const emojiMatch = trimmed.match(/^(\[x\]|✅|✓|❌|✗|⏳|🔄)/);
-      const hasEmoji = emojiMatch !== null;
 
-      if (hasEmoji) {
-        // Extract the actual command by removing the emoji
-        const emoji = emojiMatch[0];
-        const cleanLine = trimmed.replace(/^(\[x\]|✅|✓|❌|✗|⏳|🔄)\s*/, '');
-        const status = this.getStatusFromEmoji(emoji);
-
-        commands.push(this.createCommand(index + 1, cleanLine, mentions, status, emoji));
-      } else {
-        commands.push(this.createCommand(index + 1, line, mentions, 'pending'));
+      if (this.updateStateFromMarkers(trimmed)) {
+        continue;
       }
-    });
+
+      if (this.shouldSkipLine(line, trimmed)) {
+        continue;
+      }
+
+      const mentions = this.mentionParser.parseLine(line);
+      const commandMention = mentions.find((m) => m.type === 'command');
+      if (!commandMention) {
+        continue;
+      }
+
+      this.pushCommand(commands, index + 1, line, trimmed, mentions);
+    }
 
     return commands;
+  }
+
+  private updateStateFromMarkers(trimmed: string): boolean {
+    if (this.updateSparkResultState(trimmed)) return true;
+    if (this.updateInlineChatState(trimmed)) return true;
+    if (this.updateCodeBlockState(trimmed)) return true;
+    return false;
+  }
+
+  private updateSparkResultState(trimmed: string): boolean {
+    if (trimmed === '<!-- spark-result-start -->') {
+      this.state.inSparkResult = true;
+      return true;
+    }
+    if (trimmed === '<!-- spark-result-end -->') {
+      this.state.inSparkResult = false;
+      return true;
+    }
+    return false;
+  }
+
+  private updateInlineChatState(trimmed: string): boolean {
+    if (trimmed.match(/<!--\s*spark-inline-chat:/)) {
+      this.state.inInlineChat = true;
+      return true;
+    }
+    if (trimmed.match(/<!--\s*\/spark-inline-chat\s*-->/)) {
+      this.state.inInlineChat = false;
+      return true;
+    }
+    return false;
+  }
+
+  private updateCodeBlockState(trimmed: string): boolean {
+    if (!trimmed.startsWith('```')) return false;
+    this.state.inCodeBlock = !this.state.inCodeBlock;
+    return true;
+  }
+
+  private shouldSkipLine(line: string, trimmed: string): boolean {
+    if (this.state.inSparkResult) return true;
+    if (this.state.inInlineChat) return true;
+    if (this.state.inCodeBlock) return true;
+    if (!trimmed) return true;
+    return !this.mentionParser.hasSparkSyntax(line);
+  }
+
+  private pushCommand(
+    commands: ParsedCommand[],
+    lineNumber: number,
+    rawLine: string,
+    trimmedLine: string,
+    mentions: ParsedMention[]
+  ): void {
+    const emojiMatch = trimmedLine.match(/^(\[x\]|✅|✓|❌|✗|⏳|🔄)/);
+    if (!emojiMatch) {
+      commands.push(this.createCommand(lineNumber, rawLine, mentions, 'pending'));
+      return;
+    }
+
+    const emoji = emojiMatch[0];
+    const cleanLine = trimmedLine.replace(/^(\[x\]|✅|✓|❌|✗|⏳|🔄)\s*/, '');
+    const status = this.getStatusFromEmoji(emoji);
+    commands.push(this.createCommand(lineNumber, cleanLine, mentions, status, emoji));
   }
 
   private createCommand(

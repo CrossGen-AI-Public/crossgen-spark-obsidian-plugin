@@ -19,6 +19,7 @@ import {
 } from './models';
 import { DaemonService } from './services/DaemonService';
 import type { ISparkPlugin, SparkSettings } from './types';
+import { setCssProps } from './utils/setCssProps';
 import { AgentConfigSchema, type SparkConfig, SparkConfigSchema } from './validation';
 
 export const DEFAULT_SETTINGS: SparkSettings = {
@@ -93,8 +94,6 @@ export class SparkSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Spark Assistant Settings' });
-
 		// Create tab navigation
 		const tabNav = containerEl.createDiv({ cls: 'spark-settings-tabs' });
 
@@ -128,7 +127,7 @@ export class SparkSettingTab extends PluginSettingTab {
 		// Create tab contents
 		tabs.forEach((tab, index) => {
 			const tabContent = tabContentContainer.createDiv({ cls: `spark-tab-${tab.id}` });
-			tabContent.style.display = index === 0 ? 'block' : 'none';
+			setCssProps(tabContent, { display: index === 0 ? 'block' : 'none' });
 			tabContents.push(tabContent);
 		});
 
@@ -137,7 +136,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			button.addEventListener('click', () => {
 				// Hide all tab contents
 				tabContents.forEach(content => {
-					content.style.display = 'none';
+					setCssProps(content, { display: 'none' });
 				});
 
 				// Reset all tab buttons
@@ -146,7 +145,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 				// Show selected tab content
-				tabContents[index].style.display = 'block';
+				setCssProps(tabContents[index], { display: 'block' });
 
 				// Activate selected tab button
 				button.classList.add('active');
@@ -164,20 +163,18 @@ export class SparkSettingTab extends PluginSettingTab {
 		this.populateDaemonSection(containerEl);
 
 		// Plugin section
-		containerEl.createEl('h3', { text: 'Plugin' });
-		const pluginDesc = containerEl.createEl('p', {
-			text: 'Configure Spark plugin behavior and appearance.',
-			cls: 'setting-item-description',
-		});
-		pluginDesc.style.marginBottom = '1em';
+		new Setting(containerEl).setName('Plugin').setHeading();
+		new Setting(containerEl)
+			.setDesc('Configure Spark plugin behavior and appearance.')
+			.setClass('spark-section-desc');
 
 		new Setting(containerEl)
-			.setName('Enable Command Palette')
+			.setName('Enable command palette')
 			.setDesc('Enable slash command autocomplete (/ and @)')
 			.addToggle(toggle =>
-				toggle.setValue(this.plugin.settings.enablePalette).onChange(async value => {
+				toggle.setValue(this.plugin.settings.enablePalette).onChange(value => {
 					this.plugin.settings.enablePalette = value;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				})
 			);
 	}
@@ -187,12 +184,10 @@ export class SparkSettingTab extends PluginSettingTab {
 		const isInstalled = daemonService.isDaemonInstalled();
 		const isRunning = isInstalled && daemonService.isDaemonRunning();
 
-		containerEl.createEl('h3', { text: 'Daemon' });
-		const daemonDesc = containerEl.createEl('p', {
-			text: 'The Spark daemon handles AI requests for this vault.',
-			cls: 'setting-item-description',
-		});
-		daemonDesc.style.marginBottom = '1em';
+		new Setting(containerEl).setName('Daemon').setHeading();
+		new Setting(containerEl)
+			.setDesc('The Spark daemon handles AI requests for this vault.')
+			.setClass('spark-section-desc');
 
 		if (!isInstalled) {
 			// Daemon not installed
@@ -201,7 +196,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setDesc('Required for AI features to work')
 				.addButton(btn =>
 					btn
-						.setButtonText('Install Spark Daemon')
+						.setButtonText('Install Spark daemon')
 						.setCta()
 						.onClick(() => {
 							daemonService.installDaemon();
@@ -223,20 +218,22 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setDesc('Not running for this vault')
 				.addButton(btn =>
 					btn
-						.setButtonText('Start Daemon')
+						.setButtonText('Start daemon')
 						.setCta()
-						.onClick(async () => {
-							btn.setButtonText('Starting...');
-							btn.setDisabled(true);
-							const success = await daemonService.startDaemonBackground();
-							if (success) {
-								new Notice('Daemon started');
-							} else {
-								new Notice('Failed to start daemon');
-							}
-							// Refresh status bar and settings display
-							this.plugin.updateStatusBar();
-							this.display();
+						.onClick(() => {
+							void (async () => {
+								btn.setButtonText('Starting...');
+								btn.setDisabled(true);
+								const success = await daemonService.startDaemonBackground();
+								if (success) {
+									new Notice('Daemon started');
+								} else {
+									new Notice('Failed to start daemon');
+								}
+								// Refresh status bar and settings display
+								this.plugin.updateStatusBar();
+								this.display();
+							})();
 						})
 				);
 
@@ -258,20 +255,22 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setName('Daemon status')
 				.setDesc(`Running (PID: ${daemonInfo?.pid}, Uptime: ${uptimeStr})`)
 				.addButton(btn =>
-					btn.setButtonText('Stop Daemon').onClick(async () => {
-						btn.setButtonText('Stopping...');
-						btn.setDisabled(true);
-						// Small delay to let UI update before sync operation
-						await new Promise(resolve => setTimeout(resolve, 10));
-						const success = daemonService.stopDaemon();
-						if (success) {
-							new Notice('Daemon stopped');
-						} else {
-							new Notice('Failed to stop daemon');
-						}
-						// Refresh status bar and settings display
-						this.plugin.updateStatusBar();
-						this.display();
+					btn.setButtonText('Stop daemon').onClick(() => {
+						void (async () => {
+							btn.setButtonText('Stopping...');
+							btn.setDisabled(true);
+							// Small delay to let UI update before sync operation
+							await new Promise(resolve => setTimeout(resolve, 10));
+							const success = daemonService.stopDaemon();
+							if (success) {
+								new Notice('Daemon stopped');
+							} else {
+								new Notice('Failed to stop daemon');
+							}
+							// Refresh status bar and settings display
+							this.plugin.updateStatusBar();
+							this.display();
+						})();
 					})
 				);
 
@@ -279,7 +278,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			const statusEl = statusSetting.descEl;
 			statusEl.empty();
 			const indicator = statusEl.createSpan({ cls: 'spark-daemon-status-indicator running' });
-			indicator.setText('● Running');
+			indicator.setText('● running');
 		}
 
 		// Auto-launch toggle (only if daemon is installed)
@@ -288,9 +287,9 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setName('Auto-launch daemon')
 				.setDesc('Automatically start the daemon when Obsidian opens')
 				.addToggle(toggle =>
-					toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(async value => {
+					toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(value => {
 						this.plugin.settings.autoLaunchDaemon = value;
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 					})
 				);
 		}
@@ -301,9 +300,9 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setName('Show daemon prompt on startup')
 				.setDesc('Show a reminder to start the daemon when Obsidian opens')
 				.addToggle(toggle =>
-					toggle.setValue(!this.plugin.settings.dismissedDaemonSetup).onChange(async value => {
+					toggle.setValue(!this.plugin.settings.dismissedDaemonSetup).onChange(value => {
 						this.plugin.settings.dismissedDaemonSetup = !value;
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 					})
 				);
 		}
@@ -311,33 +310,31 @@ export class SparkSettingTab extends PluginSettingTab {
 
 	private populateAgentsTab(containerEl: HTMLElement) {
 		// Agents Section
-		containerEl.createEl('h3', { text: 'Agents' });
-		const agentsDesc = containerEl.createEl('p', {
-			text: 'Manage AI agents. Changes are saved directly to files and picked up automatically.',
-			cls: 'setting-item-description',
-		});
-		agentsDesc.style.marginBottom = '1em';
+		new Setting(containerEl).setName('Agents').setHeading();
+		new Setting(containerEl)
+			.setDesc('Manage AI agents. Changes are saved directly to files and picked up automatically.')
+			.setClass('spark-section-desc');
 
 		// Add Agent button
 		new Setting(containerEl)
-			.setName('Add New Agent')
+			.setName('Add new agent')
 			.setDesc('Create a new AI agent')
 			.addButton(btn =>
 				btn
-					.setButtonText('Add Agent')
+					.setButtonText('Add agent')
 					.setCta()
-					.onClick(async () => {
-						await this.addNewAgent();
+					.onClick(() => {
+						void this.addNewAgent();
 					})
 			);
 
 		this.agentsContainer = containerEl.createDiv();
-		this.loadAgents();
+		void this.loadAgents();
 	}
 
 	private populateAdvancedTab(containerEl: HTMLElement) {
 		this.configContainer = containerEl.createDiv();
-		this.loadConfig();
+		void this.loadConfig();
 	}
 
 	private async loadAgents() {
@@ -399,8 +396,8 @@ export class SparkSettingTab extends PluginSettingTab {
 					btn
 						.setIcon('trash')
 						.setTooltip('Delete agent')
-						.onClick(async () => {
-							await this.deleteAgent(filePath, agent.name);
+						.onClick(() => {
+							void this.deleteAgent(filePath, agent.name);
 						});
 				});
 
@@ -441,7 +438,7 @@ export class SparkSettingTab extends PluginSettingTab {
 
 			// Context folders (comma-separated)
 			new Setting(editorForm)
-				.setName('Context Folders')
+				.setName('Context folders')
 				.setDesc('Comma-separated list of folders (optional)')
 				.addText(text =>
 					text
@@ -463,7 +460,7 @@ export class SparkSettingTab extends PluginSettingTab {
 
 			// AI Model
 			new Setting(editorForm)
-				.setName('AI Model')
+				.setName('AI model')
 				.setDesc('Select from available Claude models')
 				.addDropdown(dropdown => {
 					// Add all available Claude models
@@ -508,27 +505,29 @@ export class SparkSettingTab extends PluginSettingTab {
 			// Save button
 			new Setting(editorForm).addButton(btn =>
 				btn
-					.setButtonText('Save Agent')
+					.setButtonText('Save agent')
 					.setCta()
-					.onClick(async () => {
-						// Validate with Zod
-						const result = AgentConfigSchema.safeParse(agent);
+					.onClick(() => {
+						void (async () => {
+							// Validate with Zod
+							const result = AgentConfigSchema.safeParse(agent);
 
-						if (!result.success) {
-							const firstError = result.error.issues[0];
-							new Notice(`Validation error: ${firstError.message}`);
-							return;
-						}
+							if (!result.success) {
+								const firstError = result.error.issues[0];
+								new Notice(`Validation error: ${firstError.message}`);
+								return;
+							}
 
-						await this.saveAgent(filePath, result.data);
-						new Notice(`Agent ${agent.name} saved`);
+							await this.saveAgent(filePath, result.data);
+							new Notice(`Agent ${agent.name} saved`);
 
-						// Update displayed name and role
-						nameEl.textContent = result.data.name;
-						descEl.textContent = result.data.role;
+							// Update displayed name and role
+							nameEl.textContent = result.data.name;
+							descEl.textContent = result.data.role;
 
-						// Close the editor form
-						editorForm.classList.remove('visible');
+							// Close the editor form
+							editorForm.classList.remove('visible');
+						})();
 					})
 			);
 		} catch (error) {
@@ -709,7 +708,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			const config = yaml.load(content) as SparkConfig;
 
 			// Daemon section
-			this.configContainer.createEl('h4', { text: 'Daemon' });
+			new Setting(this.configContainer).setName('Daemon').setHeading();
 
 			new Setting(this.configContainer)
 				.setName('Debounce (ms)')
@@ -724,7 +723,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 			new Setting(this.configContainer)
-				.setName('Add Blank Lines')
+				.setName('Add blank lines')
 				.setDesc('Add blank lines before results')
 				.addToggle(toggle =>
 					toggle
@@ -733,13 +732,13 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			// AI Provider Settings
-			this.configContainer.createEl('h4', { text: 'AI Provider' });
+			new Setting(this.configContainer).setName('AI provider').setHeading();
 
 			// Get available provider names
 			const providerNames = Object.keys(config.ai.providers);
 
 			new Setting(this.configContainer)
-				.setName('Default Provider')
+				.setName('Default provider')
 				.setDesc('Which provider to use by default')
 				.addDropdown(dropdown => {
 					// Add all available providers as options
@@ -753,18 +752,19 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 			// Provider configurations as nested accordion
-			this.configContainer.createEl('h4', { text: 'AI Providers' });
-			this.configContainer.createEl('div', {
-				text: 'Configure AI provider settings',
-				cls: 'setting-item-description spark-providers-description',
-			});
+			new Setting(this.configContainer).setName('AI providers').setHeading();
+			new Setting(this.configContainer)
+				.setDesc('Configure AI provider settings')
+				.setClass('spark-providers-description');
 
 			// Add informational banner about API keys storage
 			const infoEl = this.configContainer.createDiv({ cls: 'setting-item-description' });
-			infoEl.style.marginBottom = '1em';
-			infoEl.style.padding = '0.5em';
-			infoEl.style.backgroundColor = 'var(--background-secondary)';
-			infoEl.style.borderRadius = '4px';
+			setCssProps(infoEl, {
+				marginBottom: '1em',
+				padding: '0.5em',
+				backgroundColor: 'var(--background-secondary)',
+				borderRadius: '4px',
+			});
 
 			infoEl.createSpan({ text: '🔒 ' });
 			infoEl.createEl('strong', { text: 'API keys storage: ' });
@@ -772,7 +772,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			infoEl.appendText(' (outside your vault, safe to sync)');
 			infoEl.createEl('br');
 			const priorityText = infoEl.createEl('small');
-			priorityText.style.opacity = '0.8';
+			setCssProps(priorityText, { opacity: '0.8' });
 
 			const providersContainer = this.configContainer.createDiv({
 				cls: 'spark-providers-accordion',
@@ -817,15 +817,14 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 				// Function to update model dropdown when provider type changes
-				// biome-ignore lint/suspicious/noExplicitAny: Dynamic Obsidian Setting element reference
-				let modelDropdownElement: any;
+				let modelDropdownSetting: Setting | null = null;
 				const updateModelDropdown = () => {
 					// Remove the old model dropdown if it exists
-					if (modelDropdownElement?.settingEl) {
-						modelDropdownElement.settingEl.remove();
+					if (modelDropdownSetting?.settingEl) {
+						modelDropdownSetting.settingEl.remove();
 					}
 					// Create new model dropdown with updated models
-					modelDropdownElement = createModelDropdown();
+					modelDropdownSetting = createModelDropdown();
 				};
 
 				// Create model dropdown function
@@ -873,7 +872,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				let apiKeyValue = this.cachedApiKeys[providerName] || '';
 
 				const apiKeySetting = new Setting(providerContent)
-					.setName('API Key')
+					.setName('API key')
 					.setDesc(isOptional ? 'Optional for claude-code' : 'Required')
 					.addText(text => {
 						text.inputEl.type = 'password';
@@ -904,7 +903,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 				new Setting(providerContent)
-					.setName('Max Tokens')
+					.setName('Max tokens')
 					.setDesc('Maximum tokens per response')
 					.addText(text => {
 						text
@@ -936,47 +935,49 @@ export class SparkSettingTab extends PluginSettingTab {
 				// Save button
 				new Setting(providerContent).addButton(btn =>
 					btn
-						.setButtonText('Save Provider')
+						.setButtonText('Save provider')
 						.setCta()
-						.onClick(async () => {
-							try {
-								// Update cached API keys and save to encrypted secrets file
-								this.cachedApiKeys[providerName] = apiKeyValue;
-								await this.saveApiKeys(this.cachedApiKeys);
+						.onClick(() => {
+							void (async () => {
+								try {
+									// Update cached API keys and save to encrypted secrets file
+									this.cachedApiKeys[providerName] = apiKeyValue;
+									await this.saveApiKeys(this.cachedApiKeys);
 
-								// Validate with Zod
-								const result = SparkConfigSchema.safeParse(config);
+									// Validate with Zod
+									const result = SparkConfigSchema.safeParse(config);
 
-								if (!result.success) {
-									const firstError = result.error.issues[0];
-									new Notice(`Validation error: ${firstError.message}`);
-									return;
+									if (!result.success) {
+										const firstError = result.error.issues[0];
+										new Notice(`Validation error: ${firstError.message}`);
+										return;
+									}
+
+									// Convert back to YAML and save
+									const yamlStr = yaml.dump(result.data, { lineWidth: -1 });
+									await adapter.write(configPath, yamlStr);
+									new Notice(`Provider ${providerName} saved`);
+
+									// Update header title with new type
+									titleEl.textContent = `${providerName} (${getProviderLabel(providerConfig.type)})`;
+
+									// Close the editor form
+									providerContent.classList.remove('visible');
+									arrow.classList.remove('expanded');
+								} catch (error) {
+									console.error('Error saving config:', error);
+									new Notice('Error saving configuration');
 								}
-
-								// Convert back to YAML and save
-								const yamlStr = yaml.dump(result.data, { lineWidth: -1 });
-								await adapter.write(configPath, yamlStr);
-								new Notice(`Provider ${providerName} saved`);
-
-								// Update header title with new type
-								titleEl.textContent = `${providerName} (${getProviderLabel(providerConfig.type)})`;
-
-								// Close the editor form
-								providerContent.classList.remove('visible');
-								arrow.classList.remove('expanded');
-							} catch (error) {
-								console.error('Error saving config:', error);
-								new Notice('Error saving configuration');
-							}
+							})();
 						})
 				);
 			}
 
 			// Logging
-			this.configContainer.createEl('h4', { text: 'Logging' });
+			new Setting(this.configContainer).setName('Logging').setHeading();
 
 			new Setting(this.configContainer)
-				.setName('Log Level')
+				.setName('Log level')
 				.setDesc('Minimum log level to display')
 				.addDropdown(dropdown =>
 					dropdown
@@ -991,7 +992,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			new Setting(this.configContainer)
-				.setName('Console Logging')
+				.setName('Console logging')
 				.setDesc('Output logs to console')
 				.addToggle(toggle =>
 					toggle
@@ -1000,10 +1001,10 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			// Feature Flags
-			this.configContainer.createEl('h4', { text: 'Features' });
+			new Setting(this.configContainer).setName('Features').setHeading();
 
 			new Setting(this.configContainer)
-				.setName('Slash Commands')
+				.setName('Slash commands')
 				.setDesc('Enable slash command automation')
 				.addToggle(toggle =>
 					toggle
@@ -1012,7 +1013,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			new Setting(this.configContainer)
-				.setName('Chat Assistant')
+				.setName('Chat assistant')
 				.setDesc('Enable chat widget')
 				.addToggle(toggle =>
 					toggle
@@ -1021,7 +1022,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			new Setting(this.configContainer)
-				.setName('Trigger Automation')
+				.setName('Trigger automation')
 				.setDesc('Enable automation triggers')
 				.addToggle(toggle =>
 					toggle
@@ -1032,27 +1033,29 @@ export class SparkSettingTab extends PluginSettingTab {
 			// Save button
 			new Setting(this.configContainer).addButton(btn =>
 				btn
-					.setButtonText('Save Configuration')
+					.setButtonText('Save configuration')
 					.setCta()
-					.onClick(async () => {
-						try {
-							// Validate with Zod
-							const result = SparkConfigSchema.safeParse(config);
+					.onClick(() => {
+						void (async () => {
+							try {
+								// Validate with Zod
+								const result = SparkConfigSchema.safeParse(config);
 
-							if (!result.success) {
-								const firstError = result.error.issues[0];
-								new Notice(`Validation error: ${firstError.message}`);
-								return;
+								if (!result.success) {
+									const firstError = result.error.issues[0];
+									new Notice(`Validation error: ${firstError.message}`);
+									return;
+								}
+
+								// Convert back to YAML and save
+								const yamlStr = yaml.dump(result.data, { lineWidth: -1 });
+								await adapter.write(configPath, yamlStr);
+								new Notice('Configuration saved');
+							} catch (error) {
+								console.error('Error saving config:', error);
+								new Notice('Error saving configuration');
 							}
-
-							// Convert back to YAML and save
-							const yamlStr = yaml.dump(result.data, { lineWidth: -1 });
-							await adapter.write(configPath, yamlStr);
-							new Notice('Configuration saved');
-						} catch (error) {
-							console.error('Error saving config:', error);
-							new Notice('Error saving configuration');
-						}
+						})();
 					})
 			);
 		} catch (error) {
@@ -1076,16 +1079,16 @@ class AgentNameModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		contentEl.createEl('h2', { text: 'Create New Agent' });
+		new Setting(contentEl).setName('Create new agent').setHeading();
 
 		new Setting(contentEl)
-			.setName('Agent Name')
+			.setName('Agent name')
 			.setDesc('Enter a name for the new agent')
 			.addText(text => {
 				this.nameInput = text.inputEl;
-				text.setPlaceholder('e.g., Charlie').onChange(() => {
+				text.setPlaceholder('Example: charlie').onChange(() => {
 					// Clear any previous error styling
-					this.nameInput.style.borderColor = '';
+					setCssProps(this.nameInput, { borderColor: '' });
 				});
 				// Focus the input
 				setTimeout(() => text.inputEl.focus(), 10);
@@ -1099,7 +1102,7 @@ class AgentNameModal extends Modal {
 					.onClick(() => {
 						const name = this.nameInput.value.trim();
 						if (!name) {
-							this.nameInput.style.borderColor = 'var(--text-error)';
+							setCssProps(this.nameInput, { borderColor: 'var(--text-error)' });
 							return;
 						}
 						this.submitted = true;
@@ -1140,7 +1143,7 @@ class ConfirmDeleteModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		contentEl.createEl('h2', { text: `Delete ${this.agentName}?` });
+		new Setting(contentEl).setName(`Delete ${this.agentName}?`).setHeading();
 
 		contentEl.createEl('p', {
 			text: `This will remove the agent and all its settings.`,
@@ -1170,7 +1173,7 @@ class ConfirmDeleteModal extends Modal {
 			});
 
 		// Make buttons more prominent
-		buttonContainer.controlEl.style.justifyContent = 'flex-end';
+		setCssProps(buttonContainer.controlEl, { justifyContent: 'flex-end' });
 	}
 
 	onClose() {

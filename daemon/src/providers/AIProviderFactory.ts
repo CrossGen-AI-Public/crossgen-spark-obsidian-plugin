@@ -195,31 +195,7 @@ export class AIProviderFactory {
    * Injects API key from secrets.yaml if available
    */
   private convertConfiguration(name: string, config: ProviderConfiguration): ProviderConfig {
-    // Get API key from secrets loader only
-    let apiKey: string | undefined;
-    if (this.secretsLoader) {
-      apiKey = this.secretsLoader.getApiKey(name);
-
-      // Fallback for Anthropic providers: try shared keys
-      if (!apiKey && name.startsWith('claude-')) {
-        // Try generic 'anthropic' key
-        apiKey = this.secretsLoader.getApiKey('anthropic');
-
-        // If still no key, try other known Anthropic provider keys
-        if (!apiKey) {
-          const anthropicProviders = ['claude-agent', 'claude-client', 'claude-code'];
-          for (const provider of anthropicProviders) {
-            if (provider !== name) {
-              apiKey = this.secretsLoader.getApiKey(provider);
-              if (apiKey) {
-                this.logger.debug(`Using shared API key from ${provider} for ${name}`);
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
+    const apiKey = this.resolveApiKey(name);
 
     return {
       name,
@@ -235,6 +211,45 @@ export class AIProviderFactory {
         vaultPath: this.vaultPath, // Pass vaultPath to providers that need it
       },
     };
+  }
+
+  private resolveApiKey(name: string): string | undefined {
+    if (!this.secretsLoader) return undefined;
+
+    const direct = this.secretsLoader.getApiKey(name);
+    if (direct) return direct;
+
+    if (!name.startsWith('claude-')) return undefined;
+    return this.resolveSharedAnthropicApiKey(name);
+  }
+
+  private resolveSharedAnthropicApiKey(name: string): string | undefined {
+    if (!this.secretsLoader) return undefined;
+
+    const generic = this.secretsLoader.getApiKey('anthropic');
+    if (generic) return generic;
+
+    const anthropicProviders = ['claude-agent', 'claude-client', 'claude-code'];
+    return this.findFirstAvailableApiKey(anthropicProviders, name);
+  }
+
+  private findFirstAvailableApiKey(
+    providerNames: string[],
+    excludeName: string
+  ): string | undefined {
+    if (!this.secretsLoader) return undefined;
+
+    for (const provider of providerNames) {
+      if (provider === excludeName) continue;
+
+      const key = this.secretsLoader.getApiKey(provider);
+      if (key) {
+        this.logger.debug(`Using shared API key from ${provider} for ${excludeName}`);
+        return key;
+      }
+    }
+
+    return undefined;
   }
 
   /**

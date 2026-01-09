@@ -5,6 +5,7 @@
 import type { App } from 'obsidian';
 import type { MentionDecorator } from '../mention/MentionDecorator';
 import { MentionInput } from '../mention/MentionInput';
+import { setCssProps } from '../utils/setCssProps';
 
 export interface InlineChatWidgetOptions {
 	/** Agent name to display */
@@ -196,9 +197,11 @@ export class InlineChatWidget {
 	private createWidget(): HTMLElement {
 		const container = document.createElement('div');
 		container.addClass('spark-inline-chat-widget');
-		container.style.position = 'absolute';
-		container.style.top = `${this.options.top}px`;
-		container.style.left = `${this.options.left}px`;
+		setCssProps(container, {
+			position: 'absolute',
+			top: `${this.options.top}px`,
+			left: `${this.options.left}px`,
+		});
 
 		// Main content area with input and buttons in one container
 		const mainContent = container.createDiv('spark-inline-chat-content');
@@ -237,7 +240,7 @@ export class InlineChatWidget {
 
 		// Helper text below input
 		const helperText = mainContent.createDiv('spark-inline-chat-helper');
-		helperText.setText('↵ to send, ⇧↵ for newline, Esc to cancel, @ for mentions');
+		helperText.setText('Enter to send, Shift+Enter for newline, Esc to cancel, @ for mentions');
 
 		// Send button at bottom right corner of widget
 		this.sendButtonEl = mainContent.createEl('button', {
@@ -306,8 +309,7 @@ export class InlineChatWidget {
 	 */
 	updatePosition(top: number, left: number): void {
 		if (this.containerEl) {
-			this.containerEl.style.top = `${top}px`;
-			this.containerEl.style.left = `${left}px`;
+			setCssProps(this.containerEl, { top: `${top}px`, left: `${left}px` });
 		}
 	}
 }

@@ -58,7 +58,7 @@ export class WorkflowManager {
 		}
 
 		// Reveal the leaf
-		this.app.workspace.revealLeaf(leaf);
+		await this.app.workspace.revealLeaf(leaf);
 	}
 
 	/**
@@ -112,7 +112,7 @@ export class WorkflowManager {
 
 		if (existingLeaves.length > 0) {
 			// Reveal existing leaf
-			this.app.workspace.revealLeaf(existingLeaves[0]);
+			await this.app.workspace.revealLeaf(existingLeaves[0]);
 			return;
 		}
 
@@ -122,6 +122,6 @@ export class WorkflowManager {
 			type: WORKFLOW_LIST_VIEW_TYPE,
 			active: true,
 		});
-		this.app.workspace.revealLeaf(leaf);
+		await this.app.workspace.revealLeaf(leaf);
 	}
 }

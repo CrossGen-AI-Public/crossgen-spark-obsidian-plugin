@@ -349,7 +349,7 @@ export class WorkflowExecutor {
           break;
 
         default:
-          throw new Error(`Unknown step type: ${node.type}`);
+          throw new Error(`Unknown step type: ${String(node.type)}`);
       }
 
       result.status = 'completed';

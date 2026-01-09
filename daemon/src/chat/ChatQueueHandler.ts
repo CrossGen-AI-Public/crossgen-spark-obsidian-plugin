@@ -39,206 +39,257 @@ export class ChatQueueHandler {
    * Process a chat queue file
    */
   async process(relativePath: string): Promise<void> {
-    // Prevent concurrent processing of the same file
-    if (this.processingFiles.has(relativePath)) {
-      this.logger.debug('File already being processed, skipping', { path: relativePath });
-      return;
-    }
-
-    // Prevent processing of recently processed files (debounce/deduplication)
-    if (this.recentlyProcessed.has(relativePath)) {
-      this.logger.debug('File recently processed, skipping', { path: relativePath });
-      return;
-    }
+    if (this.shouldSkipProcessing(relativePath)) return;
 
     this.processingFiles.add(relativePath);
     const fullPath = join(this.vaultPath, relativePath);
     const queueId = basename(relativePath, '.md');
 
     try {
-      let content: string;
-      try {
-        content = readFileSync(fullPath, 'utf-8');
-      } catch (readError) {
-        // If file doesn't exist (ENOENT), it was likely processed by another worker
-        // despite our processingFiles check (race condition during check/add)
-        if ((readError as NodeJS.ErrnoException).code === 'ENOENT') {
-          this.logger.debug('Queue file not found (already processed)', { path: relativePath });
-          return;
-        }
-        throw readError;
-      }
+      const content = this.readQueueFileOrNull(fullPath, relativePath);
+      if (content === null) return;
 
       const parsed = this.parseQueueFile(content);
-
       this.logger.debug('Parsed chat message', {
         conversationId: parsed.conversationId,
         queueId: parsed.queueId,
       });
 
-      // Parse mentions and build command
-      const mentions = this.mentionParser.parse(parsed.userMessage);
-
-      // If no agent explicitly mentioned, inject primaryAgent to ensure proper routing
-      const agentMention = mentions.find((m) => m.type === 'agent');
-      if (!agentMention && parsed.primaryAgent) {
-        mentions.unshift({
-          type: 'agent',
-          value: parsed.primaryAgent,
-          raw: `@${parsed.primaryAgent}`,
-          position: 0,
-        });
-        this.logger.debug('Injected primary agent into mentions', {
-          primaryAgent: parsed.primaryAgent,
-        });
-      }
-
-      let fullPrompt = parsed.userMessage;
-      if (parsed.context) {
-        fullPrompt = `Context from previous messages:\n${parsed.context}\n\n${parsed.userMessage}`;
-      }
-
-      const command: ParsedCommand = {
-        line: 0,
-        raw: fullPrompt,
-        status: 'pending',
-        isComplete: true,
-        type: 'mention-chain',
-        mentions,
-      };
-
-      // Use active file for context if available, otherwise use vault root
-      const contextPath = parsed.activeFile
-        ? join(this.vaultPath, parsed.activeFile)
-        : this.vaultPath;
+      const mentions = this.buildMentions(parsed.userMessage, parsed.primaryAgent);
+      const fullPrompt = this.buildFullPrompt(parsed.userMessage, parsed.context);
+      const command = this.buildCommand(fullPrompt, mentions);
+      const contextPath = this.getContextPath(parsed.activeFile);
 
       this.logger.debug('Using context path for chat', {
         activeFile: parsed.activeFile,
         contextPath,
       });
 
-      // Check if this is the first message (no context or only 1 previous message)
-      const isFirstMessage = !parsed.context || parsed.context.trim().length === 0;
+      const namePromise = this.startNameGenerationIfFirstMessage(parsed);
+      this.handleNameGenerationResult(
+        namePromise,
+        parsed.conversationId,
+        parsed.queueId,
+        mentions,
+        parsed
+      );
 
-      // Start name generation in parallel if applicable
-      let nameGenerationPromise: Promise<string | null> = Promise.resolve(null);
-      if (isFirstMessage && this.chatNameGenerator) {
-        this.logger.debug('Starting parallel chat name generation', {
-          conversationId: parsed.conversationId,
-        });
-        // Generate name from user message only (faster, parallel)
-        nameGenerationPromise = this.chatNameGenerator.generate(parsed.userMessage);
-      }
+      const aiResponse = await this.commandExecutor.executeAndReturn(command, contextPath);
+      this.writeFinalResult(
+        parsed.conversationId,
+        parsed.queueId,
+        mentions,
+        parsed.primaryAgent,
+        aiResponse
+      );
 
-      // Execute AI processing
-      const aiResponsePromise = this.commandExecutor.executeAndReturn(command, contextPath);
-
-      // Handle name generation result as soon as it's ready
-      void nameGenerationPromise.then((name) => {
-        if (name) {
-          this.logger.debug('Chat name generated (parallel)', {
-            conversationId: parsed.conversationId,
-            name,
-          });
-          // Write intermediate result with just the name
-          this.writeResult({
-            conversationId: parsed.conversationId,
-            queueId: parsed.queueId,
-            timestamp: Date.now(),
-            agent: this.extractAgentName(mentions, parsed.primaryAgent),
-            content: '', // Empty content for name update
-            conversationName: name,
-          });
-        }
-      });
-
-      // Wait for AI response
-      const aiResponse = await aiResponsePromise;
-
-      // Write final result (name might have been written already, but we can include it again or not)
-      // We don't need to include conversationName here as it was handled by the parallel promise
-      this.writeResult({
-        conversationId: parsed.conversationId,
-        queueId: parsed.queueId,
-        timestamp: Date.now(),
-        agent: this.extractAgentName(mentions, parsed.primaryAgent),
-        content: aiResponse,
-      });
-      try {
-        if (existsSync(fullPath)) {
-          unlinkSync(fullPath);
-        }
-      } catch (unlinkError) {
-        // Ignore unlink errors (file might be gone)
-        this.logger.debug('Failed to unlink queue file (might be gone)', {
-          path: relativePath,
-          error: unlinkError,
-        });
-      }
+      this.deleteQueueFileIfExists(fullPath, relativePath);
       this.logger.debug('Queue file processed', { path: relativePath });
     } catch (error) {
-      this.logger.error('Chat queue processing failed', {
-        path: relativePath,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      await this.handleProcessingError(error, fullPath, relativePath, queueId);
+    } finally {
+      this.processingFiles.delete(relativePath);
+      this.markRecentlyProcessed(relativePath);
+    }
+  }
 
-      // Try to extract conversationId from file content if parse failed
-      let conversationId = 'unknown';
-      try {
-        const content = readFileSync(fullPath, 'utf-8');
-        const match = content.match(/conversation_id:\s*(.+)/);
-        if (match?.[1]) {
-          conversationId = match[1].trim();
-        } else {
-          // Fallback: extract from queueId (format: conversationId-timestamp)
-          // queueId like "chat-1761512613391-1761512618581" should extract "chat-1761512613391"
-          const parts = queueId.split('-');
-          if (parts.length >= 2) {
-            conversationId = parts.slice(0, -1).join('-');
-          }
-        }
-      } catch {
-        // If we can't read file, use fallback extraction
-        const parts = queueId.split('-');
-        if (parts.length >= 2) {
-          conversationId = parts.slice(0, -1).join('-');
-        }
+  private shouldSkipProcessing(relativePath: string): boolean {
+    if (this.processingFiles.has(relativePath)) {
+      this.logger.debug('File already being processed, skipping', { path: relativePath });
+      return true;
+    }
+
+    if (this.recentlyProcessed.has(relativePath)) {
+      this.logger.debug('File recently processed, skipping', { path: relativePath });
+      return true;
+    }
+
+    return false;
+  }
+
+  private readQueueFileOrNull(fullPath: string, relativePath: string): string | null {
+    try {
+      return readFileSync(fullPath, 'utf-8');
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.logger.debug('Queue file not found (already processed)', { path: relativePath });
+        return null;
       }
+      throw readError;
+    }
+  }
 
-      // Write error log file and notification
-      try {
-        await this.errorWriter.writeError({
-          error,
-          filePath: relativePath,
-          commandLine: 0,
-        });
-      } catch (writeError) {
-        // Log but don't fail if error writing fails
-        this.logger.error('Failed to write error log', { writeError });
-      }
+  private buildMentions(userMessage: string, primaryAgent?: string): ParsedMention[] {
+    const mentions = this.mentionParser.parse(userMessage);
+    if (this.hasExplicitAgentMention(mentions) || !primaryAgent) {
+      return mentions;
+    }
 
-      // Also write error to chat result for UI display
+    mentions.unshift({
+      type: 'agent',
+      value: primaryAgent,
+      raw: `@${primaryAgent}`,
+      position: 0,
+    });
+
+    this.logger.debug('Injected primary agent into mentions', { primaryAgent });
+    return mentions;
+  }
+
+  private hasExplicitAgentMention(mentions: ParsedMention[]): boolean {
+    return mentions.some((m) => m.type === 'agent');
+  }
+
+  private buildFullPrompt(userMessage: string, context: string): string {
+    if (!context) return userMessage;
+    return `Context from previous messages:\n${context}\n\n${userMessage}`;
+  }
+
+  private buildCommand(raw: string, mentions: ParsedMention[]): ParsedCommand {
+    return {
+      line: 0,
+      raw,
+      status: 'pending',
+      isComplete: true,
+      type: 'mention-chain',
+      mentions,
+    };
+  }
+
+  private getContextPath(activeFile?: string): string {
+    return activeFile ? join(this.vaultPath, activeFile) : this.vaultPath;
+  }
+
+  private startNameGenerationIfFirstMessage(parsed: {
+    conversationId: string;
+    userMessage: string;
+    context: string;
+  }): Promise<string | null> {
+    const isFirstMessage = !parsed.context || parsed.context.trim().length === 0;
+    if (!isFirstMessage || !this.chatNameGenerator) {
+      return Promise.resolve(null);
+    }
+
+    this.logger.debug('Starting parallel chat name generation', {
+      conversationId: parsed.conversationId,
+    });
+
+    return this.chatNameGenerator.generate(parsed.userMessage);
+  }
+
+  private handleNameGenerationResult(
+    namePromise: Promise<string | null>,
+    conversationId: string,
+    queueId: string,
+    mentions: ParsedMention[],
+    parsed: { primaryAgent?: string }
+  ): void {
+    void namePromise.then((name) => {
+      if (!name) return;
+
+      this.logger.debug('Chat name generated (parallel)', { conversationId, name });
       this.writeResult({
         conversationId,
         queueId,
         timestamp: Date.now(),
-        agent: 'System',
+        agent: this.extractAgentName(mentions, parsed.primaryAgent),
         content: '',
-        error: this.formatErrorForChat(error),
+        conversationName: name,
       });
+    });
+  }
 
+  private writeFinalResult(
+    conversationId: string,
+    queueId: string,
+    mentions: ParsedMention[],
+    primaryAgent: string | undefined,
+    aiResponse: string
+  ): void {
+    this.writeResult({
+      conversationId,
+      queueId,
+      timestamp: Date.now(),
+      agent: this.extractAgentName(mentions, primaryAgent),
+      content: aiResponse,
+    });
+  }
+
+  private deleteQueueFileIfExists(fullPath: string, relativePath: string): void {
+    try {
       if (existsSync(fullPath)) {
         unlinkSync(fullPath);
       }
-    } finally {
-      this.processingFiles.delete(relativePath);
-
-      // Add to recently processed to prevent immediate reprocessing (race condition fix)
-      this.recentlyProcessed.add(relativePath);
-      setTimeout(() => {
-        this.recentlyProcessed.delete(relativePath);
-      }, 2000); // Keep in cache for 2 seconds
+    } catch (unlinkError) {
+      this.logger.debug('Failed to unlink queue file (might be gone)', {
+        path: relativePath,
+        error: unlinkError,
+      });
     }
+  }
+
+  private async handleProcessingError(
+    error: unknown,
+    fullPath: string,
+    relativePath: string,
+    queueId: string
+  ): Promise<void> {
+    this.logger.error('Chat queue processing failed', {
+      path: relativePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    const conversationId = this.extractConversationIdForError(fullPath, queueId);
+
+    try {
+      await this.errorWriter.writeError({
+        error,
+        filePath: relativePath,
+        commandLine: 0,
+      });
+    } catch (writeError) {
+      this.logger.error('Failed to write error log', { writeError });
+    }
+
+    this.writeResult({
+      conversationId,
+      queueId,
+      timestamp: Date.now(),
+      agent: 'System',
+      content: '',
+      error: this.formatErrorForChat(error),
+    });
+
+    if (existsSync(fullPath)) {
+      unlinkSync(fullPath);
+    }
+  }
+
+  private extractConversationIdForError(fullPath: string, queueId: string): string {
+    const fallback = this.extractConversationIdFromQueueId(queueId);
+
+    try {
+      const content = readFileSync(fullPath, 'utf-8');
+      const match = content.match(/conversation_id:\s*(.+)/);
+      return match?.[1] ? match[1].trim() : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private extractConversationIdFromQueueId(queueId: string): string {
+    const parts = queueId.split('-');
+    if (parts.length >= 2) {
+      return parts.slice(0, -1).join('-');
+    }
+    return 'unknown';
+  }
+
+  private markRecentlyProcessed(relativePath: string): void {
+    this.recentlyProcessed.add(relativePath);
+    setTimeout(() => {
+      this.recentlyProcessed.delete(relativePath);
+    }, 2000);
   }
 
   private parseQueueFile(content: string): {

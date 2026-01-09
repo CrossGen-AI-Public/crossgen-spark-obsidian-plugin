@@ -95,7 +95,7 @@ export class ConditionRunner {
         if (v === null || v === undefined) return true;
         if (typeof v === 'string') return v.length === 0;
         if (Array.isArray(v)) return v.length === 0;
-        if (typeof v === 'object') return Object.keys(v as object).length === 0;
+        if (typeof v === 'object') return Object.keys(v).length === 0;
         return false;
       },
       hasProperty: (obj: unknown, prop: string) => {

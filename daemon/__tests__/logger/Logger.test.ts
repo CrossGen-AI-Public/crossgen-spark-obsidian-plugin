@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 import type { LoggingConfig } from '../../src/types/config.js';
 
 describe('Logger', () => {
-    let consoleLogSpy: ReturnType<typeof jest.spyOn>;
+    let consoleDebugSpy: ReturnType<typeof jest.spyOn>;
     let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
     let consoleWarnSpy: ReturnType<typeof jest.spyOn>;
 
@@ -11,14 +11,14 @@ describe('Logger', () => {
         // Reset singleton instance
         (Logger as any).instance = null;
 
-        // Spy on console methods
-        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
+        // Spy on console methods (Logger uses console.debug for debug/info levels)
+        consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => { });
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
     });
 
     afterEach(() => {
-        consoleLogSpy.mockRestore();
+        consoleDebugSpy.mockRestore();
         consoleErrorSpy.mockRestore();
         consoleWarnSpy.mockRestore();
     });
@@ -49,7 +49,7 @@ describe('Logger', () => {
 
             logger.debug('Debug message');
 
-            expect(consoleLogSpy).toHaveBeenCalled();
+            expect(consoleDebugSpy).toHaveBeenCalled();
         });
 
         it('should log info messages', () => {
@@ -58,7 +58,7 @@ describe('Logger', () => {
 
             logger.info('Info message');
 
-            expect(consoleLogSpy).toHaveBeenCalled();
+            expect(consoleDebugSpy).toHaveBeenCalled();
         });
 
         it('should log warn messages', () => {
@@ -85,7 +85,7 @@ describe('Logger', () => {
 
             logger.debug('Debug message');
 
-            expect(consoleLogSpy).not.toHaveBeenCalled();
+            expect(consoleDebugSpy).not.toHaveBeenCalled();
         });
 
         it('should not log info when level is warn', () => {
@@ -94,7 +94,7 @@ describe('Logger', () => {
 
             logger.info('Info message');
 
-            expect(consoleLogSpy).not.toHaveBeenCalled();
+            expect(consoleDebugSpy).not.toHaveBeenCalled();
         });
 
         it('should not log warn when level is error', () => {
@@ -116,7 +116,7 @@ describe('Logger', () => {
             logger.error('Error message');
             logger.warn('Warning message');
 
-            expect(consoleLogSpy).not.toHaveBeenCalled();
+            expect(consoleDebugSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).not.toHaveBeenCalled();
             expect(consoleWarnSpy).not.toHaveBeenCalled();
         });
@@ -132,7 +132,7 @@ describe('Logger', () => {
                 logger.info('Test message', { userId: 123, action: 'test' });
             }).not.toThrow();
 
-            expect(consoleLogSpy).toHaveBeenCalled();
+            expect(consoleDebugSpy).toHaveBeenCalled();
         });
     });
 
@@ -143,14 +143,14 @@ describe('Logger', () => {
 
             // Debug should not log with info level
             logger.debug('Debug message');
-            expect(consoleLogSpy).not.toHaveBeenCalled();
+            expect(consoleDebugSpy).not.toHaveBeenCalled();
 
             // Update to debug level
             logger.updateConfig({ level: 'debug', console: true });
 
             // Now debug should log
             logger.debug('Debug message after update');
-            expect(consoleLogSpy).toHaveBeenCalledWith(
+            expect(consoleDebugSpy).toHaveBeenCalledWith(
                 expect.stringContaining('[DEBUG] Debug message after update')
             );
         });
@@ -160,15 +160,15 @@ describe('Logger', () => {
             const logger = Logger.getInstance(config);
 
             logger.info('Message 1');
-            expect(consoleLogSpy).toHaveBeenCalled();
+            expect(consoleDebugSpy).toHaveBeenCalled();
 
-            consoleLogSpy.mockClear();
+            consoleDebugSpy.mockClear();
 
             // Disable console logging
             logger.updateConfig({ level: 'info', console: false });
 
             logger.info('Message 2');
-            expect(consoleLogSpy).not.toHaveBeenCalled();
+            expect(consoleDebugSpy).not.toHaveBeenCalled();
         });
     });
 });

@@ -7,6 +7,7 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import type { Command } from 'commander';
 import { validateVault } from '../helpers.js';
+import { print, printError } from '../output.js';
 
 interface HistoryEvent {
   timestamp: number;
@@ -37,13 +38,13 @@ export function registerHistoryCommand(program: Command): void {
           try {
             if (existsSync(historyFile)) {
               unlinkSync(historyFile);
-              console.log('✅ History cleared');
+              print('✅ History cleared');
             } else {
-              console.log('ℹ️  No history to clear');
+              print('ℹ️  No history to clear');
             }
             return;
           } catch (error) {
-            console.error('❌ Failed to clear history:', error);
+            printError('❌ Failed to clear history:', error);
             process.exit(1);
           }
         }
@@ -57,14 +58,14 @@ export function registerHistoryCommand(program: Command): void {
             history = JSON.parse(data);
           }
         } catch (error) {
-          console.error('❌ Failed to read history file:', error);
+          printError('❌ Failed to read history file:', error);
           process.exit(1);
         }
 
         if (history.length === 0) {
-          console.log('ℹ️  No history available');
-          console.log('   Start the daemon to begin recording events:');
-          console.log(`   spark start ${absolutePath}`);
+          print('ℹ️  No history available');
+          print('   Start the daemon to begin recording events:');
+          print(`   spark start ${absolutePath}`);
           return;
         }
 
@@ -77,21 +78,21 @@ export function registerHistoryCommand(program: Command): void {
           errors: history.filter((e) => e.type === 'error').length,
         };
 
-        console.log('📊 Processing Statistics:');
-        console.log(`  Total events: ${stats.total}`);
-        console.log(`  File changes: ${stats.fileChanges}`);
-        console.log(`  Commands detected: ${stats.commandsDetected}`);
-        console.log(`  Frontmatter changes: ${stats.frontmatterChanges}`);
-        console.log(`  Errors: ${stats.errors}`);
-        console.log('');
+        print('📊 Processing Statistics:');
+        print(`  Total events: ${stats.total}`);
+        print(`  File changes: ${stats.fileChanges}`);
+        print(`  Commands detected: ${stats.commandsDetected}`);
+        print(`  Frontmatter changes: ${stats.frontmatterChanges}`);
+        print(`  Errors: ${stats.errors}`);
+        print('');
 
         // Show events if not stats-only
         if (!options.stats) {
           const limit = parseInt(options.limit, 10);
           const recentEvents = history.slice(-limit).reverse();
 
-          console.log(`📜 Recent Events (last ${Math.min(limit, history.length)}):`);
-          console.log('');
+          print(`📜 Recent Events (last ${Math.min(limit, history.length)}):`);
+          print('');
 
           recentEvents.forEach((event, i) => {
             const date = new Date(event.timestamp);
@@ -104,16 +105,16 @@ export function registerHistoryCommand(program: Command): void {
                 error: '❌',
               }[event.type] || '•';
 
-            console.log(`${i + 1}. ${typeEmoji} ${event.type} - ${timeStr}`);
+            print(`${i + 1}. ${typeEmoji} ${event.type} - ${timeStr}`);
             if (event.path) {
-              console.log(`   Path: ${event.path}`);
+              print(`   Path: ${event.path}`);
             }
             if (event.details && Object.keys(event.details).length > 0) {
-              console.log(
+              print(
                 `   Details: ${JSON.stringify(event.details, null, 2).replace(/\n/g, '\n   ')}`
               );
             }
-            console.log('');
+            print('');
           });
         }
       }

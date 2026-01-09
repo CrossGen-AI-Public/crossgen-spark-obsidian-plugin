@@ -58,7 +58,7 @@ export class SetupModal extends Modal {
 		const { contentEl } = this;
 
 		// Header
-		contentEl.createEl('h2', { text: 'Welcome to Spark Assistant' });
+		new Setting(contentEl).setName('Welcome to Spark').setHeading();
 
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
@@ -73,7 +73,7 @@ export class SetupModal extends Modal {
 		const list = desc.createEl('ul');
 		list.createEl('li', { text: 'Download the Spark daemon' });
 		list.createEl('li', { text: 'Install it globally on your system' });
-		list.createEl('li', { text: 'Add the spark command to your PATH' });
+		list.createEl('li', { text: 'Add the command to your PATH' });
 
 		// Install button
 		new Setting(contentEl)
@@ -81,7 +81,7 @@ export class SetupModal extends Modal {
 			.setDesc('Opens a terminal window to run the installation')
 			.addButton(btn =>
 				btn
-					.setButtonText('Install Spark Daemon')
+					.setButtonText('Install Spark daemon')
 					.setCta()
 					.onClick(() => {
 						this.daemonService.installDaemon();
@@ -133,7 +133,7 @@ export class SetupModal extends Modal {
 		const { contentEl } = this;
 
 		// Header
-		contentEl.createEl('h2', { text: 'Start Spark Daemon' });
+		new Setting(contentEl).setName('Start Spark daemon').setHeading();
 
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
@@ -147,19 +147,21 @@ export class SetupModal extends Modal {
 			.setDesc('Starts the daemon in the background')
 			.addButton(btn =>
 				btn
-					.setButtonText('Start Spark Daemon')
+					.setButtonText('Start daemon')
 					.setCta()
-					.onClick(async () => {
-						btn.setButtonText('Starting...');
-						btn.setDisabled(true);
-						const success = await this.daemonService.startDaemonBackground();
-						if (success) {
-							new Notice('Daemon started');
-							this.plugin.updateStatusBar();
-						} else {
-							new Notice('Failed to start daemon');
-						}
-						this.close();
+					.onClick(() => {
+						void (async () => {
+							btn.setButtonText('Starting...');
+							btn.setDisabled(true);
+							const success = await this.daemonService.startDaemonBackground();
+							if (success) {
+								new Notice('Daemon started');
+								this.plugin.updateStatusBar();
+							} else {
+								new Notice('Failed to start daemon');
+							}
+							this.close();
+						})();
 					})
 			);
 
@@ -168,9 +170,9 @@ export class SetupModal extends Modal {
 			.setName('Auto-launch daemon')
 			.setDesc('Automatically start the daemon when Obsidian opens')
 			.addToggle(toggle =>
-				toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(async value => {
+				toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(value => {
 					this.plugin.settings.autoLaunchDaemon = value;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				})
 			);
 

@@ -156,85 +156,111 @@ export class ClaudeAgentProvider implements IAIProvider {
   private async processQueryResults(
     resultGenerator: AsyncGenerator<unknown, void>
   ): Promise<AICompletionResult> {
-    // Iterate through messages to get the final result
     let resultText = '';
-    let inputTokens = 0;
-    let outputTokens = 0;
+    const usageTotals = { inputTokens: 0, outputTokens: 0 };
 
     for await (const message of resultGenerator) {
       const msg = message as Record<string, unknown>;
 
-      // Log all message types in debug mode to understand SDK responses
-      this.logger.debug('SDK message received', {
-        type: msg.type,
-        subtype: msg.subtype,
-        hasUsage: !!msg.usage,
-        hasResult: !!msg.result,
-      });
-
-      // Look for result messages
-      if (msg.type === 'result') {
-        if (msg.subtype === 'success') {
-          resultText = msg.result as string;
-          const usage = msg.usage as Record<string, unknown>;
-          inputTokens = (usage?.input_tokens as number) || 0;
-          outputTokens = (usage?.output_tokens as number) || 0;
-
-          this.logger.debug('SDK usage data', {
-            usage,
-            inputTokens,
-            outputTokens,
-          });
-        } else if (msg.subtype === 'error_during_execution') {
-          // Error during execution - log details and throw
-          this.logger.error('SDK execution error', {
-            subtype: msg.subtype,
-            message: msg,
-          });
-          throw new SparkError(
-            `Agent SDK execution error: ${msg.subtype}`,
-            'PROVIDER_CALL_FAILED',
-            { resultMessage: msg }
-          );
-        } else {
-          // Other error subtypes
-          throw new SparkError(`Agent SDK error: ${msg.subtype}`, 'PROVIDER_CALL_FAILED');
-        }
+      this.logSdkMessage(msg);
+      const handledResult = this.handleResultMessage(msg);
+      if (handledResult) {
+        resultText = handledResult.resultText;
+        usageTotals.inputTokens = handledResult.inputTokens;
+        usageTotals.outputTokens = handledResult.outputTokens;
+        continue;
       }
-      // Accumulate usage from assistant messages as well
-      if (msg.type === 'assistant' && msg.usage) {
-        const usage = msg.usage as Record<string, unknown>;
-        const msgInputTokens = (usage?.input_tokens as number) || 0;
-        const msgOutputTokens = (usage?.output_tokens as number) || 0;
-        inputTokens += msgInputTokens;
-        outputTokens += msgOutputTokens;
-      }
+
+      this.accumulateUsageFromAssistantMessage(msg, usageTotals);
     }
 
     this.logger.debug('Claude Agent SDK response received', {
       resultLength: resultText.length,
-      inputTokens,
-      outputTokens,
+      inputTokens: usageTotals.inputTokens,
+      outputTokens: usageTotals.outputTokens,
     });
 
-    // Check if we got an empty result with zero tokens (suspicious)
-    if (!resultText && inputTokens === 0 && outputTokens === 0) {
-      this.logger.warn(
-        'Claude Agent SDK returned empty result with zero tokens - possible SDK crash'
-      );
-      throw new SparkError(`${this.name} process exited with code 1`, 'PROVIDER_CALL_FAILED', {
-        detail:
-          'SDK returned empty result with zero token usage - the SDK process may have crashed',
-      });
-    }
+    this.assertNonEmptyResult(resultText, usageTotals.inputTokens, usageTotals.outputTokens);
 
     return {
       content: resultText,
       usage: {
-        inputTokens,
-        outputTokens,
+        inputTokens: usageTotals.inputTokens,
+        outputTokens: usageTotals.outputTokens,
       },
     };
+  }
+
+  private logSdkMessage(msg: Record<string, unknown>): void {
+    this.logger.debug('SDK message received', {
+      type: msg.type,
+      subtype: msg.subtype,
+      hasUsage: !!msg.usage,
+      hasResult: !!msg.result,
+    });
+  }
+
+  private handleResultMessage(
+    msg: Record<string, unknown>
+  ): { resultText: string; inputTokens: number; outputTokens: number } | null {
+    if (msg.type !== 'result') return null;
+
+    if (msg.subtype === 'success') {
+      const resultText = msg.result as string;
+      const usage = msg.usage as Record<string, unknown>;
+      const inputTokens = (usage?.input_tokens as number) || 0;
+      const outputTokens = (usage?.output_tokens as number) || 0;
+
+      this.logger.debug('SDK usage data', {
+        usage,
+        inputTokens,
+        outputTokens,
+      });
+
+      return { resultText, inputTokens, outputTokens };
+    }
+
+    if (msg.subtype === 'error_during_execution') {
+      this.logger.error('SDK execution error', {
+        subtype: msg.subtype,
+        message: msg,
+      });
+      throw new SparkError(
+        `Agent SDK execution error: ${String(msg.subtype)}`,
+        'PROVIDER_CALL_FAILED',
+        {
+          resultMessage: msg,
+        }
+      );
+    }
+
+    throw new SparkError(`Agent SDK error: ${String(msg.subtype)}`, 'PROVIDER_CALL_FAILED');
+  }
+
+  private accumulateUsageFromAssistantMessage(
+    msg: Record<string, unknown>,
+    totals: { inputTokens: number; outputTokens: number }
+  ): void {
+    if (msg.type !== 'assistant' || !msg.usage) return;
+
+    const usage = msg.usage as Record<string, unknown>;
+    totals.inputTokens += (usage?.input_tokens as number) || 0;
+    totals.outputTokens += (usage?.output_tokens as number) || 0;
+  }
+
+  private assertNonEmptyResult(
+    resultText: string,
+    inputTokens: number,
+    outputTokens: number
+  ): void {
+    if (resultText || inputTokens !== 0 || outputTokens !== 0) return;
+
+    this.logger.warn(
+      'Claude Agent SDK returned empty result with zero tokens - possible SDK crash'
+    );
+    throw new SparkError(`${this.name} process exited with code 1`, 'PROVIDER_CALL_FAILED', {
+      detail: 'SDK returned empty result with zero token usage - the SDK process may have crashed',
+    });
   }
 
   supportsTools(): boolean {

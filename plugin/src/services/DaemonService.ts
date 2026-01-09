@@ -291,14 +291,14 @@ export class DaemonService {
 
 		// Check if already running
 		if (this.isDaemonRunning()) {
-			console.log('[Spark] Daemon is already running');
+			console.debug('[Spark] Daemon is already running');
 			return true;
 		}
 
 		const vaultPath = this.getVaultPath();
 
 		try {
-			console.log(`[Spark] Starting daemon: ${sparkPath} start "${vaultPath}"`);
+			console.debug(`[Spark] Starting daemon: ${sparkPath} start "${vaultPath}"`);
 
 			// Start daemon as detached background process
 			// Use shell: true to properly handle shebang scripts
@@ -314,7 +314,7 @@ export class DaemonService {
 			});
 			child.unref();
 
-			console.log('[Spark] Daemon starting in background...');
+			console.debug('[Spark] Daemon starting in background...');
 
 			// Wait for daemon to register (poll registry)
 			const maxWait = 10000; // 10 seconds max (daemon takes time to initialize)
@@ -326,7 +326,7 @@ export class DaemonService {
 				waited += pollInterval;
 
 				if (this.isDaemonRunning()) {
-					console.log('[Spark] Daemon started successfully');
+					console.debug('[Spark] Daemon started successfully');
 					return true;
 				}
 			}
@@ -347,14 +347,14 @@ export class DaemonService {
 		const daemon = this.getDaemonInfo();
 
 		if (!daemon) {
-			console.log('[Spark] No daemon running for this vault');
+			console.debug('[Spark] No daemon running for this vault');
 			return false;
 		}
 
 		try {
 			// Send SIGTERM to gracefully stop the daemon
 			process.kill(daemon.pid, 'SIGTERM');
-			console.log(`[Spark] Sent SIGTERM to daemon (PID ${daemon.pid})`);
+			console.debug(`[Spark] Sent SIGTERM to daemon (PID ${daemon.pid})`);
 
 			// Give it a moment to shut down
 			const maxWait = 3000;
@@ -363,7 +363,7 @@ export class DaemonService {
 
 			while (waited < maxWait) {
 				if (!this.isProcessRunning(daemon.pid)) {
-					console.log('[Spark] Daemon stopped successfully');
+					console.debug('[Spark] Daemon stopped successfully');
 					return true;
 				}
 				// Busy wait (sync)

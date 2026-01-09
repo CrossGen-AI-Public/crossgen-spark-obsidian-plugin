@@ -122,58 +122,94 @@ export class MentionInput {
 		});
 
 		// Handle keyboard shortcuts
-		this.inputEl.addEventListener('keydown', e => {
-			// Let mention handler deal with palette first
-			if (e.defaultPrevented) return;
-
-			if (e.key === 'Enter') {
-				if (e.shiftKey && this.options.multiLine) {
-					// Shift+Enter adds new line (only if multiLine is enabled)
-					e.preventDefault();
-					const selection = window.getSelection();
-					if (selection && selection.rangeCount > 0) {
-						const range = selection.getRangeAt(0);
-						range.deleteContents();
-
-						// Insert <br>
-						const br = document.createElement('br');
-						range.insertNode(br);
-
-						// Insert zero-width space after BR for cursor positioning
-						const zwsp = document.createTextNode('\u200B');
-						if (br.nextSibling) {
-							br.parentNode?.insertBefore(zwsp, br.nextSibling);
-						} else {
-							br.parentNode?.appendChild(zwsp);
-						}
-
-						// Position cursor
-						const newRange = document.createRange();
-						newRange.setStart(zwsp, 0);
-						newRange.setEnd(zwsp, 0);
-						selection.removeAllRanges();
-						selection.addRange(newRange);
-
-						// Trigger onChange
-						this.options.onChange?.();
-					}
-				} else {
-					// Enter submits
-					e.preventDefault();
-					this.options.onSubmit?.();
-				}
-			} else if (e.key === 'Escape') {
-				e.preventDefault();
-				this.options.onEscape?.();
-			}
-		});
+		this.inputEl.addEventListener('keydown', e => this.handleKeydown(e));
 
 		// Handle paste to strip formatting
 		this.inputEl.addEventListener('paste', e => {
 			e.preventDefault();
 			const text = e.clipboardData?.getData('text/plain') || '';
-			document.execCommand('insertText', false, text);
+			this.insertTextAtCursor(text);
 		});
+	}
+
+	/**
+	 * Insert text at the current cursor position
+	 */
+	private insertTextAtCursor(text: string): void {
+		if (!this.inputEl) return;
+
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) {
+			// No selection, append to end
+			this.inputEl.textContent = (this.inputEl.textContent || '') + text;
+			return;
+		}
+
+		const range = selection.getRangeAt(0);
+		range.deleteContents();
+		const textNode = document.createTextNode(text);
+		range.insertNode(textNode);
+
+		// Position cursor after inserted text
+		range.setStartAfter(textNode);
+		range.collapse(true);
+		selection.removeAllRanges();
+		selection.addRange(range);
+
+		// Trigger onChange
+		this.options.onChange?.();
+	}
+
+	private handleKeydown(e: KeyboardEvent): void {
+		// Let mention handler deal with palette first
+		if (e.defaultPrevented) return;
+
+		if (e.key === 'Enter') {
+			if (e.shiftKey && this.options.multiLine) {
+				e.preventDefault();
+				this.insertLineBreakAtCursor();
+				return;
+			}
+
+			e.preventDefault();
+			this.options.onSubmit?.();
+			return;
+		}
+
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			this.options.onEscape?.();
+		}
+	}
+
+	private insertLineBreakAtCursor(): void {
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return;
+
+		const range = selection.getRangeAt(0);
+		range.deleteContents();
+
+		// Insert <br>
+		const br = document.createElement('br');
+		range.insertNode(br);
+
+		// Insert zero-width space after BR for cursor positioning
+		const zwsp = document.createTextNode('\u200B');
+		if (br.nextSibling) {
+			br.parentNode?.insertBefore(zwsp, br.nextSibling);
+		} else {
+			br.parentNode?.appendChild(zwsp);
+		}
+
+		// Position cursor
+		const newRange = document.createRange();
+		newRange.setStart(zwsp, 0);
+		newRange.setEnd(zwsp, 0);
+		selection.removeAllRanges();
+		selection.addRange(newRange);
+
+		// Trigger onChange
+		this.options.onChange?.();
 	}
 
 	/**
