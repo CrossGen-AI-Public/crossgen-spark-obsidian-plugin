@@ -14,9 +14,9 @@ export interface SparkSettings {
 	chatWindowBottom?: number; // Chat window position from bottom edge in pixels
 	// Workflows UI
 	workflowSidebarWidth?: number; // Workflow node sidebar width in pixels
-	// Daemon setup
-	dismissedDaemonSetup?: boolean; // User dismissed the daemon setup modal
-	autoLaunchDaemon?: boolean; // Auto-launch daemon when Obsidian starts
+	// Engine setup
+	dismissedEngineSetup?: boolean; // User dismissed the engine setup modal
+	autoLaunchEngine?: boolean; // Auto-launch engine when Obsidian starts
 }
 
 export interface ISparkPlugin extends Plugin {

@@ -57,9 +57,9 @@ export const TEMP_MARKER_BLOCK_REGEX =
 	/<!--\s*spark-inline-[\w-]+-start\s*-->\n[\s\S]*?<!--\s*spark-inline-[\w-]+-end\s*-->\n?/g;
 
 /**
- * Regex for matching daemon marker block (pending to end)
+ * Regex for matching engine marker block (pending to end)
  */
-export const DAEMON_MARKER_BLOCK_REGEX =
+export const ENGINE_MARKER_BLOCK_REGEX =
 	/<!--\s*spark-inline-chat:pending:[\w-]+:[^>]+\s*-->\n[\s\S]*?<!--\s*\/spark-inline-chat\s*-->\n?/g;
 
 /**

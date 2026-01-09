@@ -1,6 +1,6 @@
 # Spark Assistant
 
-[![Daemon CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml)
+[![Engine CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/engine-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/engine-ci.yml)
 [![Plugin CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml)
 
 **Transform Obsidian into an intelligent business operating system powered by AI.**
@@ -35,7 +35,7 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 2. **Chat Widget** - Persistent conversational AI with full vault context (Cmd+K)
 3. **Automation Engine** - File changes trigger automated workflows
 
-**Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a daemon watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files. 
+**Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a engine watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files. 
 
 ---
 
@@ -77,8 +77,8 @@ curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-o
 
 **What it does:**
 - ✅ Installs Node.js via nvm (if needed)
-- ✅ Downloads and builds Spark daemon + plugin
-- ✅ Auto-starts daemon (configures vault)
+- ✅ Downloads and builds Spark engine + plugin
+- ✅ Auto-starts engine (configures vault)
 - ✅ Ready for production use (add API key in plugin settings)
 
 **For developers:**
@@ -95,7 +95,7 @@ DEV_MODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/cross
 # Skip Node.js installation (if you have it)
 SKIP_NODE=1 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 
-# Skip daemon auto-start
+# Skip engine auto-start
 AUTO_START=0 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash
 ```
 
@@ -116,7 +116,7 @@ cd crossgen-spark
 # - Add your API key in plugin settings (Settings → Spark → Advanced)
 # - Ready for development!
 
-# 5. Start daemon
+# 5. Start engine
 spark start example-vault
 ```
 
@@ -130,8 +130,8 @@ spark start example-vault
 git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd spark
 
-# 2. Install and build daemon
-cd daemon
+# 2. Install and build engine
+cd engine
 npm install
 npm run build
 npm link
@@ -151,7 +151,7 @@ cp -r dist/* ~/Documents/MyVault/.obsidian/plugins/spark/
 # 6. Add API key in plugin settings
 # Settings → Spark → Advanced → Add your API key for each provider
 
-# 7. Start daemon
+# 7. Start engine
 spark start ~/Documents/MyVault
 ```
 
@@ -172,15 +172,15 @@ spark start ~/Documents/MyVault
 The `spark` CLI provides debugging and inspection tools:
 
 ```bash
-# Daemon control
+# Engine control
 spark start [vault-path]              # Start watching vault (foreground)
 spark start ~/vault &                 # Run in background
 spark start ~/vault --debug &         # Background with debug logging
-nohup spark start ~/vault > ~/.spark/daemon.log 2>&1 &  # Persistent background
+nohup spark start ~/vault > ~/.spark/engine.log 2>&1 &  # Persistent background
 
-spark status                          # Show all running daemons
+spark status                          # Show all running engines
 spark status ~/vault                  # Check specific vault
-spark stop ~/vault                    # Stop daemon gracefully
+spark stop ~/vault                    # Stop engine gracefully
 spark stop ~/vault --force            # Force stop (SIGKILL)
 
 # Configuration
@@ -203,7 +203,7 @@ spark version                         # Show version
 spark --help                          # Show all commands
 ```
 
-**Global Registry:** The daemon maintains a registry at `~/.spark/registry.json` to track all running daemons across different vaults.
+**Global Registry:** The engine maintains a registry at `~/.spark/registry.json` to track all running engines across different vaults.
 
 ### Running as a Background Service
 
@@ -215,10 +215,10 @@ spark start ~/Documents/Vault &
 # Check status
 spark status
 
-# Stop daemon
+# Stop engine
 spark stop ~/Documents/Vault
 
-# Stop all daemons
+# Stop all engines
 spark stop --all
 ```
 
@@ -239,14 +239,14 @@ spark/
 │   ├── DEVELOPER_EXPERIENCE.md        # DX roadmap and test coverage
 │   ├── CI_CD_SETUP.md                 # GitHub Actions setup
 │   ├── PLUGIN_PROGRESS.md             # Plugin implementation tracking
-│   ├── DAEMON_PROGRESS.md             # Daemon implementation tracking
+│   ├── ENGINE_PROGRESS.md             # Engine implementation tracking
 │   ├── CONFIGURATION.md               # Config system
 │   ├── FILE_FORMATS.md                # Command/agent/trigger formats
 │   ├── PLUGIN_UI_SPEC.md              # Plugin interface design
 │   ├── RESULT_AND_ERROR_HANDLING.md   # Result/error handling
 │   ├── TRIGGER_SYSTEM_CLARIFIED.md    # Trigger automation
 │   ├── IMPLEMENTATION_PLAN_PLUGIN.md  # Plugin implementation (4-6 weeks)
-│   └── IMPLEMENTATION_PLAN_DAEMON.md  # Daemon implementation (6-8 weeks)
+│   └── IMPLEMENTATION_PLAN_ENGINE.md  # Engine implementation (6-8 weeks)
 │
 ├── example-vault/                     # Example Obsidian vault
 │   ├── .spark/                        # Spark configuration
@@ -268,7 +268,7 @@ spark/
 │   ├── dist/                          # Build output
 │   └── package.json
 │
-└── daemon/                            # Node.js daemon (intelligence layer)
+└── engine/                            # Node.js engine (intelligence layer)
     ├── src/
     │   ├── cli.ts                     # CLI entry point
     │   ├── main.ts             # Main orchestrator
@@ -321,12 +321,12 @@ Specialized AI personas with domain expertise:
 - `@alice` - Content Editor & Writing Coach (content editing, grammar, tone and voice)
 - `@bob` - System Debugger & Context Validator (context validation, debugging with attitude)
 
-**Create your own!** Add a new `.md` file to `.spark/agents/` with YAML frontmatter and instructions. The daemon picks up new agents instantly — no restart needed.
+**Create your own!** Add a new `.md` file to `.spark/agents/` with YAML frontmatter and instructions. The engine picks up new agents instantly — no restart needed.
 
 **How it works:**
 1. Type `@` to see agents and files
 2. Chain together: agents, files, folders, services, commands
-3. Daemon parses and loads context based on proximity
+3. Engine parses and loads context based on proximity
 4. AI executes with full context
 5. Results appear in file with ✅
 
@@ -352,7 +352,7 @@ Alice: I'll review your proposal for clarity and tone.
 **How it works:**
 1. Press `Cmd+K` to open floating chat widget
 2. Full conversation history maintained in `.spark/conversations/`
-3. Real-time responses from daemon via file system
+3. Real-time responses from engine via file system
 4. Mentions work same as in documents with auto-completion
 5. Can reference files, folders, and agents naturally
 
@@ -411,7 +411,7 @@ triggers:
          │ Watches for changes
          ▼
 ┌─────────────────────────┐
-│  SPARK DAEMON           │
+│  SPARK ENGINE           │
 │  (All Intelligence)     │
 │  • Parse mentions       │
 │  • Load context         │
@@ -421,8 +421,8 @@ triggers:
 ```
 
 **Why this works:**
-- ✅ Plugin can't crash daemon
-- ✅ Daemon can't crash Obsidian
+- ✅ Plugin can't crash engine
+- ✅ Engine can't crash Obsidian
 - ✅ Everything is inspectable (files)
 - ✅ Version control friendly
 - ✅ No complex IPC needed
@@ -457,7 +457,7 @@ Universal syntax for referencing anything:
 
 ```yaml
 version: 1
-daemon:
+engine:
   debounce_ms: 300
   results:
     add_blank_lines: true
@@ -559,7 +559,7 @@ triggers:
 git clone https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin.git
 cd spark
 
-# Install everything (daemon + plugin)
+# Install everything (engine + plugin)
 ./install.sh
 
 # Or install to a specific vault
@@ -570,7 +570,7 @@ cd spark
 ```bash
 # Install dependencies separately
 cd plugin && npm install --legacy-peer-deps
-cd ../daemon && npm install
+cd ../engine && npm install
 ```
 
 ### Plugin Development
@@ -587,10 +587,10 @@ npm run lint:fix    # Auto-fix linting issues
 
 ```
 
-### Daemon Development
+### Engine Development
 
 ```bash
-cd daemon
+cd engine
 npm install
 npm run dev         # Watch mode
 npm run check       # Format, lint, types, tests
@@ -605,7 +605,7 @@ The repository enforces strict quality standards through **automated checks**:
 ✅ **Automated testing** on every PR and push to main
 ✅ **Multi-version testing** (Node 18.x and 20.x)
 ✅ **Coverage tracking** in CI logs (79% current)
-✅ **Build validation** for both daemon and plugin
+✅ **Build validation** for both engine and plugin
 ❌ **Blocks merging** if checks fail
 
 See [CI_CD_SETUP.md](specs/CI_CD_SETUP.md) for 2-minute setup.
@@ -620,7 +620,7 @@ See [CI_CD_SETUP.md](specs/CI_CD_SETUP.md) for 2-minute setup.
 ```bash
 # Check everything before committing (auto-fixes formatting & linting)
 cd plugin && npm run check    # Plugin: format, lint, types
-cd daemon && npm run check    # Daemon: format, lint, types, tests
+cd engine && npm run check    # Engine: format, lint, types, tests
 
 # Individual fixes
 npm run format                # Biome formatting
@@ -633,10 +633,10 @@ Run `npm run check` before committing to ensure all checks pass.
 
 ## 🐛 Troubleshooting
 
-### Daemon not processing files
+### Engine not processing files
 
 ```bash
-spark status                          # Check daemon status
+spark status                          # Check engine status
 spark start ~/vault --debug           # Restart with debug logging
 ```
 
@@ -650,7 +650,7 @@ spark start ~/vault --debug           # Restart with debug logging
 
 ```bash
 spark config ~/vault                  # Check configuration
-spark inspect ~/vault                 # Inspect daemon state (includes API key status)
+spark inspect ~/vault                 # Inspect engine state (includes API key status)
 ```
 
 #### Plugin Debugging
@@ -668,7 +668,7 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 - **[Configuration](specs/CONFIGURATION.md)** - Config reference
 - **[File Formats](specs/FILE_FORMATS.md)** - Command/agent/trigger formats
 - **[Developer Experience](specs/DEVELOPER_EXPERIENCE.md)** - Testing & DX
-- **[Daemon README](daemon/README.md)** - Daemon-specific docs
+- **[Engine README](engine/README.md)** - Engine-specific docs
 
 ---
 
@@ -677,29 +677,29 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/name`
 3. Make changes, add tests
-4. Run `npm run check` in both plugin/ and daemon/
+4. Run `npm run check` in both plugin/ and engine/
 5. Commit: `git commit -m "feat: description"`
 6. Push and create PR
 
 **Code Standards:**
 - TypeScript strict mode
-- No `any` types (daemon)
+- No `any` types (engine)
 - Biome (linting + formatting)
-- Tests required (daemon)
+- Tests required (engine)
 
 ### Code Standards
 
 **Enforced via pre-commit hooks:**
 - ✅ **TypeScript** - All code in strict mode
-- ✅ **No `any` types** - Daemon enforces explicit typing
+- ✅ **No `any` types** - Engine enforces explicit typing
 - ✅ **Biome** - Linting and formatting (strict rules, no unused vars - use `_prefix` for intentionally unused)
-- ✅ **Tests** - Required for daemon, all tests must pass
+- ✅ **Tests** - Required for engine, all tests must pass
 - ✅ **Conventional commits** - `feat:`, `fix:`, `docs:`, etc.
 
 **Pre-commit checks will:**
 1. Auto-fix formatting and linting issues
 2. Run type checking
-3. Run all tests (daemon)
+3. Run all tests (engine)
 4. Block commit if any check fails
 
 **Pro tip:** Run `npm run check` before committing to catch issues early!
@@ -707,9 +707,9 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 ### Areas to Contribute
 
 - **Plugin UI/UX** - Improve command palette, chat widget
-- **Daemon Performance** - Optimize file watching, parsing
+- **Engine Performance** - Optimize file watching, parsing
 - **Documentation** - Examples, tutorials, guides
-- **Testing** - Unit tests, integration tests (daemon: 81 tests currently)
+- **Testing** - Unit tests, integration tests (engine: 81 tests currently)
 - **Commands/Agents** - New default commands and personas
 - **Bug Fixes** - Check GitHub issues for open bugs
 
@@ -717,16 +717,16 @@ spark inspect ~/vault                 # Inspect daemon state (includes API key s
 
 ## 🐛 Troubleshooting
 
-### Daemon not processing files
+### Engine not processing files
 
 ```bash
-# Check daemon status
+# Check engine status
 spark status
 
 # View logs
-tail -f ~/.spark/logs/daemon.log
+tail -f ~/.spark/logs/engine.log
 
-# Restart daemon
+# Restart engine
 spark stop
 spark start ~/Documents/Vault
 ```
@@ -750,7 +750,7 @@ cat ~/.spark/secrets.yaml             # View encrypted secrets (Base64 encoded)
 To troubleshoot:
 1. Check API key is set in plugin settings (Settings → Spark → Advanced)
 2. Verify provider configuration in `.spark/config.yaml`
-3. Check daemon logs in `.spark/logs/`
+3. Check engine logs in `.spark/logs/`
 
 ---
 

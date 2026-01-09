@@ -26,7 +26,7 @@ const AUTH_TAG_LENGTH = 16; // GCM auth tag size
 
 /**
  * Derive encryption key from machine ID
- * Both daemon and plugin derive the same key independently
+ * Both engine and plugin derive the same key independently
  */
 function deriveKey(): Buffer {
 	const machineId = getMachineId();

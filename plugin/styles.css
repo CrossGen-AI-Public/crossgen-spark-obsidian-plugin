@@ -1213,7 +1213,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
 }
 
 /* ============================================
-   Daemon Setup Styles
+   Engine Setup Styles
    ============================================ */
 
 /* Setup Modal */
@@ -1286,13 +1286,13 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     color: var(--text-muted);
 }
 
-/* Settings Daemon Section */
-.spark-daemon-code-container {
+/* Settings Engine Section */
+.spark-engine-code-container {
     margin-top: 0.5em;
     margin-bottom: 1em;
 }
 
-.spark-daemon-code {
+.spark-engine-code {
     display: block;
     padding: 0.5em 0.75em;
     background: var(--background-secondary);
@@ -1304,15 +1304,15 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     user-select: all;
 }
 
-.spark-daemon-status-indicator {
+.spark-engine-status-indicator {
     font-weight: 500;
 }
 
-.spark-daemon-status-indicator.running {
+.spark-engine-status-indicator.running {
     color: var(--text-success, #4caf50);
 }
 
-.spark-daemon-status-indicator.stopped {
+.spark-engine-status-indicator.stopped {
     color: var(--text-muted);
 }
 

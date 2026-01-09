@@ -719,7 +719,7 @@ function WorkflowCanvasInner({
 		// Save immediately before running
 		await saveWorkflowNow();
 
-		// Queue for daemon execution
+		// Queue for engine execution
 		const runId = generateId('run');
 		await storageRef.current.queueWorkflow(workflow.id, runId);
 

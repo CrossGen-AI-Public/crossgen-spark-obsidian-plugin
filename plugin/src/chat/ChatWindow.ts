@@ -48,7 +48,7 @@ export class ChatWindow extends Component {
 		isProcessing: false,
 		mentionedAgents: new Set(),
 		lastMentionedAgent: null,
-		conversationName: null, // Auto-generated name from daemon
+		conversationName: null, // Auto-generated name from engine
 	};
 
 	constructor(app: App, plugin: SparkPlugin, conversationStorage: ConversationStorage) {
@@ -112,9 +112,9 @@ export class ChatWindow extends Component {
 	}
 
 	private setupResultWatcher() {
-		// Listen for results from daemon
+		// Listen for results from engine
 		this.resultWatcher.onResult((result: ChatResult) => {
-			this.handleDaemonResult(result);
+			this.handleEngineResult(result);
 		});
 
 		// Start watching
@@ -979,7 +979,7 @@ export class ChatWindow extends Component {
 	}
 
 	/**
-	 * Update conversation name from daemon result
+	 * Update conversation name from engine result
 	 */
 	private async updateConversationName(name: string): Promise<void> {
 		if (!this.state.conversationId) return;
@@ -1087,7 +1087,7 @@ export class ChatWindow extends Component {
 					content: msg.content,
 				}));
 
-			// Enqueue message for daemon processing
+			// Enqueue message for engine processing
 			if (this.state.conversationId) {
 				// Get currently active file for vault context
 				const activeFile = this.app.workspace.getActiveFile();
@@ -1118,9 +1118,9 @@ export class ChatWindow extends Component {
 	}
 
 	/**
-	 * Handle result from daemon
+	 * Handle result from engine
 	 */
-	private handleDaemonResult(result: ChatResult): void {
+	private handleEngineResult(result: ChatResult): void {
 		const isFinalResult = Boolean(result.content || result.error);
 		const isActiveConversation = result.conversationId === this.state.conversationId;
 
@@ -1132,7 +1132,7 @@ export class ChatWindow extends Component {
 
 		// Clean up queue file only if it's a final result (has content or error)
 		// Intermediate results (like name updates) should not remove the queue file
-		// as the daemon is still processing the main response
+		// as the engine is still processing the main response
 		if (isFinalResult) {
 			void this.chatQueue.dequeue(result.queueId);
 		}
@@ -1144,9 +1144,9 @@ export class ChatWindow extends Component {
 		}
 
 		if (result.error) {
-			this.addDaemonErrorMessage(result);
+			this.addEngineErrorMessage(result);
 		} else if (result.content) {
-			this.addDaemonResponseMessage(result);
+			this.addEngineResponseMessage(result);
 			this.addFilesModifiedNotification(result);
 		}
 
@@ -1164,7 +1164,7 @@ export class ChatWindow extends Component {
 		});
 	}
 
-	private addDaemonErrorMessage(result: ChatResult): void {
+	private addEngineErrorMessage(result: ChatResult): void {
 		const errorMessage: ChatMessage = {
 			id: this.generateId(),
 			timestamp: new Date(result.timestamp).toISOString(),
@@ -1175,7 +1175,7 @@ export class ChatWindow extends Component {
 		this.addMessage(errorMessage);
 	}
 
-	private addDaemonResponseMessage(result: ChatResult): void {
+	private addEngineResponseMessage(result: ChatResult): void {
 		const response: ChatMessage = {
 			id: this.generateId(),
 			timestamp: new Date(result.timestamp).toISOString(),
@@ -1249,7 +1249,7 @@ export class ChatWindow extends Component {
 				}
 			}
 
-			// Update conversation name if provided by daemon
+			// Update conversation name if provided by engine
 			if (result.conversationName) {
 				conversation.name = result.conversationName;
 			}

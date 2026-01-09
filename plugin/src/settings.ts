@@ -17,7 +17,7 @@ import {
 	getProviderLabel,
 	ProviderType,
 } from './models';
-import { DaemonService } from './services/DaemonService';
+import { EngineService } from './services/EngineService';
 import type { ISparkPlugin, SparkSettings } from './types';
 import { setCssProps } from './utils/setCssProps';
 import { AgentConfigSchema, type SparkConfig, SparkConfigSchema } from './validation';
@@ -159,8 +159,8 @@ export class SparkSettingTab extends PluginSettingTab {
 	}
 
 	private populateGeneralTab(containerEl: HTMLElement) {
-		// Daemon section
-		this.populateDaemonSection(containerEl);
+		// Engine section
+		this.populateEngineSection(containerEl);
 
 		// Plugin section
 		new Setting(containerEl).setName('Plugin').setHeading();
@@ -179,56 +179,56 @@ export class SparkSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private populateDaemonSection(containerEl: HTMLElement) {
-		const daemonService = DaemonService.getInstance(this.app);
-		const isInstalled = daemonService.isDaemonInstalled();
-		const isRunning = isInstalled && daemonService.isDaemonRunning();
+	private populateEngineSection(containerEl: HTMLElement) {
+		const engineService = EngineService.getInstance(this.app);
+		const isInstalled = engineService.isEngineInstalled();
+		const isRunning = isInstalled && engineService.isEngineRunning();
 
-		new Setting(containerEl).setName('Daemon').setHeading();
+		new Setting(containerEl).setName('Engine').setHeading();
 		new Setting(containerEl)
-			.setDesc('The Spark daemon handles AI requests for this vault.')
+			.setDesc('The Spark engine handles AI requests for this vault.')
 			.setClass('spark-section-desc');
 
 		if (!isInstalled) {
-			// Daemon not installed
+			// Engine not installed
 			new Setting(containerEl)
-				.setName('Spark daemon not installed')
+				.setName('Spark engine not installed')
 				.setDesc('Required for AI features to work')
 				.addButton(btn =>
 					btn
-						.setButtonText('Install Spark daemon')
+						.setButtonText('Install Spark engine')
 						.setCta()
 						.onClick(() => {
-							daemonService.installDaemon();
+							engineService.installEngine();
 						})
 				);
 
 			// Show install command
-			const codeContainer = containerEl.createDiv({ cls: 'spark-daemon-code-container' });
+			const codeContainer = containerEl.createDiv({ cls: 'spark-engine-code-container' });
 			codeContainer.createEl('p', {
 				text: 'Or run this command in your terminal:',
 				cls: 'setting-item-description',
 			});
-			const codeBlock = codeContainer.createEl('code', { cls: 'spark-daemon-code' });
-			codeBlock.setText(daemonService.getInstallCommand());
+			const codeBlock = codeContainer.createEl('code', { cls: 'spark-engine-code' });
+			codeBlock.setText(engineService.getInstallCommand());
 		} else if (!isRunning) {
-			// Daemon installed but not running
+			// Engine installed but not running
 			new Setting(containerEl)
-				.setName('Daemon status')
+				.setName('Engine status')
 				.setDesc('Not running for this vault')
 				.addButton(btn =>
 					btn
-						.setButtonText('Start daemon')
+						.setButtonText('Start engine')
 						.setCta()
 						.onClick(() => {
 							void (async () => {
 								btn.setButtonText('Starting...');
 								btn.setDisabled(true);
-								const success = await daemonService.startDaemonBackground();
+								const success = await engineService.startEngineBackground();
 								if (success) {
-									new Notice('Daemon started');
+									new Notice('Engine started');
 								} else {
-									new Notice('Failed to start daemon');
+									new Notice('Failed to start engine');
 								}
 								// Refresh status bar and settings display
 								this.plugin.updateStatusBar();
@@ -238,34 +238,34 @@ export class SparkSettingTab extends PluginSettingTab {
 				);
 
 			// Show start command
-			const codeContainer = containerEl.createDiv({ cls: 'spark-daemon-code-container' });
+			const codeContainer = containerEl.createDiv({ cls: 'spark-engine-code-container' });
 			codeContainer.createEl('p', {
 				text: 'Or run this command in your terminal:',
 				cls: 'setting-item-description',
 			});
-			const codeBlock = codeContainer.createEl('code', { cls: 'spark-daemon-code' });
-			codeBlock.setText(daemonService.getStartCommand());
+			const codeBlock = codeContainer.createEl('code', { cls: 'spark-engine-code' });
+			codeBlock.setText(engineService.getStartCommand());
 		} else {
-			// Daemon running
-			const daemonInfo = daemonService.getDaemonInfo();
-			const uptime = daemonInfo ? Math.floor((Date.now() - daemonInfo.startTime) / 1000 / 60) : 0;
+			// Engine running
+			const engineInfo = engineService.getEngineInfo();
+			const uptime = engineInfo ? Math.floor((Date.now() - engineInfo.startTime) / 1000 / 60) : 0;
 			const uptimeStr = uptime < 60 ? `${uptime}m` : `${Math.floor(uptime / 60)}h ${uptime % 60}m`;
 
 			const statusSetting = new Setting(containerEl)
-				.setName('Daemon status')
-				.setDesc(`Running (PID: ${daemonInfo?.pid}, Uptime: ${uptimeStr})`)
+				.setName('Engine status')
+				.setDesc(`Running (PID: ${engineInfo?.pid}, Uptime: ${uptimeStr})`)
 				.addButton(btn =>
-					btn.setButtonText('Stop daemon').onClick(() => {
+					btn.setButtonText('Stop engine').onClick(() => {
 						void (async () => {
 							btn.setButtonText('Stopping...');
 							btn.setDisabled(true);
 							// Small delay to let UI update before sync operation
 							await new Promise(resolve => setTimeout(resolve, 10));
-							const success = daemonService.stopDaemon();
+							const success = engineService.stopEngine();
 							if (success) {
-								new Notice('Daemon stopped');
+								new Notice('Engine stopped');
 							} else {
-								new Notice('Failed to stop daemon');
+								new Notice('Failed to stop engine');
 							}
 							// Refresh status bar and settings display
 							this.plugin.updateStatusBar();
@@ -277,31 +277,31 @@ export class SparkSettingTab extends PluginSettingTab {
 			// Add green indicator
 			const statusEl = statusSetting.descEl;
 			statusEl.empty();
-			const indicator = statusEl.createSpan({ cls: 'spark-daemon-status-indicator running' });
+			const indicator = statusEl.createSpan({ cls: 'spark-engine-status-indicator running' });
 			indicator.setText('● running');
 		}
 
-		// Auto-launch toggle (only if daemon is installed)
+		// Auto-launch toggle (only if engine is installed)
 		if (isInstalled) {
 			new Setting(containerEl)
-				.setName('Auto-launch daemon')
-				.setDesc('Automatically start the daemon when Obsidian opens')
+				.setName('Auto-launch engine')
+				.setDesc('Automatically start the engine when Obsidian opens')
 				.addToggle(toggle =>
-					toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(value => {
-						this.plugin.settings.autoLaunchDaemon = value;
+					toggle.setValue(this.plugin.settings.autoLaunchEngine ?? false).onChange(value => {
+						this.plugin.settings.autoLaunchEngine = value;
 						void this.plugin.saveSettings();
 					})
 				);
 		}
 
-		// Show startup prompt toggle (only if daemon not running and auto-launch disabled)
-		if (!isRunning && !this.plugin.settings.autoLaunchDaemon) {
+		// Show startup prompt toggle (only if engine not running and auto-launch disabled)
+		if (!isRunning && !this.plugin.settings.autoLaunchEngine) {
 			new Setting(containerEl)
-				.setName('Show daemon prompt on startup')
-				.setDesc('Show a reminder to start the daemon when Obsidian opens')
+				.setName('Show engine prompt on startup')
+				.setDesc('Show a reminder to start the engine when Obsidian opens')
 				.addToggle(toggle =>
-					toggle.setValue(!this.plugin.settings.dismissedDaemonSetup).onChange(value => {
-						this.plugin.settings.dismissedDaemonSetup = !value;
+					toggle.setValue(!this.plugin.settings.dismissedEngineSetup).onChange(value => {
+						this.plugin.settings.dismissedEngineSetup = !value;
 						void this.plugin.saveSettings();
 					})
 				);
@@ -707,16 +707,16 @@ export class SparkSettingTab extends PluginSettingTab {
 			const content = await adapter.read(configPath);
 			const config = yaml.load(content) as SparkConfig;
 
-			// Daemon section
-			new Setting(this.configContainer).setName('Daemon').setHeading();
+			// Engine section
+			new Setting(this.configContainer).setName('Engine').setHeading();
 
 			new Setting(this.configContainer)
 				.setName('Debounce (ms)')
 				.setDesc('Delay before processing file changes')
 				.addText(text => {
 					text
-						.setValue(config.daemon.debounce_ms.toString())
-						.onChange(value => (config.daemon.debounce_ms = parseInt(value, 10) || 300));
+						.setValue(config.engine.debounce_ms.toString())
+						.onChange(value => (config.engine.debounce_ms = parseInt(value, 10) || 300));
 					text.inputEl.setAttribute('type', 'number');
 					text.inputEl.setAttribute('min', '0');
 					return text;
@@ -727,8 +727,8 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setDesc('Add blank lines before results')
 				.addToggle(toggle =>
 					toggle
-						.setValue(config.daemon.results.add_blank_lines)
-						.onChange(value => (config.daemon.results.add_blank_lines = value))
+						.setValue(config.engine.results.add_blank_lines)
+						.onChange(value => (config.engine.results.add_blank_lines = value))
 				);
 
 			// AI Provider Settings

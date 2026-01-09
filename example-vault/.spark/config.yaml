@@ -1,5 +1,5 @@
 version: 1
-daemon:
+engine:
   debounce_ms: 300
   results:
     add_blank_lines: true
