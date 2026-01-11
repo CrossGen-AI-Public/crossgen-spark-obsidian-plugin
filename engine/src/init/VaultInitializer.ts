@@ -87,6 +87,11 @@ export class VaultInitializer {
       'conversations',
       'chat-queue',
       'chat-results',
+      'workflows',
+      'workflow-queue',
+      'workflow-runs',
+      'workflow-generate-queue',
+      'workflow-generate-results',
       'logs',
       'triggers',
     ];

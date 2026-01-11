@@ -5,6 +5,8 @@
 import type { App } from 'obsidian';
 import type {
 	WorkflowDefinition,
+	WorkflowGenerateRequest,
+	WorkflowGenerateResult,
 	WorkflowQueueItem,
 	WorkflowRun,
 	WorkflowRunsIndex,
@@ -14,6 +16,8 @@ const WORKFLOWS_DIR = '.spark/workflows';
 const WORKFLOW_RUNS_DIR = '.spark/workflow-runs';
 const WORKFLOW_QUEUE_DIR = '.spark/workflow-queue';
 const WORKFLOW_RUNS_INDEX_PATH = '.spark/workflow-runs/index.json';
+const WORKFLOW_GENERATE_QUEUE_DIR = '.spark/workflow-generate-queue';
+const WORKFLOW_GENERATE_RESULTS_DIR = '.spark/workflow-generate-results';
 
 export class WorkflowStorage {
 	private readonly app: App;
@@ -277,6 +281,30 @@ export class WorkflowStorage {
 		const exists = await this.app.vault.adapter.exists(path);
 		if (exists) {
 			await this.app.vault.adapter.remove(path);
+		}
+	}
+
+	/**
+	 * Queue a workflow generation request
+	 */
+	async queueWorkflowGeneration(request: WorkflowGenerateRequest): Promise<void> {
+		await this.ensureDir(WORKFLOW_GENERATE_QUEUE_DIR);
+		const path = `${WORKFLOW_GENERATE_QUEUE_DIR}/${request.requestId}.json`;
+		await this.app.vault.adapter.write(path, JSON.stringify(request, null, 2));
+	}
+
+	/**
+	 * Load a workflow generation result if present; returns null if missing/unreadable.
+	 */
+	async loadWorkflowGenerationResult(requestId: string): Promise<WorkflowGenerateResult | null> {
+		const path = `${WORKFLOW_GENERATE_RESULTS_DIR}/${requestId}.json`;
+		const exists = await this.app.vault.adapter.exists(path);
+		if (!exists) return null;
+		try {
+			const raw = await this.app.vault.adapter.read(path);
+			return JSON.parse(raw) as WorkflowGenerateResult;
+		} catch {
+			return null;
 		}
 	}
 }

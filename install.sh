@@ -266,6 +266,33 @@ if [ -n "$NPM_PREFIX" ] && [ ! -w "$NPM_PREFIX" ]; then
     echo -e "${GREEN}  ✓ Configured npm prefix: $NPM_PREFIX${NC}"
 fi
 
+# If a legacy/broken global `spark` binary exists (usually from the old spark-daemon),
+# remove it so `npm install -g` doesn't fail with EEXIST.
+#
+# Common failure case:
+#   ~/.nvm/.../bin/spark -> ../lib/node_modules/spark-daemon/dist/cli.js (broken or stale)
+#
+# We only remove it when it clearly points to the daemon install, or is a broken symlink.
+NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
+EXISTING_GLOBAL_SPARK=""
+if [ -n "$NPM_PREFIX" ]; then
+    EXISTING_GLOBAL_SPARK="$NPM_PREFIX/bin/spark"
+fi
+
+if [ -n "$EXISTING_GLOBAL_SPARK" ] && [ -L "$EXISTING_GLOBAL_SPARK" ]; then
+    EXISTING_TARGET=$(readlink "$EXISTING_GLOBAL_SPARK" 2>/dev/null || echo "")
+    if [[ "$EXISTING_TARGET" == *"spark-daemon"* ]] || [[ "$EXISTING_TARGET" == *"/.spark/daemon/"* ]]; then
+        rm -f "$EXISTING_GLOBAL_SPARK"
+        echo -e "${GREEN}✓ Removed legacy global spark symlink (daemon) to allow engine install${NC}"
+    else
+        # Broken symlink (readlink ok but target missing) can also block install
+        if [ ! -e "$EXISTING_GLOBAL_SPARK" ]; then
+            rm -f "$EXISTING_GLOBAL_SPARK"
+            echo -e "${GREEN}✓ Removed broken global spark symlink to allow engine install${NC}"
+        fi
+    fi
+fi
+
 # Use npm pack + install to ensure files are copied, not symlinked
 TARBALL=$(npm pack --silent)
 npm install -g "$TARBALL"
@@ -306,6 +333,33 @@ if command -v spark &> /dev/null; then
 else
     echo -e "${RED}✗ spark command not available${NC}"
     echo -e "${YELLOW}  Debug: PATH=$PATH${NC}"
+fi
+
+# If a legacy /usr/local/bin/spark symlink is shadowing the newly installed engine,
+# replace it (only when it clearly points to the old daemon install).
+#
+# This happens when users previously installed Spark Daemon, which created:
+#   /usr/local/bin/spark -> ~/.spark/daemon/dist/cli.js
+# and /usr/local/bin appears earlier in PATH than npm's global bin.
+ENGINE_SPARK_BIN=""
+NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
+if [ -n "$NPM_PREFIX" ] && [ -f "$NPM_PREFIX/bin/spark" ]; then
+    ENGINE_SPARK_BIN="$NPM_PREFIX/bin/spark"
+fi
+
+LEGACY_SPARK_SYMLINK="/usr/local/bin/spark"
+if [ -n "$ENGINE_SPARK_BIN" ] && [ -L "$LEGACY_SPARK_SYMLINK" ]; then
+    LEGACY_TARGET=$(readlink "$LEGACY_SPARK_SYMLINK" 2>/dev/null || echo "")
+    if [[ "$LEGACY_TARGET" == *"/.spark/daemon/"* ]]; then
+        if [ -w "/usr/local/bin" ]; then
+            ln -sf "$ENGINE_SPARK_BIN" "$LEGACY_SPARK_SYMLINK"
+            echo -e "${GREEN}✓ Replaced legacy spark symlink with engine: $LEGACY_SPARK_SYMLINK -> $ENGINE_SPARK_BIN${NC}"
+        else
+            echo -e "${YELLOW}⚠ Detected legacy spark symlink pointing to daemon:${NC}"
+            echo -e "${YELLOW}  $LEGACY_SPARK_SYMLINK -> $LEGACY_TARGET${NC}"
+            echo -e "${YELLOW}  But /usr/local/bin is not writable; remove/replace it manually to use the engine.${NC}"
+        fi
+    fi
 fi
 
 # Add to shell profile so spark is available permanently

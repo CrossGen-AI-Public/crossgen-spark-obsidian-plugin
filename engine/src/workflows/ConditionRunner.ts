@@ -28,8 +28,12 @@ export class ConditionRunner {
       expression: data.expression,
     });
 
+    // Expose deterministic loop info for this node.
+    // NOTE: iteration starts at 1 for the first evaluation of a given condition node in a run.
+    const iteration = context.visitCounts.get(node.id) ?? 1;
+
     // Create sandbox for expression evaluation
-    const sandbox = this.createSandbox(input, context);
+    const sandbox = this.createSandbox(input, context, { iteration, maxCycles: data.maxCycles });
 
     try {
       // Evaluate expression
@@ -62,13 +66,21 @@ export class ConditionRunner {
   /**
    * Create sandboxed evaluation context
    */
-  private createSandbox(input: unknown, context: ExecutionContext): Record<string, unknown> {
+  private createSandbox(
+    input: unknown,
+    context: ExecutionContext,
+    loop: { iteration: number; maxCycles: number }
+  ): Record<string, unknown> {
     return {
       // Input from previous step (main variable for conditions)
       input,
 
       // Also expose as 'output' for consistency
       output: input,
+
+      // Loop helpers
+      iteration: loop.iteration,
+      maxCycles: loop.maxCycles,
 
       // Context information
       context: {

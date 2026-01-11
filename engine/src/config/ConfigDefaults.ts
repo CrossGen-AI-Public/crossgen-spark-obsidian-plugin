@@ -20,6 +20,12 @@ export const DEFAULT_SPARK_CONFIG: SparkConfig = {
         '.spark/commands/**',
         '.spark/conversations/**',
         '.spark/chat-results/**',
+        '.spark/workflows/**',
+        '.spark/workflow-runs/**',
+        '.spark/workflow-generate-results/**',
+        // Queue dirs are safe to ignore because FileWatcher treats them as internal queue files.
+        '.spark/workflow-queue/**',
+        '.spark/workflow-generate-queue/**',
         '.spark/logs/**',
         '.spark/config.yaml',
         // Note: .spark/chat-queue/ is watched for chat message processing

@@ -144,6 +144,60 @@ export interface WorkflowQueueItem {
 }
 
 /**
+ * Workflow generation request (written to .spark/workflow-generate-queue/{requestId}.json)
+ */
+export interface WorkflowGenerateRequest {
+	requestId: string;
+	timestamp: number;
+	source: 'workflow-ui';
+	target: 'new-workflow';
+	prompt: string;
+	allowCode: boolean;
+	threadId?: string;
+	attempt?: number;
+	clarifications?: string;
+}
+
+/**
+ * Workflow generation result (written to .spark/workflow-generate-results/{requestId}.json)
+ */
+export type WorkflowGenerateProgressStage =
+	| 'queued'
+	| 'generating'
+	| 'validating'
+	| 'repairing'
+	| 'layout'
+	| 'writing';
+
+export type WorkflowGenerateResult =
+	| {
+			requestId: string;
+			status: 'processing';
+			stage: WorkflowGenerateProgressStage;
+			progress?: number; // 0-100
+			message?: string;
+			attempt?: number;
+			maxAttempts?: number;
+			updatedAt: number;
+	  }
+	| {
+			requestId: string;
+			status: 'completed';
+			workflowId: string;
+			workflowName?: string;
+	  }
+	| {
+			requestId: string;
+			status: 'needs_clarification';
+			questions: string[];
+	  }
+	| {
+			requestId: string;
+			status: 'failed';
+			error: string;
+	  };
+
+/**
  * Workflow runs index (stored in .spark/workflow-runs/index.json)
  * Engine-maintained summary to avoid scanning run files.
  */

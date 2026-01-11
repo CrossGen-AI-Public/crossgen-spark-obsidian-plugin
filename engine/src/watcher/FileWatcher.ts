@@ -50,9 +50,14 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
       ignored: this.config.ignore,
     });
 
-    // Create a function to properly ignore directories and files
+    // Create a function to properly ignore directories and files.
+    // IMPORTANT: internal queue files must NEVER be ignored at the chokidar layer,
+    // otherwise we won't receive FS events and processing will only happen on startup scan.
     const shouldIgnore = (filePath: string): boolean => {
       const relativePath = path.relative(this.config.vaultPath, filePath);
+      if (this.isInternalQueueFile(relativePath)) {
+        return false;
+      }
       return this.pathMatcher.shouldIgnore(relativePath, this.config.ignore);
     };
 
@@ -147,6 +152,13 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
   private isInternalQueueFile(relativePath: string): boolean {
     // Workflow queue files (.spark/workflow-queue/*.json)
     if (relativePath.startsWith('.spark/workflow-queue/') && relativePath.endsWith('.json')) {
+      return true;
+    }
+    // Workflow generation queue files (.spark/workflow-generate-queue/*.json)
+    if (
+      relativePath.startsWith('.spark/workflow-generate-queue/') &&
+      relativePath.endsWith('.json')
+    ) {
       return true;
     }
     // Chat queue files are .md and match normal patterns, but listed for completeness

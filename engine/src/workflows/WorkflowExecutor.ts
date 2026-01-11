@@ -257,7 +257,7 @@ export class WorkflowExecutor {
     context.totalCycles++;
 
     // Get input from previous step
-    const previousOutput = this.getPreviousOutput(workflow, nodeId, context);
+    const previousOutput = this.getNodeInput(workflow, node, context);
 
     // Create initial "running" result and save immediately for UI feedback
     const runningResult: StepResult = {
@@ -425,15 +425,15 @@ export class WorkflowExecutor {
   }
 
   /**
-   * Get output from previous step(s)
+   * Get input for a node from upstream step(s)
    */
-  private getPreviousOutput(
+  private getNodeInput(
     workflow: WorkflowDefinition,
-    nodeId: string,
+    node: WorkflowNode,
     context: ExecutionContext
   ): unknown {
     // Find edges pointing to this node
-    const incomingEdges = workflow.edges.filter((e) => e.target === nodeId);
+    const incomingEdges = workflow.edges.filter((e) => e.target === node.id);
 
     if (incomingEdges.length === 0) {
       return context.input;
@@ -445,7 +445,27 @@ export class WorkflowExecutor {
       return edge ? context.stepOutputs.get(edge.source) : context.input;
     }
 
-    // If multiple incoming edges, merge outputs
+    // Condition + code nodes: even with multiple incoming edges (common in loops),
+    // we want to use the most recent upstream value, not a merged object keyed by node ids.
+    // This keeps code/expressions simple (e.g. input.results, input.score) and makes loops intuitive.
+    if (node.type === 'condition' || node.type === 'code') {
+      const stepOutputKeys = Array.from(context.stepOutputs.keys());
+      let bestEdge = incomingEdges[0];
+      let bestIndex = -1;
+
+      for (const edge of incomingEdges) {
+        const idx = stepOutputKeys.indexOf(edge.source);
+        if (idx > bestIndex) {
+          bestIndex = idx;
+          bestEdge = edge;
+        }
+      }
+
+      const value = bestEdge ? context.stepOutputs.get(bestEdge.source) : undefined;
+      return value !== undefined ? value : context.input;
+    }
+
+    // For other node types (e.g. code), if multiple incoming edges, merge outputs
     const merged: Record<string, unknown> = {};
     for (const edge of incomingEdges) {
       const output = context.stepOutputs.get(edge.source);

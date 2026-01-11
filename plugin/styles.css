@@ -1613,6 +1613,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     border: 2px solid var(--background-modifier-border);
     border-radius: 8px;
     min-width: 150px;
+    min-height: 74px;
     max-width: 250px;
     cursor: pointer;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -1723,6 +1724,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
 .spark-workflow-node-label {
     font-weight: 600;
     font-size: 13px;
+    line-height: 16px;
     color: var(--text-normal);
     white-space: nowrap;
     overflow: hidden;
@@ -1731,6 +1733,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
 
 .spark-workflow-node-description {
     font-size: 11px;
+    line-height: 14px;
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -1739,6 +1742,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
 
 .spark-workflow-node-preview {
     font-size: 10px;
+    line-height: 14px;
     color: var(--text-faint);
     white-space: nowrap;
     overflow: hidden;
@@ -2659,6 +2663,139 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     margin: 0;
     font-size: 24px;
     font-weight: 600;
+}
+
+.spark-workflow-list-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spark-workflow-generate-panel {
+    margin: -8px 0 16px 0;
+    padding: 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
+
+.spark-workflow-generate-row {
+    display: flex;
+    gap: 8px;
+}
+
+.spark-workflow-generate-prompt,
+.spark-workflow-generate-answers {
+    width: 100%;
+    resize: vertical;
+    min-height: 60px;
+    padding: 8px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+}
+
+.spark-workflow-generate-clarifications {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spark-workflow-generate-questions {
+    padding: 8px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+}
+
+.spark-workflow-generate-questions-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.spark-workflow-generate-questions ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text-normal);
+}
+
+.spark-workflow-generate-error {
+    margin-top: 10px;
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+}
+
+.spark-workflow-generate-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.spark-workflow-generate-progress {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+}
+
+.spark-workflow-generate-progress-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-normal);
+}
+
+.spark-workflow-generate-spinner {
+    width: 14px;
+    height: 14px;
+}
+
+.spark-workflow-generate-progress-text {
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+}
+
+.spark-workflow-generate-progressbar {
+    margin-top: 8px;
+    height: 6px;
+    background: var(--background-secondary);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.spark-workflow-generate-progressbar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--interactive-accent);
+    transition: width 0.2s ease;
+}
+
+.spark-workflow-generate-steps {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.spark-workflow-generate-step {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.spark-workflow-generate-step.is-active {
+    color: var(--text-on-accent);
+    background: var(--interactive-accent);
+    border-color: var(--interactive-accent);
 }
 
 .spark-workflow-list-loading {

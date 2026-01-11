@@ -31,6 +31,7 @@ import type { ParsedCommand, ParsedInlineChat, ParsedMention } from './types/par
 import { ProviderType } from './types/provider.js';
 import type { FileChange } from './types/watcher.js';
 import { FileWatcher } from './watcher/FileWatcher.js';
+import { WorkflowGenerateHandler } from './workflows/generation/WorkflowGenerateHandler.js';
 import { WorkflowExecutor } from './workflows/WorkflowExecutor.js';
 
 export class SparkEngine implements ISparkEngine {
@@ -53,6 +54,7 @@ export class SparkEngine implements ISparkEngine {
   private commandExecutor: CommandExecutor | null = null;
   private chatQueueHandler: ChatQueueHandler | null = null;
   private workflowExecutor: WorkflowExecutor | null = null;
+  private workflowGenerateHandler: WorkflowGenerateHandler | null = null;
 
   /**
    * Get command executor (only valid after start())
@@ -133,6 +135,14 @@ export class SparkEngine implements ISparkEngine {
         this.logger,
         this.commandExecutor
       );
+
+      // Initialize workflow generation handler (workflow builder: prompt -> workflow definition)
+      this.workflowGenerateHandler = new WorkflowGenerateHandler(
+        this.vaultPath,
+        this.logger,
+        this.commandExecutor.getProviderFactory(),
+        this.config.ai
+      );
       this.logger.debug('AI components initialized');
 
       // Create file watcher
@@ -170,6 +180,10 @@ export class SparkEngine implements ISparkEngine {
       // Process any pending workflow queue items from before restart
       await this.workflowExecutor.scanQueue();
       this.logger.debug('Workflow queue scanned');
+
+      // Process any pending workflow generation requests from before restart
+      await this.workflowGenerateHandler.scanQueue();
+      this.logger.debug('Workflow generation queue scanned');
 
       // Record engine start in inspector
       this.inspector.recordStart();
@@ -442,6 +456,13 @@ export class SparkEngine implements ISparkEngine {
     if (this.workflowExecutor?.isQueueFile(change.path)) {
       this.logger.debug('Workflow queue file detected', { path: change.path });
       await this.workflowExecutor.processQueueFile(change.path);
+      return;
+    }
+
+    // Check if this is a workflow generation queue file
+    if (this.workflowGenerateHandler?.isQueueFile(change.path)) {
+      this.logger.debug('Workflow generation queue file detected', { path: change.path });
+      await this.workflowGenerateHandler.processQueueFile(change.path);
       return;
     }
 
