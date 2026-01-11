@@ -206,6 +206,16 @@
     background: rgba(255, 145, 0, 0.15);
 }
 
+/* Variable tokens - green tint */
+.spark-token-variable {
+    color: var(--color-green);
+    text-decoration-color: var(--color-green);
+}
+
+.spark-token-variable:hover {
+    background: rgba(76, 175, 80, 0.15);
+}
+
 /* Hide all comment tokens by default */
 .cm-comment {
     display: none;
@@ -583,6 +593,7 @@
 
 .spark-chat-input {
     flex: 1;
+    position: relative;
     min-height: 56px;
     /* 2 lines: (14px * 1.4 * 2) + (8px padding * 2) */
     max-height: 120px;
@@ -632,11 +643,6 @@
     box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
-/* Placeholder for contenteditable */
-.spark-chat-input {
-    position: relative;
-}
-
 .spark-chat-input[data-empty="true"]::before {
     content: attr(data-placeholder);
     color: var(--text-muted);
@@ -671,8 +677,8 @@
     opacity: 0.6;
     pointer-events: none;
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 8px;
+    left: 12px;
 }
 
 /* Focus state for mention input */
@@ -749,7 +755,25 @@
     gap: 4px;
 }
 
-.spark-chat-dropdown-btn,
+.spark-chat-dropdown-btn {
+    box-shadow: none !important;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    font-weight: 500;
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    transition: background-color 0.1s;
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+}
+
 .spark-chat-new-btn {
     box-shadow: none !important;
     border: none;
@@ -765,16 +789,8 @@
     width: 20px;
     height: 20px;
     transition: background-color 0.1s;
-}
-
-.spark-chat-new-btn {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
-}
-
-.spark-chat-dropdown-btn {
-    background-color: var(--background-secondary);
-    color: var(--text-normal);
 }
 
 .spark-chat-dropdown-btn:hover,
@@ -1203,7 +1219,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
 }
 
 /* ============================================
-   Daemon Setup Styles
+   Engine Setup Styles
    ============================================ */
 
 /* Setup Modal */
@@ -1276,13 +1292,13 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     color: var(--text-muted);
 }
 
-/* Settings Daemon Section */
-.spark-daemon-code-container {
+/* Settings Engine Section */
+.spark-engine-code-container {
     margin-top: 0.5em;
     margin-bottom: 1em;
 }
 
-.spark-daemon-code {
+.spark-engine-code {
     display: block;
     padding: 0.5em 0.75em;
     background: var(--background-secondary);
@@ -1294,15 +1310,15 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     user-select: all;
 }
 
-.spark-daemon-status-indicator {
+.spark-engine-status-indicator {
     font-weight: 500;
 }
 
-.spark-daemon-status-indicator.running {
+.spark-engine-status-indicator.running {
     color: var(--text-success, #4caf50);
 }
 
-.spark-daemon-status-indicator.stopped {
+.spark-engine-status-indicator.stopped {
     color: var(--text-muted);
 }
 
@@ -1322,4 +1338,2348 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
 
 .spark-status-offline {
     color: var(--text-muted);
+}
+
+/* ============================================
+   Workflow Canvas Styles
+   ============================================ */
+
+.spark-workflow-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    background: var(--background-primary);
+}
+
+.spark-workflow-canvas {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    position: relative;
+}
+
+/* React Flow overrides */
+.spark-workflow-canvas .react-flow {
+    flex: 1;
+}
+
+.spark-workflow-canvas .react-flow__background {
+    background: var(--background-primary);
+}
+
+.spark-workflow-canvas .react-flow__minimap {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.spark-workflow-canvas .react-flow__controls {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.spark-workflow-canvas .react-flow__controls-button {
+    background: var(--background-primary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    fill: var(--text-muted);
+}
+
+.spark-workflow-canvas .react-flow__controls-button:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* Toolbar */
+/* Workflow header (left side) - back button + name */
+.spark-workflow-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Workflow actions (right side) - add + run buttons */
+.spark-workflow-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Icon-only button */
+.spark-workflow-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.spark-workflow-icon-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.spark-workflow-icon-btn-primary {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.spark-workflow-icon-btn-primary:hover {
+    background: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+
+/* Ensure spinner inside primary button is visible (light on dark accent) */
+.spark-workflow-icon-btn-primary svg {
+    color: var(--text-on-accent);
+}
+
+.spark-workflow-icon-btn-running {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spark-workflow-icon-btn:disabled {
+    cursor: not-allowed;
+}
+
+.spark-workflow-icon-btn-active {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    border-color: var(--interactive-accent);
+}
+
+/* Add node dropdown */
+.spark-workflow-add-dropdown {
+    position: relative;
+}
+
+.spark-workflow-add-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    padding: 4px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    animation: spark-dropdown-fade-in 0.15s ease-out;
+}
+
+@keyframes spark-dropdown-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.spark-workflow-add-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-normal);
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s ease;
+}
+
+.spark-workflow-add-menu button:hover {
+    background: var(--background-modifier-hover);
+}
+
+.spark-workflow-add-menu button svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+/* Toolbar button with icon */
+.spark-workflow-btn svg {
+    flex-shrink: 0;
+}
+
+@keyframes spark-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spark-workflow-header .spark-workflow-name-input,
+.spark-workflow-name-input.spark-workflow-name-input {
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-normal);
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 150px;
+    height: 36px;
+    box-sizing: border-box;
+    transition: none;
+}
+
+.spark-workflow-header .spark-workflow-name-input:hover,
+.spark-workflow-header .spark-workflow-name-input:focus,
+.spark-workflow-header .spark-workflow-name-input:focus:hover {
+    outline: none;
+    background: var(--background-primary);
+    border: 1px solid var(--interactive-accent);
+    transition: none !important;
+    box-shadow: none;
+}
+
+.spark-workflow-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    transition: background-color 0.15s;
+}
+
+.spark-workflow-btn:hover {
+    background: var(--background-modifier-hover);
+}
+
+.spark-workflow-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.spark-workflow-btn-primary {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.spark-workflow-btn-primary:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.spark-workflow-btn-secondary {
+    background: var(--background-modifier-border);
+}
+
+.spark-workflow-btn.spark-workflow-btn-danger {
+    background: transparent;
+    background-color: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.spark-workflow-btn.spark-workflow-btn-danger:hover {
+    background: var(--background-modifier-hover);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* Workflow Nodes */
+.spark-workflow-node {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--background-primary);
+    border: 2px solid var(--background-modifier-border);
+    border-radius: 8px;
+    min-width: 150px;
+    min-height: 74px;
+    max-width: 250px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* Node execution status indicator */
+.spark-workflow-node-status {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--background-primary);
+    border: 2px solid var(--background-modifier-border);
+    z-index: 10;
+}
+
+.spark-workflow-node-status.status-pending {
+    color: var(--text-muted);
+    border-color: var(--text-muted);
+}
+
+.spark-workflow-node-status.status-running {
+    color: var(--text-warning);
+    border-color: var(--text-warning);
+    background: var(--text-warning);
+}
+
+.spark-workflow-spinner {
+    width: 12px;
+    height: 12px;
+    color: var(--background-primary);
+    animation: spark-spinner-rotate 1s linear infinite;
+}
+
+@keyframes spark-spinner-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spark-workflow-node-status.status-completed {
+    color: var(--text-success);
+    border-color: var(--text-success);
+    background: var(--background-primary);
+}
+
+.spark-workflow-node-status.status-failed {
+    color: var(--text-error);
+    border-color: var(--text-error);
+}
+
+.spark-workflow-node-status.status-skipped {
+    color: var(--text-muted);
+    border-color: var(--text-muted);
+}
+
+@keyframes spark-status-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.spark-workflow-node:hover {
+    box-shadow: 0 0 8px 0 rgba(255, 255, 255, 0.2);
+}
+
+.spark-workflow-node.selected {
+    /* Soft glow effect */
+    box-shadow: 0 0 12px 2px rgba(255, 255, 255, 0.25);
+}
+
+.spark-workflow-node-icon {
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.spark-workflow-node-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.spark-workflow-node-label {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spark-workflow-node-description {
+    font-size: 11px;
+    line-height: 14px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spark-workflow-node-preview {
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 2px 4px;
+    background: var(--background-secondary);
+    border-radius: 2px;
+}
+
+.spark-workflow-node-code-preview {
+    font-family: var(--font-monospace);
+}
+
+.spark-workflow-node-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.spark-workflow-node-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    width: fit-content;
+    font-weight: 500;
+}
+
+/* Agent mention badge - purple accent */
+.spark-workflow-node-badge-agent {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* JSON output format badge - subtle/secondary with guaranteed contrast */
+.spark-workflow-node-badge-format {
+    background: rgba(128, 128, 128, 0.25);
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* Info/config badge - subtle gray with guaranteed contrast */
+.spark-workflow-node-badge-info {
+    background: rgba(128, 128, 128, 0.25);
+    color: var(--text-normal);
+    border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* Node type colors */
+.spark-workflow-node-trigger {
+    border-color: var(--color-blue);
+}
+
+.spark-workflow-node-trigger .spark-workflow-node-icon {
+    background: rgba(82, 139, 255, 0.15);
+    color: var(--color-blue);
+}
+
+.spark-workflow-node-prompt {
+    border-color: var(--color-purple);
+}
+
+.spark-workflow-node-prompt .spark-workflow-node-icon {
+    background: rgba(120, 82, 238, 0.15);
+    color: var(--color-purple);
+}
+
+.spark-workflow-node-code {
+    border-color: var(--color-green);
+}
+
+.spark-workflow-node-code .spark-workflow-node-icon {
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--color-green);
+}
+
+.spark-workflow-node-condition {
+    border-color: var(--color-orange);
+}
+
+.spark-workflow-node-condition .spark-workflow-node-icon {
+    background: rgba(255, 145, 0, 0.15);
+    color: var(--color-orange);
+}
+
+/* Handles */
+.spark-workflow-handle {
+    width: 10px;
+    height: 10px;
+    background: var(--background-modifier-border);
+    border: 2px solid var(--background-primary);
+    border-radius: 50%;
+    cursor: crosshair;
+}
+
+/* Position handles at the true visual edge (accounting for node border) */
+.spark-workflow-node .react-flow__handle-left {
+    left: -1px;
+}
+
+.spark-workflow-node .react-flow__handle-right {
+    right: -1px;
+}
+
+.spark-workflow-node .react-flow__handle-top {
+    top: -1px;
+}
+
+.spark-workflow-node .react-flow__handle-bottom {
+    bottom: -1px;
+}
+
+/* Larger invisible hit area for easier edge dragging */
+.spark-workflow-handle::before {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    cursor: crosshair;
+}
+
+.spark-workflow-handle:hover {
+    background: var(--interactive-accent);
+}
+
+/* Secondary handles (top/bottom) - subtle until hover */
+.spark-workflow-handle-secondary {
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+}
+
+.spark-workflow-node:hover .spark-workflow-handle-secondary {
+    opacity: 1;
+}
+
+.spark-workflow-handle-true {
+    background: var(--color-green);
+}
+
+.spark-workflow-handle-false {
+    background: var(--color-red);
+}
+
+/* Condition handle labels (T/F) */
+.spark-workflow-handle-label {
+    position: absolute;
+    right: -24px;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: 600;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.spark-workflow-handle-label-true {
+    background: var(--color-green);
+    color: var(--background-primary);
+}
+
+.spark-workflow-handle-label-false {
+    background: var(--color-red);
+    color: var(--background-primary);
+}
+
+/* Sidebar */
+.spark-workflow-sidebar-wrapper {
+    display: flex;
+    height: 100%;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.spark-workflow-sidebar-resizer {
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    flex-shrink: 0;
+    position: relative;
+    /* Draw divider on the sidebar edge (avoid pseudo-element offset). */
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+.spark-workflow-sidebar-resizer:hover {
+    border-right-color: var(--interactive-accent);
+}
+
+.spark-workflow-sidebar {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    background: var(--background-secondary);
+    border-left: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Reuse Settings-style tabs inside workflow sidebar */
+.spark-workflow-sidebar .spark-settings-tabs {
+    margin-bottom: 0;
+    border-top: none;
+}
+
+.spark-workflow-sidebar .spark-tab-button {
+    flex: 1;
+    background-color: transparent !important;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.spark-workflow-sidebar .spark-tab-button.active {
+    color: var(--text-normal);
+    border-bottom: 2px solid var(--interactive-accent);
+}
+
+.spark-workflow-sidebar .spark-tab-button:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+
+.spark-workflow-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.spark-workflow-sidebar-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.spark-workflow-sidebar-action {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+.spark-workflow-sidebar-action:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.spark-workflow-sidebar-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.spark-workflow-sidebar-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.spark-workflow-sidebar-close {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    line-height: 1;
+}
+
+.spark-workflow-sidebar-close:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.spark-workflow-sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.spark-workflow-sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.spark-workflow-sidebar-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 24px;
+}
+
+/* Form elements */
+.spark-workflow-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.spark-workflow-form-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.spark-workflow-form-group input,
+.spark-workflow-form-group textarea,
+.spark-workflow-form-group select {
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 13px;
+}
+
+.spark-workflow-form-group input:focus,
+.spark-workflow-form-group input:focus:hover,
+.spark-workflow-form-group textarea:focus,
+.spark-workflow-form-group textarea:focus:hover,
+.spark-workflow-form-group select:focus,
+.spark-workflow-form-group select:focus:hover {
+    outline: none;
+    border-color: var(--interactive-accent);
+    background: var(--background-primary);
+    /* Show focus ring immediately (no delayed transition). */
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* Disable Obsidian default input transitions in workflow sidebar (fix focus delay). */
+.spark-workflow-sidebar .spark-workflow-form-group input,
+.spark-workflow-sidebar .spark-workflow-form-group textarea,
+.spark-workflow-sidebar .spark-workflow-form-group select {
+    transition: none !important;
+}
+
+/* Prevent odd hover highlight on the Label <input> (match other fields).
+   Important: don't override focus ring while focused. */
+.spark-workflow-form-group input:hover:not(:focus) {
+    background: var(--background-primary);
+    border-color: var(--background-modifier-border);
+    box-shadow: none;
+}
+
+.spark-workflow-form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Checkbox form group */
+.spark-workflow-form-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--text-normal);
+}
+
+.spark-workflow-form-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--interactive-accent);
+}
+
+/* MentionTextarea container in workflow sidebar */
+.spark-mention-textarea-container {
+    position: relative;
+    width: 100%;
+}
+
+.spark-mention-textarea-container .spark-mention-input {
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 13px;
+    min-height: 120px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.spark-mention-textarea-container .spark-mention-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+}
+
+/* Palette in workflow sidebar - position below the input */
+.spark-mention-textarea-container .spark-palette {
+    position: absolute !important;
+    top: 100%;
+    left: 0;
+    right: 0;
+    bottom: auto !important;
+    width: 100%;
+    max-height: 200px;
+    min-width: 0;
+    margin-top: 4px;
+    border-radius: 8px;
+    z-index: 1000;
+}
+
+.spark-workflow-form-hint {
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
+.spark-workflow-hint-error {
+    color: var(--text-error);
+}
+
+.spark-workflow-input-error {
+    border-color: var(--text-error) !important;
+}
+
+.spark-workflow-form-actions {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Action type picker */
+.spark-workflow-action-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    background: transparent;
+    border: none;
+}
+
+.spark-workflow-action-search svg {
+    flex-shrink: 0;
+    opacity: 0.4;
+}
+
+.spark-workflow-action-search input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--text-normal);
+    outline: none;
+    padding: 0;
+}
+
+.spark-workflow-action-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.spark-workflow-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.spark-workflow-action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    padding-top: 50%;
+    position: relative;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.spark-workflow-action-card>* {
+    position: absolute;
+}
+
+.spark-workflow-action-card-icon {
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+}
+
+.spark-workflow-action-card-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.spark-workflow-action-card-label {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-normal);
+    white-space: nowrap;
+}
+
+.spark-workflow-action-card:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.spark-workflow-action-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* Action node styling */
+.spark-workflow-node-action {
+    background: var(--background-secondary);
+    border: 2px dashed var(--background-modifier-border);
+}
+
+.spark-workflow-node-action:hover {
+    box-shadow: 0 0 8px 0 rgba(255, 255, 255, 0.2);
+}
+
+.spark-workflow-node-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Code editor */
+.spark-workflow-code-editor {
+    font-family: var(--font-monospace);
+    font-size: 12px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 200px;
+}
+
+/* Run history */
+.spark-workflow-run-item {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.spark-workflow-run-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: var(--background-primary);
+}
+
+.spark-workflow-run-header:hover {
+    background: var(--background-modifier-hover);
+}
+
+.spark-workflow-run-status {
+    width: 16px;
+    text-align: center;
+}
+
+.spark-workflow-run-status-completed {
+    color: var(--color-green);
+}
+
+.spark-workflow-run-status-failed {
+    color: var(--color-red);
+}
+
+.spark-workflow-run-status-running {
+    color: var(--color-orange);
+}
+
+.spark-workflow-run-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.spark-workflow-run-duration {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-left: auto;
+}
+
+.spark-workflow-run-cycles {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--background-secondary);
+    border-radius: 10px;
+    color: var(--text-muted);
+}
+
+.spark-workflow-run-expand {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.spark-workflow-run-details {
+    padding: 12px;
+    background: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Data blocks (input, output, error) */
+.spark-workflow-run-block {
+    margin-bottom: 10px;
+}
+
+.spark-workflow-run-block-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.spark-workflow-run-block-content {
+    font-size: 11px;
+    font-family: var(--font-monospace);
+    background: var(--background-primary);
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    user-select: text;
+    cursor: text;
+}
+
+.spark-workflow-run-input .spark-workflow-run-block-content {
+    border-left: 2px solid var(--text-muted);
+}
+
+.spark-workflow-run-output .spark-workflow-run-block-content {
+    border-left: 2px solid var(--text-success);
+}
+
+.spark-workflow-run-error .spark-workflow-run-block-content {
+    border-left: 2px solid var(--text-error);
+    color: var(--text-error);
+}
+
+.spark-workflow-run-error pre {
+    color: var(--color-red);
+}
+
+/* Workflow-level Runs panel */
+.spark-workflow-runs-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.spark-workflow-runs-split {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.spark-workflow-runs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow: auto;
+    padding: 6px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+}
+
+.spark-workflow-run-list-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    overflow: hidden;
+    color: inherit;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.spark-workflow-run-list-item.is-selected {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.spark-workflow-run-error-snippet {
+    padding: 0 12px 10px 12px;
+    font-size: 11px;
+    color: var(--text-error);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spark-workflow-runs-detail {
+    padding: 8px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+}
+
+.spark-workflow-run-detail-meta {
+    margin-bottom: 10px;
+}
+
+.spark-workflow-run-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.spark-workflow-run-detail-subtle {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.spark-workflow-run-steps-title {
+    margin-top: 12px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.spark-workflow-run-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spark-workflow-run-step-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spark-workflow-run-jump {
+    margin-left: auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+
+/* Available Variables Section */
+.spark-workflow-vars-section {
+    margin-top: 16px;
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 12px;
+}
+
+.spark-workflow-vars-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--background-secondary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: left;
+}
+
+.spark-workflow-vars-toggle:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.spark-workflow-vars-toggle-icon {
+    font-size: 10px;
+    width: 12px;
+}
+
+.spark-workflow-vars-toggle-label {
+    flex: 1;
+    font-weight: 500;
+}
+
+.spark-workflow-vars-toggle-count {
+    background: var(--background-primary);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+}
+
+.spark-workflow-vars-content {
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--background-secondary);
+    border-radius: 4px;
+}
+
+.spark-workflow-vars-source {
+    margin-bottom: 10px;
+}
+
+.spark-workflow-vars-source:last-child {
+    margin-bottom: 0;
+}
+
+.spark-workflow-vars-source-header {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.spark-workflow-vars-via {
+    font-size: 10px;
+    color: var(--text-faint);
+    background: var(--background-primary);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.spark-workflow-vars-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.spark-workflow-vars-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    background: var(--background-primary);
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.spark-workflow-vars-field code {
+    font-family: var(--font-monospace);
+    font-size: 11px;
+    color: var(--text-accent);
+}
+
+.spark-workflow-vars-type {
+    font-size: 10px;
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+.spark-workflow-vars-hint {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+/* Workflow List View */
+.spark-workflow-list-view {
+    padding: 0;
+    overflow: auto;
+}
+
+.spark-workflow-list-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.spark-workflow-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.spark-workflow-list-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.spark-workflow-list-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spark-workflow-generate-panel {
+    margin: -8px 0 16px 0;
+    padding: 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
+
+.spark-workflow-generate-row {
+    display: flex;
+    gap: 8px;
+}
+
+.spark-workflow-generate-prompt,
+.spark-workflow-generate-answers {
+    width: 100%;
+    resize: vertical;
+    min-height: 60px;
+    padding: 8px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+}
+
+.spark-workflow-generate-clarifications {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spark-workflow-generate-questions {
+    padding: 8px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+}
+
+.spark-workflow-generate-questions-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.spark-workflow-generate-questions ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text-normal);
+}
+
+.spark-workflow-generate-error {
+    margin-top: 10px;
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+}
+
+.spark-workflow-generate-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.spark-workflow-generate-progress {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+}
+
+.spark-workflow-generate-progress-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-normal);
+}
+
+.spark-workflow-generate-spinner {
+    width: 14px;
+    height: 14px;
+}
+
+.spark-workflow-generate-progress-text {
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+}
+
+.spark-workflow-generate-progressbar {
+    margin-top: 8px;
+    height: 6px;
+    background: var(--background-secondary);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.spark-workflow-generate-progressbar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--interactive-accent);
+    transition: width 0.2s ease;
+}
+
+.spark-workflow-generate-steps {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.spark-workflow-generate-step {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.spark-workflow-generate-step.is-active {
+    color: var(--text-on-accent);
+    background: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+}
+
+.spark-workflow-list-loading {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 48px;
+}
+
+.spark-workflow-list-empty {
+    text-align: center;
+    padding: 48px 24px;
+    background: var(--background-secondary);
+    border-radius: 12px;
+}
+
+.spark-workflow-list-empty-icon {
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.spark-workflow-list-empty h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+.spark-workflow-list-empty p {
+    color: var(--text-muted);
+    margin: 0 0 16px 0;
+}
+
+/* List style (Obsidian-native) */
+.spark-workflow-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
+
+.spark-workflow-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.spark-workflow-list-item:last-child {
+    border-bottom: none;
+    border-radius: 0 0 var(--radius-m) var(--radius-m);
+}
+
+.spark-workflow-list-item:first-child {
+    border-radius: var(--radius-m) var(--radius-m) 0 0;
+}
+
+.spark-workflow-list-item:only-child {
+    border-radius: var(--radius-m);
+}
+
+.spark-workflow-list-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.spark-workflow-list-item:active {
+    background-color: var(--background-modifier-active-hover);
+}
+
+.spark-workflow-list-item-icon {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spark-workflow-list-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.spark-workflow-list-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spark-workflow-list-item-meta {
+    display: flex;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    align-items: center;
+}
+
+.spark-workflow-list-item-delete {
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.spark-workflow-list-item:hover .spark-workflow-list-item-delete {
+    opacity: 1;
+}
+
+.spark-workflow-list-item-delete:hover {
+    color: var(--text-normal);
+}
+
+/* Workflow list: last run + quick actions */
+.spark-workflow-list-item-run {
+    flex-shrink: 0;
+    opacity: 0;
+    margin-right: 6px;
+}
+
+.spark-workflow-list-item:hover .spark-workflow-list-item-run {
+    opacity: 1;
+}
+
+.spark-workflow-last-run {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.spark-workflow-last-run-icon {
+    width: 14px;
+    text-align: center;
+}
+
+.spark-workflow-last-run-completed .spark-workflow-last-run-icon {
+    color: var(--color-green);
+}
+
+.spark-workflow-last-run-failed .spark-workflow-last-run-icon {
+    color: var(--color-red);
+}
+
+.spark-workflow-last-run-running .spark-workflow-last-run-icon {
+    color: var(--color-orange);
+}
+
+.spark-workflow-last-run-cancelled .spark-workflow-last-run-icon {
+    color: var(--text-muted);
+}
+
+.spark-workflow-last-run-none {
+    opacity: 0.8;
+}
+
+/* this gets exported as style.css and can be used for the default theming */
+/* these are the necessary styles for React/Svelte Flow, they get used by base.css and style.css */
+.react-flow {
+    direction: ltr;
+
+    --xy-edge-stroke-default: #b1b1b7;
+    --xy-edge-stroke-width-default: 1;
+    --xy-edge-stroke-selected-default: #555;
+
+    --xy-connectionline-stroke-default: #b1b1b7;
+    --xy-connectionline-stroke-width-default: 1;
+
+    --xy-attribution-background-color-default: rgba(255, 255, 255, 0.5);
+
+    --xy-minimap-background-color-default: #fff;
+    --xy-minimap-mask-background-color-default: rgba(240, 240, 240, 0.6);
+    --xy-minimap-mask-stroke-color-default: transparent;
+    --xy-minimap-mask-stroke-width-default: 1;
+    --xy-minimap-node-background-color-default: #e2e2e2;
+    --xy-minimap-node-stroke-color-default: transparent;
+    --xy-minimap-node-stroke-width-default: 2;
+
+    --xy-background-color-default: transparent;
+    --xy-background-pattern-dots-color-default: #91919a;
+    --xy-background-pattern-lines-color-default: #eee;
+    --xy-background-pattern-cross-color-default: #e2e2e2;
+    background-color: var(--xy-background-color, var(--xy-background-color-default));
+    --xy-node-color-default: inherit;
+    --xy-node-border-default: 1px solid #1a192b;
+    --xy-node-background-color-default: #fff;
+    --xy-node-group-background-color-default: rgba(240, 240, 240, 0.25);
+    --xy-node-boxshadow-hover-default: 0 1px 4px 1px rgba(0, 0, 0, 0.08);
+    --xy-node-boxshadow-selected-default: 0 0 0 0.5px #1a192b;
+    --xy-node-border-radius-default: 3px;
+
+    --xy-handle-background-color-default: #1a192b;
+    --xy-handle-border-color-default: #fff;
+
+    --xy-selection-background-color-default: rgba(0, 89, 220, 0.08);
+    --xy-selection-border-default: 1px dotted rgba(0, 89, 220, 0.8);
+
+    --xy-controls-button-background-color-default: #fefefe;
+    --xy-controls-button-background-color-hover-default: #f4f4f4;
+    --xy-controls-button-color-default: inherit;
+    --xy-controls-button-color-hover-default: inherit;
+    --xy-controls-button-border-color-default: #eee;
+    --xy-controls-box-shadow-default: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+
+    --xy-edge-label-background-color-default: #ffffff;
+    --xy-edge-label-color-default: inherit;
+    --xy-resize-background-color-default: #3367d9;
+}
+
+.react-flow.dark {
+    --xy-edge-stroke-default: #3e3e3e;
+    --xy-edge-stroke-width-default: 1;
+    --xy-edge-stroke-selected-default: #727272;
+
+    --xy-connectionline-stroke-default: #b1b1b7;
+    --xy-connectionline-stroke-width-default: 1;
+
+    --xy-attribution-background-color-default: rgba(150, 150, 150, 0.25);
+
+    --xy-minimap-background-color-default: #141414;
+    --xy-minimap-mask-background-color-default: rgba(60, 60, 60, 0.6);
+    --xy-minimap-mask-stroke-color-default: transparent;
+    --xy-minimap-mask-stroke-width-default: 1;
+    --xy-minimap-node-background-color-default: #2b2b2b;
+    --xy-minimap-node-stroke-color-default: transparent;
+    --xy-minimap-node-stroke-width-default: 2;
+
+    --xy-background-color-default: #141414;
+    --xy-background-pattern-dots-color-default: #777;
+    --xy-background-pattern-lines-color-default: #777;
+    --xy-background-pattern-cross-color-default: #777;
+    --xy-node-color-default: #f8f8f8;
+    --xy-node-border-default: 1px solid #3c3c3c;
+    --xy-node-background-color-default: #1e1e1e;
+    --xy-node-group-background-color-default: rgba(240, 240, 240, 0.25);
+    --xy-node-boxshadow-hover-default: 0 1px 4px 1px rgba(255, 255, 255, 0.08);
+    --xy-node-boxshadow-selected-default: 0 0 0 0.5px #999;
+
+    --xy-handle-background-color-default: #bebebe;
+    --xy-handle-border-color-default: #1e1e1e;
+
+    --xy-selection-background-color-default: rgba(200, 200, 220, 0.08);
+    --xy-selection-border-default: 1px dotted rgba(200, 200, 220, 0.8);
+
+    --xy-controls-button-background-color-default: #2b2b2b;
+    --xy-controls-button-background-color-hover-default: #3e3e3e;
+    --xy-controls-button-color-default: #f8f8f8;
+    --xy-controls-button-color-hover-default: #fff;
+    --xy-controls-button-border-color-default: #5b5b5b;
+    --xy-controls-box-shadow-default: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+
+    --xy-edge-label-background-color-default: #141414;
+    --xy-edge-label-color-default: #f8f8f8;
+}
+
+.react-flow__background {
+    background-color: var(--xy-background-color-props, var(--xy-background-color, var(--xy-background-color-default)));
+    pointer-events: none;
+    z-index: -1;
+}
+
+.react-flow__container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.react-flow__pane {
+    z-index: 1;
+}
+
+.react-flow__pane.draggable {
+    cursor: grab;
+}
+
+.react-flow__pane.dragging {
+    cursor: grabbing;
+}
+
+.react-flow__pane.selection {
+    cursor: pointer;
+}
+
+.react-flow__viewport {
+    transform-origin: 0 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.react-flow__renderer {
+    z-index: 4;
+}
+
+.react-flow__nodesselection-rect:focus,
+.react-flow__nodesselection-rect:focus-visible {
+    outline: none;
+}
+
+.react-flow__edge-path {
+    stroke: var(--xy-edge-stroke, var(--xy-edge-stroke-default));
+    stroke-width: var(--xy-edge-stroke-width, var(--xy-edge-stroke-width-default));
+    fill: none;
+}
+
+.react-flow__connection-path {
+    stroke: var(--xy-connectionline-stroke, var(--xy-connectionline-stroke-default));
+    stroke-width: var(--xy-connectionline-stroke-width, var(--xy-connectionline-stroke-width-default));
+    fill: none;
+}
+
+.react-flow .react-flow__edges {
+    position: absolute;
+}
+
+.react-flow .react-flow__edges svg {
+    overflow: visible;
+    position: absolute;
+    pointer-events: none;
+}
+
+.react-flow__edge {
+    pointer-events: visibleStroke;
+}
+
+.react-flow__edge.selectable {
+    cursor: pointer;
+}
+
+.react-flow__edge.animated path {
+    stroke-dasharray: 5;
+    animation: dashdraw 0.5s linear infinite;
+}
+
+.react-flow__edge.animated path.react-flow__edge-interaction {
+    stroke-dasharray: none;
+    animation: none;
+}
+
+.react-flow__edge.inactive {
+    pointer-events: none;
+}
+
+.react-flow__edge.selected,
+.react-flow__edge:focus,
+.react-flow__edge:focus-visible {
+    outline: none;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge.selectable:focus .react-flow__edge-path,
+.react-flow__edge.selectable:focus-visible .react-flow__edge-path {
+    stroke: var(--xy-edge-stroke-selected, var(--xy-edge-stroke-selected-default));
+}
+
+.react-flow__edge-textwrapper {
+    pointer-events: all;
+}
+
+.react-flow__edge .react-flow__edge-text {
+    pointer-events: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+/* Arrowhead marker styles - use CSS custom properties as default */
+.react-flow__arrowhead polyline {
+    stroke: var(--xy-edge-stroke, var(--xy-edge-stroke-default));
+}
+
+.react-flow__arrowhead polyline.arrowclosed {
+    fill: var(--xy-edge-stroke, var(--xy-edge-stroke-default));
+}
+
+.react-flow__connection {
+    pointer-events: none;
+}
+
+.react-flow__connection .animated {
+    stroke-dasharray: 5;
+    animation: dashdraw 0.5s linear infinite;
+}
+
+svg.react-flow__connectionline {
+    z-index: 1001;
+    overflow: visible;
+    position: absolute;
+}
+
+.react-flow__nodes {
+    pointer-events: none;
+    transform-origin: 0 0;
+}
+
+.react-flow__node {
+    position: absolute;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    pointer-events: all;
+    transform-origin: 0 0;
+    box-sizing: border-box;
+    cursor: default;
+}
+
+.react-flow__node.selectable {
+    cursor: pointer;
+}
+
+.react-flow__node.draggable {
+    cursor: grab;
+    pointer-events: all;
+}
+
+.react-flow__node.draggable.dragging {
+    cursor: grabbing;
+}
+
+.react-flow__nodesselection {
+    z-index: 3;
+    transform-origin: left top;
+    pointer-events: none;
+}
+
+.react-flow__nodesselection-rect {
+    position: absolute;
+    pointer-events: all;
+    cursor: grab;
+    background: var(--xy-selection-background-color, var(--xy-selection-background-color-default));
+    border: var(--xy-selection-border, var(--xy-selection-border-default));
+}
+
+.react-flow__handle {
+    position: absolute;
+    pointer-events: none;
+    min-width: 5px;
+    min-height: 5px;
+    width: 6px;
+    height: 6px;
+    background-color: var(--xy-handle-background-color, var(--xy-handle-background-color-default));
+    border: 1px solid var(--xy-handle-border-color, var(--xy-handle-border-color-default));
+    border-radius: 100%;
+}
+
+.react-flow__handle.connectingfrom {
+    pointer-events: all;
+}
+
+.react-flow__handle.connectionindicator {
+    pointer-events: all;
+    cursor: crosshair;
+}
+
+.react-flow__handle-bottom {
+    top: auto;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 50%);
+}
+
+.react-flow__handle-top {
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.react-flow__handle-left {
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+}
+
+.react-flow__handle-right {
+    top: 50%;
+    right: 0;
+    transform: translate(50%, -50%);
+}
+
+.react-flow__edgeupdater {
+    cursor: move;
+    pointer-events: all;
+}
+
+.react-flow__pane.selection .react-flow__panel {
+    pointer-events: none;
+}
+
+.react-flow__panel {
+    position: absolute;
+    z-index: 5;
+    margin: 15px;
+}
+
+.react-flow__panel.top {
+    top: 0;
+}
+
+.react-flow__panel.bottom {
+    bottom: 0;
+}
+
+.react-flow__panel.top.center,
+.react-flow__panel.bottom.center {
+    left: 50%;
+    transform: translateX(-15px) translateX(-50%);
+}
+
+.react-flow__panel.left {
+    left: 0;
+}
+
+.react-flow__panel.right {
+    right: 0;
+}
+
+.react-flow__panel.left.center,
+.react-flow__panel.right.center {
+    top: 50%;
+    transform: translateY(-15px) translateY(-50%);
+}
+
+.react-flow__attribution {
+    font-size: 10px;
+    background: var(--xy-attribution-background-color, var(--xy-attribution-background-color-default));
+    padding: 2px 3px;
+    margin: 0;
+}
+
+.react-flow__attribution a {
+    text-decoration: none;
+    color: #999;
+}
+
+@keyframes dashdraw {
+    from {
+        stroke-dashoffset: 10;
+    }
+}
+
+.react-flow__edgelabel-renderer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    left: 0;
+    top: 0;
+}
+
+.react-flow__viewport-portal {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+.react-flow__minimap {
+    background: var(--xy-minimap-background-color-props,
+            var(--xy-minimap-background-color, var(--xy-minimap-background-color-default)));
+}
+
+.react-flow__minimap-svg {
+    display: block;
+}
+
+.react-flow__minimap-mask {
+    fill: var(--xy-minimap-mask-background-color-props,
+            var(--xy-minimap-mask-background-color, var(--xy-minimap-mask-background-color-default)));
+    stroke: var(--xy-minimap-mask-stroke-color-props,
+            var(--xy-minimap-mask-stroke-color, var(--xy-minimap-mask-stroke-color-default)));
+    stroke-width: var(--xy-minimap-mask-stroke-width-props,
+            var(--xy-minimap-mask-stroke-width, var(--xy-minimap-mask-stroke-width-default)));
+}
+
+.react-flow__minimap-node {
+    fill: var(--xy-minimap-node-background-color-props,
+            var(--xy-minimap-node-background-color, var(--xy-minimap-node-background-color-default)));
+    stroke: var(--xy-minimap-node-stroke-color-props,
+            var(--xy-minimap-node-stroke-color, var(--xy-minimap-node-stroke-color-default)));
+    stroke-width: var(--xy-minimap-node-stroke-width-props,
+            var(--xy-minimap-node-stroke-width, var(--xy-minimap-node-stroke-width-default)));
+}
+
+.react-flow__background-pattern.dots {
+    fill: var(--xy-background-pattern-color-props,
+            var(--xy-background-pattern-color, var(--xy-background-pattern-dots-color-default)));
+}
+
+.react-flow__background-pattern.lines {
+    stroke: var(--xy-background-pattern-color-props,
+            var(--xy-background-pattern-color, var(--xy-background-pattern-lines-color-default)));
+}
+
+.react-flow__background-pattern.cross {
+    stroke: var(--xy-background-pattern-color-props,
+            var(--xy-background-pattern-color, var(--xy-background-pattern-cross-color-default)));
+}
+
+.react-flow__controls {
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--xy-controls-box-shadow, var(--xy-controls-box-shadow-default));
+}
+
+.react-flow__controls.horizontal {
+    flex-direction: row;
+}
+
+.react-flow__controls-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 26px;
+    width: 26px;
+    padding: 4px;
+    border: none;
+    background: var(--xy-controls-button-background-color, var(--xy-controls-button-background-color-default));
+    border-bottom: 1px solid var(--xy-controls-button-border-color-props,
+            var(--xy-controls-button-border-color, var(--xy-controls-button-border-color-default)));
+    color: var(--xy-controls-button-color-props,
+            var(--xy-controls-button-color, var(--xy-controls-button-color-default)));
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+.react-flow__controls-button svg {
+    width: 100%;
+    max-width: 12px;
+    max-height: 12px;
+    fill: currentColor;
+}
+
+.react-flow__edge.updating .react-flow__edge-path {
+    stroke: #777;
+}
+
+.react-flow__node.selectable:focus,
+.react-flow__node.selectable:focus-visible {
+    outline: none;
+}
+
+.react-flow__node-input,
+.react-flow__node-default,
+.react-flow__node-output {
+    padding: 10px;
+    border-radius: var(--xy-node-border-radius, var(--xy-node-border-radius-default));
+    width: 150px;
+    font-size: 12px;
+    color: var(--xy-node-color, var(--xy-node-color-default));
+    text-align: center;
+    border: var(--xy-node-border, var(--xy-node-border-default));
+    background-color: var(--xy-node-background-color, var(--xy-node-background-color-default));
+}
+
+.react-flow__node-group {
+    padding: 10px;
+    border-radius: var(--xy-node-border-radius, var(--xy-node-border-radius-default));
+    width: 150px;
+    font-size: 12px;
+    color: var(--xy-node-color, var(--xy-node-color-default));
+    text-align: center;
+    border: var(--xy-node-border, var(--xy-node-border-default));
+    background-color: var(--xy-node-group-background-color, var(--xy-node-group-background-color-default));
+}
+
+.react-flow__node-input.selectable:hover,
+.react-flow__node-default.selectable:hover,
+.react-flow__node-output.selectable:hover,
+.react-flow__node-group.selectable:hover {
+    box-shadow: var(--xy-node-boxshadow-hover, var(--xy-node-boxshadow-hover-default));
+}
+
+.react-flow__node-input.selectable.selected,
+.react-flow__node-input.selectable:focus,
+.react-flow__node-input.selectable:focus-visible,
+.react-flow__node-default.selectable.selected,
+.react-flow__node-default.selectable:focus,
+.react-flow__node-default.selectable:focus-visible,
+.react-flow__node-output.selectable.selected,
+.react-flow__node-output.selectable:focus,
+.react-flow__node-output.selectable:focus-visible,
+.react-flow__node-group.selectable.selected,
+.react-flow__node-group.selectable:focus,
+.react-flow__node-group.selectable:focus-visible {
+    box-shadow: var(--xy-node-boxshadow-selected, var(--xy-node-boxshadow-selected-default));
+}
+
+.react-flow__selection {
+    z-index: 6;
+    background: var(--xy-selection-background-color, var(--xy-selection-background-color-default));
+    border: var(--xy-selection-border, var(--xy-selection-border-default));
+}
+
+.react-flow__nodesselection-rect:focus,
+.react-flow__nodesselection-rect:focus-visible,
+.react-flow__selection:focus,
+.react-flow__selection:focus-visible {
+    outline: none;
+}
+
+.react-flow__controls-button:hover {
+    background: var(--xy-controls-button-background-color-hover-props,
+            var(--xy-controls-button-background-color-hover, var(--xy-controls-button-background-color-hover-default)));
+    color: var(--xy-controls-button-color-hover-props,
+            var(--xy-controls-button-color-hover, var(--xy-controls-button-color-hover-default)));
+}
+
+.react-flow__controls-button:disabled {
+    pointer-events: none;
+}
+
+.react-flow__controls-button:disabled svg {
+    fill-opacity: 0.4;
+}
+
+.react-flow__controls-button:last-child {
+    border-bottom: none;
+}
+
+.react-flow__controls.horizontal .react-flow__controls-button {
+    border-bottom: none;
+    border-right: 1px solid var(--xy-controls-button-border-color-props,
+            var(--xy-controls-button-border-color, var(--xy-controls-button-border-color-default)));
+}
+
+.react-flow__controls.horizontal .react-flow__controls-button:last-child {
+    border-right: none;
+}
+
+.react-flow__resize-control {
+    position: absolute;
+}
+
+.react-flow__resize-control.left,
+.react-flow__resize-control.right {
+    cursor: ew-resize;
+}
+
+.react-flow__resize-control.top,
+.react-flow__resize-control.bottom {
+    cursor: ns-resize;
+}
+
+.react-flow__resize-control.top.left,
+.react-flow__resize-control.bottom.right {
+    cursor: nwse-resize;
+}
+
+.react-flow__resize-control.bottom.left,
+.react-flow__resize-control.top.right {
+    cursor: nesw-resize;
+}
+
+/* handle styles */
+.react-flow__resize-control.handle {
+    width: 5px;
+    height: 5px;
+    border: 1px solid #fff;
+    border-radius: 1px;
+    background-color: var(--xy-resize-background-color, var(--xy-resize-background-color-default));
+    translate: -50% -50%;
+}
+
+.react-flow__resize-control.handle.left {
+    left: 0;
+    top: 50%;
+}
+
+.react-flow__resize-control.handle.right {
+    left: 100%;
+    top: 50%;
+}
+
+.react-flow__resize-control.handle.top {
+    left: 50%;
+    top: 0;
+}
+
+.react-flow__resize-control.handle.bottom {
+    left: 50%;
+    top: 100%;
+}
+
+.react-flow__resize-control.handle.top.left {
+    left: 0;
+}
+
+.react-flow__resize-control.handle.bottom.left {
+    left: 0;
+}
+
+.react-flow__resize-control.handle.top.right {
+    left: 100%;
+}
+
+.react-flow__resize-control.handle.bottom.right {
+    left: 100%;
+}
+
+/* line styles */
+.react-flow__resize-control.line {
+    border-color: var(--xy-resize-background-color, var(--xy-resize-background-color-default));
+    border-width: 0;
+    border-style: solid;
+}
+
+.react-flow__resize-control.line.left {
+    width: 1px;
+    transform: translate(-50%, 0);
+    top: 0;
+    height: 100%;
+    left: 0;
+    border-left-width: 1px;
+}
+
+.react-flow__resize-control.line.right {
+    width: 1px;
+    transform: translate(-50%, 0);
+    top: 0;
+    height: 100%;
+    left: 100%;
+    border-right-width: 1px;
+}
+
+.react-flow__resize-control.line.top {
+    height: 1px;
+    transform: translate(0, -50%);
+    left: 0;
+    width: 100%;
+    top: 0;
+    border-top-width: 1px;
+}
+
+.react-flow__resize-control.line.bottom {
+    height: 1px;
+    transform: translate(0, -50%);
+    left: 0;
+    width: 100%;
+    border-bottom-width: 1px;
+    top: 100%;
+}
+
+.react-flow__edge-textbg {
+    fill: var(--xy-edge-label-background-color, var(--xy-edge-label-background-color-default));
+}
+
+.react-flow__edge-text {
+    font-size: 10px;
+    fill: var(--xy-edge-label-color, var(--xy-edge-label-color-default));
+}
+
+/* Condition edge labels - hide them (T/F labels are on the node now) */
+.spark-edge-true .react-flow__edge-textbg,
+.spark-edge-true .react-flow__edge-text,
+.spark-edge-false .react-flow__edge-textbg,
+.spark-edge-false .react-flow__edge-text {
+    display: none;
+}
+
+/* Executed edges - solid line with success color */
+.spark-edge-executed .react-flow__edge-path {
+    stroke: var(--text-success);
+    stroke-width: 2.5;
+}
+
+.spark-edge-executed .react-flow__edge-path[marker-end] {
+    marker-end: url(#spark-arrow-executed);
 }

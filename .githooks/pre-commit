@@ -38,11 +38,11 @@ else
     echo "\n⏭️  No plugin files staged, skipping plugin checks"
 fi
 
-# Check if daemon files are staged
-STAGED_DAEMON_FILES=$(echo "$STAGED_FILES" | grep "^daemon/" || true)
-if [ -n "$STAGED_DAEMON_FILES" ]; then
-    echo "\n🤖 Checking Daemon..."
-    cd "$REPO_ROOT/daemon"
+# Check if engine files are staged
+STAGED_ENGINE_FILES=$(echo "$STAGED_FILES" | grep "^engine/" || true)
+if [ -n "$STAGED_ENGINE_FILES" ]; then
+    echo "\n🤖 Checking Engine..."
+    cd "$REPO_ROOT/engine"
     
     # Auto-fix formatting and linting
     echo "  Formatting..."
@@ -55,15 +55,15 @@ if [ -n "$STAGED_DAEMON_FILES" ]; then
     echo "  Running checks..."
     npm run check
     
-    echo "✅ Daemon checks passed!"
+    echo "✅ Engine checks passed!"
     
-    # Re-stage ONLY the originally staged daemon files (not all modified files)
+    # Re-stage ONLY the originally staged engine files (not all modified files)
     cd "$REPO_ROOT"
-    echo "$STAGED_DAEMON_FILES" | while read -r file; do
+    echo "$STAGED_ENGINE_FILES" | while read -r file; do
         [ -n "$file" ] && git add "$file"
     done
 else
-    echo "\n⏭️  No daemon files staged, skipping daemon checks"
+    echo "\n⏭️  No engine files staged, skipping engine checks"
 fi
 
 echo "\n✅ All pre-commit checks passed!"

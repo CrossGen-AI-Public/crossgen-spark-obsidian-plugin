@@ -4,8 +4,8 @@ node_modules/
 
 # Build output
 plugin/dist/
-daemon/dist/
-daemon/release/
+engine/dist/
+engine/release/
 *.js.map
 
 # OS files
@@ -46,7 +46,7 @@ example-vault/emails/*
 example-vault/README.md
 example-vault/*.md
 
-# Spark daemon runtime files
+# Spark engine runtime files
 example-vault/.spark/reload-status.json
 example-vault/.spark/notifications.jsonl
 
@@ -57,6 +57,11 @@ example-vault/.spark/logs/*
 # Chat system temporary files (cleaned up automatically)
 example-vault/.spark/chat-queue/*
 example-vault/.spark/chat-results/*
+example-vault/.spark/workflows/*
+example-vault/.spark/workflow-runs/*
+example-vault/.spark/workflow-queue/*
+example-vault/.spark/workflow-generate-queue/*
+example-vault/.spark/workflow-generate-results/*
 
 # Add the conversations directory to VCS, but ignore all files inside
 example-vault/.spark/conversations/*
@@ -71,6 +76,7 @@ coverage/
 .agent/
 
 # Local project context (not tracked in remotes)
-.cursor/
+.cursor/*
 CLAUDE.md
-specs/
+specs/*
+.context/

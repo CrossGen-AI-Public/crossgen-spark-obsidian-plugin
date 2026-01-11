@@ -4,11 +4,11 @@ This directory contains GitHub Actions workflows for continuous integration and 
 
 ## Workflows
 
-### Daemon CI (`daemon-ci.yml`)
+### Engine CI (`engine-ci.yml`)
 
 Runs on:
-- Push to `main` branch (daemon changes)
-- Pull requests to `main` (daemon changes)
+- Push to `main` branch (engine changes)
+- Pull requests to `main` (engine changes)
 
 **Jobs:**
 1. **Test** (Node 18.x, 20.x)
@@ -20,9 +20,9 @@ Runs on:
    - Build verification
 
 2. **Integration** (Node 20.x)
-   - Build daemon
+   - Build engine
    - Test start/stop lifecycle
-   - Verify daemon can run with real vault
+   - Verify engine can run with real vault
 
 **Artifacts:**
 - Coverage summary shown in CI logs
@@ -63,7 +63,7 @@ The workflows will run automatically on your next push to `main` or when you cre
 Dynamic workflow badges in the main README:
 
 ```markdown
-[![Daemon CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/daemon-ci.yml/badge.svg)](...)
+[![Engine CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/engine-ci.yml/badge.svg)](...)
 [![Plugin CI](https://github.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/actions/workflows/plugin-ci.yml/badge.svg)](...)
 ```
 
@@ -94,8 +94,8 @@ Click any badge → See workflow run → Check "Summary" tab for detailed result
 Test workflows locally before pushing:
 
 ```bash
-# Daemon checks
-cd daemon
+# Engine checks
+cd engine
 npm run check
 
 # Plugin checks

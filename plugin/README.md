@@ -6,28 +6,28 @@ AI-powered automation for Obsidian with slash commands, chat widget, and intelli
 
 ## Requirements
 
-This plugin requires the **Spark Daemon** to be running for AI features to work.
+This plugin requires the **Spark Engine** to be running for AI features to work.
 
-### Install & Start the Daemon
+### Install & Start the Engine
 
 **From Plugin (Recommended):**
 
-The plugin handles daemon installation and management automatically:
-- On first launch, a setup modal prompts you to install the daemon
-- Go to **Settings → Spark → Daemon** to install, start, or stop the daemon
-- Enable **Auto-launch daemon** to start it automatically when Obsidian opens
+The plugin handles engine installation and management automatically:
+- On first launch, a setup modal prompts you to install the engine
+- Go to **Settings → Spark → Engine** to install, start, or stop the engine
+- Enable **Auto-launch engine** to start it automatically when Obsidian opens
 
 **Manual Installation:**
 
 ```bash
-# Install daemon
-curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-daemon.sh | bash
+# Install engine
+curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install-engine.sh | bash
 
-# Start daemon for your vault
+# Start engine for your vault
 spark start ~/path/to/your/vault
 ```
 
-The daemon watches your vault and processes AI requests from the plugin.
+The engine watches your vault and processes AI requests from the plugin.
 
 ---
 
@@ -46,7 +46,7 @@ The daemon watches your vault and processes AI requests from the plugin.
 1. Open Obsidian Settings → Community Plugins
 2. Search for "Spark Assistant"
 3. Install and enable the plugin
-4. Follow the setup modal to install the daemon (or go to Settings → Spark → Daemon)
+4. Follow the setup modal to install the engine (or go to Settings → Spark → Engine)
 5. Configure your API key in plugin settings (Settings → Spark → API Key)
 
 ---
@@ -175,8 +175,8 @@ plugin/
 │   ├── chat/                # Chat interface ✅
 │   │   ├── ChatWindow.ts             # Main chat window
 │   │   ├── ChatManager.ts            # Chat state management
-│   │   ├── ChatQueue.ts              # Queue messages to daemon
-│   │   ├── ChatResultWatcher.ts      # Watch for daemon responses
+│   │   ├── ChatQueue.ts              # Queue messages to engine
+│   │   ├── ChatResultWatcher.ts      # Watch for engine responses
 │   │   ├── ChatMentionHandler.ts     # Mention support in chat
 │   │   └── ConversationStorage.ts    # Persist conversations
 │   ├── utils/               # Shared utilities
@@ -195,7 +195,7 @@ plugin/
 This plugin follows the Spark Assistant architecture:
 
 - **Plugin (UI Layer)**: Pure UI, no business logic
-- **Daemon (Intelligence Layer)**: All AI processing and automation
+- **Engine (Intelligence Layer)**: All AI processing and automation
 - **Communication**: Via file system (markdown files)
 
 The plugin's role:
@@ -205,7 +205,7 @@ The plugin's role:
 - Watch notification file
 - Display toasts and status
 
-The daemon handles:
+The engine handles:
 - Parsing Spark syntax
 - Loading context
 - AI API calls

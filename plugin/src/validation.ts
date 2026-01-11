@@ -21,7 +21,7 @@ export const AgentConfigSchema = z.object({
 // Config validation schema (for commonly edited fields)
 export const SparkConfigSchema = z.object({
 	version: z.number().positive(),
-	daemon: z.object({
+	engine: z.object({
 		debounce_ms: z.number().min(0, 'Debounce must be non-negative'),
 		results: z.object({
 			add_blank_lines: z.boolean(),

@@ -4,11 +4,13 @@ import type { Editor, EditorPosition } from 'obsidian';
  * Item in the command palette autocomplete
  */
 export interface PaletteItem {
-	type: 'command' | 'agent' | 'file' | 'folder';
+	type: 'command' | 'agent' | 'file' | 'folder' | 'variable';
 	id: string;
 	name: string;
 	description?: string;
 	path?: string;
+	/** Icon for the item (emoji or character) */
+	icon?: string;
 }
 
 /**

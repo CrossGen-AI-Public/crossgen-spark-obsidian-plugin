@@ -50,6 +50,12 @@ const context = await esbuild.context({
     sourcemap: prod ? false : "inline",
     treeShaking: true,
     outfile: outfile,
+    // React JSX support
+    jsx: "automatic",
+    loader: {
+        ".tsx": "tsx",
+        ".ts": "ts",
+    },
 });
 
 if (prod) {

@@ -84,7 +84,7 @@ If you don't need metadata, just write the persona:
 You are a helpful assistant specialized in project management.
 ```
 
-No frontmatter required! The daemon handles both formats.
+No frontmatter required! The engine handles both formats.
 
 ## Field Reference
 

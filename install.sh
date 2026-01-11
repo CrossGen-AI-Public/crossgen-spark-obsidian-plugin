@@ -239,21 +239,21 @@ else
 fi
 echo ""
 
-# Install daemon
-echo -e "${YELLOW}→ Installing daemon...${NC}"
-cd "$SCRIPT_DIR/daemon"
+# Install engine
+echo -e "${YELLOW}→ Installing engine...${NC}"
+cd "$SCRIPT_DIR/engine"
 npm install
-echo -e "${GREEN}✓ Daemon dependencies installed${NC}"
+echo -e "${GREEN}✓ Engine dependencies installed${NC}"
 
-echo -e "${YELLOW}→ Building daemon...${NC}"
+echo -e "${YELLOW}→ Building engine...${NC}"
 npm run build
-echo -e "${GREEN}✓ Daemon built successfully${NC}"
+echo -e "${GREEN}✓ Engine built successfully${NC}"
 
 echo -e "${YELLOW}→ Making CLI executable...${NC}"
 chmod +x dist/cli.js
 echo -e "${GREEN}✓ CLI permissions set${NC}"
 
-echo -e "${YELLOW}→ Installing daemon globally...${NC}"
+echo -e "${YELLOW}→ Installing engine globally...${NC}"
 
 # Check if npm global directory is writable
 NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
@@ -266,6 +266,33 @@ if [ -n "$NPM_PREFIX" ] && [ ! -w "$NPM_PREFIX" ]; then
     echo -e "${GREEN}  ✓ Configured npm prefix: $NPM_PREFIX${NC}"
 fi
 
+# If a legacy/broken global `spark` binary exists (usually from the old spark-daemon),
+# remove it so `npm install -g` doesn't fail with EEXIST.
+#
+# Common failure case:
+#   ~/.nvm/.../bin/spark -> ../lib/node_modules/spark-daemon/dist/cli.js (broken or stale)
+#
+# We only remove it when it clearly points to the daemon install, or is a broken symlink.
+NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
+EXISTING_GLOBAL_SPARK=""
+if [ -n "$NPM_PREFIX" ]; then
+    EXISTING_GLOBAL_SPARK="$NPM_PREFIX/bin/spark"
+fi
+
+if [ -n "$EXISTING_GLOBAL_SPARK" ] && [ -L "$EXISTING_GLOBAL_SPARK" ]; then
+    EXISTING_TARGET=$(readlink "$EXISTING_GLOBAL_SPARK" 2>/dev/null || echo "")
+    if [[ "$EXISTING_TARGET" == *"spark-daemon"* ]] || [[ "$EXISTING_TARGET" == *"/.spark/daemon/"* ]]; then
+        rm -f "$EXISTING_GLOBAL_SPARK"
+        echo -e "${GREEN}✓ Removed legacy global spark symlink (daemon) to allow engine install${NC}"
+    else
+        # Broken symlink (readlink ok but target missing) can also block install
+        if [ ! -e "$EXISTING_GLOBAL_SPARK" ]; then
+            rm -f "$EXISTING_GLOBAL_SPARK"
+            echo -e "${GREEN}✓ Removed broken global spark symlink to allow engine install${NC}"
+        fi
+    fi
+fi
+
 # Use npm pack + install to ensure files are copied, not symlinked
 TARBALL=$(npm pack --silent)
 npm install -g "$TARBALL"
@@ -276,7 +303,7 @@ rm "$TARBALL"
 NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
 if [ -n "$NPM_PREFIX" ] && [ -f "$NPM_PREFIX/bin/spark" ]; then
     export PATH="$NPM_PREFIX/bin:$PATH"
-    echo -e "${GREEN}✓ Daemon installed globally${NC}"
+    echo -e "${GREEN}✓ Engine installed globally${NC}"
     echo -e "${BLUE}  npm global bin: $NPM_PREFIX/bin${NC}"
     echo -e "${GREEN}✓ spark binary found at $NPM_PREFIX/bin/spark${NC}"
 else
@@ -284,7 +311,7 @@ else
     NODE_BIN_DIR=$(dirname "$(which node 2>/dev/null)")
     if [ -n "$NODE_BIN_DIR" ]; then
         export PATH="$NODE_BIN_DIR:$PATH"
-        echo -e "${GREEN}✓ Daemon installed globally${NC}"
+        echo -e "${GREEN}✓ Engine installed globally${NC}"
         echo -e "${BLUE}  Node bin dir: $NODE_BIN_DIR${NC}"
         
         # Verify spark was installed
@@ -306,6 +333,33 @@ if command -v spark &> /dev/null; then
 else
     echo -e "${RED}✗ spark command not available${NC}"
     echo -e "${YELLOW}  Debug: PATH=$PATH${NC}"
+fi
+
+# If a legacy /usr/local/bin/spark symlink is shadowing the newly installed engine,
+# replace it (only when it clearly points to the old daemon install).
+#
+# This happens when users previously installed Spark Daemon, which created:
+#   /usr/local/bin/spark -> ~/.spark/daemon/dist/cli.js
+# and /usr/local/bin appears earlier in PATH than npm's global bin.
+ENGINE_SPARK_BIN=""
+NPM_PREFIX=$(npm prefix -g 2>/dev/null || echo "")
+if [ -n "$NPM_PREFIX" ] && [ -f "$NPM_PREFIX/bin/spark" ]; then
+    ENGINE_SPARK_BIN="$NPM_PREFIX/bin/spark"
+fi
+
+LEGACY_SPARK_SYMLINK="/usr/local/bin/spark"
+if [ -n "$ENGINE_SPARK_BIN" ] && [ -L "$LEGACY_SPARK_SYMLINK" ]; then
+    LEGACY_TARGET=$(readlink "$LEGACY_SPARK_SYMLINK" 2>/dev/null || echo "")
+    if [[ "$LEGACY_TARGET" == *"/.spark/daemon/"* ]]; then
+        if [ -w "/usr/local/bin" ]; then
+            ln -sf "$ENGINE_SPARK_BIN" "$LEGACY_SPARK_SYMLINK"
+            echo -e "${GREEN}✓ Replaced legacy spark symlink with engine: $LEGACY_SPARK_SYMLINK -> $ENGINE_SPARK_BIN${NC}"
+        else
+            echo -e "${YELLOW}⚠ Detected legacy spark symlink pointing to daemon:${NC}"
+            echo -e "${YELLOW}  $LEGACY_SPARK_SYMLINK -> $LEGACY_TARGET${NC}"
+            echo -e "${YELLOW}  But /usr/local/bin is not writable; remove/replace it manually to use the engine.${NC}"
+        fi
+    fi
 fi
 
 # Add to shell profile so spark is available permanently
@@ -595,12 +649,12 @@ elif [ -n "$NODE_BIN_DIR" ] && [ -f "$NODE_BIN_DIR/spark" ]; then
 fi
 
 if [ -n "$SPARK_BIN" ]; then
-    # Start daemon briefly to trigger initialization, then stop it
+    # Start engine briefly to trigger initialization, then stop it
     "$SPARK_BIN" start "$VAULT_PATH" > /dev/null 2>&1 &
     INIT_PID=$!
     sleep 3  # Give it time to initialize
     
-    # Stop the initialization daemon
+    # Stop the initialization engine
     if ps -p $INIT_PID > /dev/null 2>&1; then
         kill $INIT_PID 2>/dev/null || true
         sleep 1
@@ -612,11 +666,11 @@ if [ -f "$VAULT_PATH/.spark/config.yaml" ]; then
     echo -e "${GREEN}✓ Vault initialized${NC}"
 else
     echo -e "${YELLOW}⚠ Vault initialization may be incomplete${NC}"
-    echo "  Vault will be initialized when daemon starts for the first time"
+    echo "  Vault will be initialized when engine starts for the first time"
 fi
 echo ""
 
-# Auto-start daemon if API key is set and AUTO_START is enabled
+# Auto-start engine if API key is set and AUTO_START is enabled
 if [ "$AUTO_START" = "1" ]; then
     # Use the spark binary we found earlier (either in PATH or full path)
     if [ -z "$SPARK_BIN" ]; then
@@ -625,17 +679,17 @@ if [ "$AUTO_START" = "1" ]; then
         echo "  Then: spark start $VAULT_PATH &"
         echo ""
     else
-        echo -e "${YELLOW}→ Starting daemon in background...${NC}"
+        echo -e "${YELLOW}→ Starting engine in background...${NC}"
         
-        # Try to start daemon and capture any errors
-        DAEMON_LOG=$(mktemp)
-        "$SPARK_BIN" start "$VAULT_PATH" > "$DAEMON_LOG" 2>&1 &
-        DAEMON_PID=$!
+        # Try to start engine and capture any errors
+        ENGINE_LOG=$(mktemp)
+        "$SPARK_BIN" start "$VAULT_PATH" > "$ENGINE_LOG" 2>&1 &
+        ENGINE_PID=$!
         sleep 2
         
-        if ps -p $DAEMON_PID > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ Daemon started (PID: $DAEMON_PID)${NC}"
-            rm -f "$DAEMON_LOG"
+        if ps -p $ENGINE_PID > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Engine started (PID: $ENGINE_PID)${NC}"
+            rm -f "$ENGINE_LOG"
             echo ""
             echo -e "${GREEN}🚀 Spark is running!${NC}"
             echo ""
@@ -645,20 +699,20 @@ if [ "$AUTO_START" = "1" ]; then
             echo "  3. Try typing '@' or '/' in any note"
             echo "  4. Press Cmd+K to open chat"
             echo ""
-            echo -e "${YELLOW}Check daemon status:${NC}"
+            echo -e "${YELLOW}Check engine status:${NC}"
             echo "     spark status $VAULT_PATH"
             echo ""
-            echo -e "${YELLOW}View daemon logs:${NC}"
+            echo -e "${YELLOW}View engine logs:${NC}"
             echo "     spark start $VAULT_PATH --debug"
         else
-            echo -e "${YELLOW}⚠ Daemon failed to start${NC}"
+            echo -e "${YELLOW}⚠ Engine failed to start${NC}"
             echo ""
-            if [ -s "$DAEMON_LOG" ]; then
+            if [ -s "$ENGINE_LOG" ]; then
                 echo -e "${YELLOW}Error output:${NC}"
-                cat "$DAEMON_LOG"
+                cat "$ENGINE_LOG"
                 echo ""
             fi
-            rm -f "$DAEMON_LOG"
+            rm -f "$ENGINE_LOG"
             echo "  After running: source ~/.zshrc"
             echo "  Start manually with: spark start $VAULT_PATH"
             echo ""
@@ -674,14 +728,14 @@ else
     echo "  1. Restart Obsidian to load the plugin"
     echo "  2. Configure API key in plugin settings (Settings → Spark)"
     echo "  3. In your current terminal, run: source ~/.zshrc"
-    echo "  4. Start the daemon:"
+    echo "  4. Start the engine:"
     echo "     spark start $VAULT_PATH              # Foreground"
     echo "     spark start $VAULT_PATH &            # Background"
     echo ""
     
     if [ -n "$ANTHROPIC_API_KEY" ]; then
         echo -e "${BLUE}💡 Tip:${NC} ANTHROPIC_API_KEY detected in environment"
-        echo "   The daemon can use this, or configure in plugin settings"
+        echo "   The engine can use this, or configure in plugin settings"
         echo ""
     fi
 fi
@@ -690,7 +744,7 @@ if [ "$DEV_MODE" = "1" ]; then
     echo -e "${YELLOW}For development:${NC}"
     echo "  • Run 'cd plugin && npm run dev' for live plugin editing"
     echo "  • Changes will auto-reload in Obsidian (Hot Reload enabled)"
-    echo "  • Use 'spark start $VAULT_PATH --debug &' for daemon debug mode"
+    echo "  • Use 'spark start $VAULT_PATH --debug &' for engine debug mode"
     echo ""
 fi
 echo ""
@@ -701,7 +755,7 @@ echo -e "${BLUE}Environment flags:${NC}"
 echo "     DEV_MODE=1 ./install.sh            # Enable development features (hot reload, gh CLI)"
 echo "     SKIP_NODE=1 ./install.sh           # Skip Node.js installation"
 echo "     SKIP_GH=1 ./install.sh             # Skip GitHub CLI (only with DEV_MODE=1)"
-echo "     AUTO_START=0 ./install.sh          # Skip daemon auto-start"
+echo "     AUTO_START=0 ./install.sh          # Skip engine auto-start"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 

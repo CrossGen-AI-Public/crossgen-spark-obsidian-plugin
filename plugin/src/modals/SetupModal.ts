@@ -1,28 +1,28 @@
 import { type App, Modal, Notice, Setting } from 'obsidian';
-import type { DaemonService } from '../services/DaemonService';
+import type { EngineService } from '../services/EngineService';
 import type { ISparkPlugin } from '../types';
 
 export type SetupModalMode = 'install' | 'start';
 
 /**
- * Modal shown on startup when daemon is not installed or not running
+ * Modal shown on startup when engine is not installed or not running
  */
 export class SetupModal extends Modal {
 	private plugin: ISparkPlugin;
-	private daemonService: DaemonService;
+	private engineService: EngineService;
 	private mode: SetupModalMode;
 	private onDismiss?: (dontShowAgain: boolean) => void;
 
 	constructor(
 		app: App,
 		plugin: ISparkPlugin,
-		daemonService: DaemonService,
+		engineService: EngineService,
 		mode: SetupModalMode = 'install',
 		onDismiss?: (dontShowAgain: boolean) => void
 	) {
 		super(app);
 		this.plugin = plugin;
-		this.daemonService = daemonService;
+		this.engineService = engineService;
 		this.mode = mode;
 		this.onDismiss = onDismiss;
 	}
@@ -63,7 +63,7 @@ export class SetupModal extends Modal {
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
 		desc.createEl('p', {
-			text: 'Spark requires a daemon process to handle AI requests. The daemon runs locally and processes your commands.',
+			text: 'Spark requires a engine process to handle AI requests. The engine runs locally and processes your commands.',
 		});
 
 		desc.createEl('p', {
@@ -71,20 +71,20 @@ export class SetupModal extends Modal {
 		});
 
 		const list = desc.createEl('ul');
-		list.createEl('li', { text: 'Download the Spark daemon' });
+		list.createEl('li', { text: 'Download the Spark engine' });
 		list.createEl('li', { text: 'Install it globally on your system' });
 		list.createEl('li', { text: 'Add the command to your PATH' });
 
 		// Install button
 		new Setting(contentEl)
-			.setName('Install Spark daemon')
+			.setName('Install Spark engine')
 			.setDesc('Opens a terminal window to run the installation')
 			.addButton(btn =>
 				btn
-					.setButtonText('Install Spark daemon')
+					.setButtonText('Install Spark engine')
 					.setCta()
 					.onClick(() => {
-						this.daemonService.installDaemon();
+						this.engineService.installEngine();
 						this.close();
 					})
 			);
@@ -112,7 +112,7 @@ export class SetupModal extends Modal {
 
 		// Settings hint
 		contentEl.createEl('p', {
-			text: 'You can manage the daemon from plugin settings at any time.',
+			text: 'You can manage the engine from plugin settings at any time.',
 			cls: 'spark-setup-hint',
 		});
 
@@ -126,39 +126,39 @@ export class SetupModal extends Modal {
 		const codeBlock = manualInfo.createEl('code', {
 			cls: 'spark-setup-code',
 		});
-		codeBlock.setText(this.daemonService.getInstallCommand());
+		codeBlock.setText(this.engineService.getInstallCommand());
 	}
 
 	private renderStartView() {
 		const { contentEl } = this;
 
 		// Header
-		new Setting(contentEl).setName('Start Spark daemon').setHeading();
+		new Setting(contentEl).setName('Start Spark engine').setHeading();
 
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
 		desc.createEl('p', {
-			text: 'The Spark daemon is installed but not running for this vault. Start it to enable AI features.',
+			text: 'The Spark engine is installed but not running for this vault. Start it to enable AI features.',
 		});
 
 		// Start button
 		new Setting(contentEl)
-			.setName('Start daemon')
-			.setDesc('Starts the daemon in the background')
+			.setName('Start engine')
+			.setDesc('Starts the engine in the background')
 			.addButton(btn =>
 				btn
-					.setButtonText('Start daemon')
+					.setButtonText('Start engine')
 					.setCta()
 					.onClick(() => {
 						void (async () => {
 							btn.setButtonText('Starting...');
 							btn.setDisabled(true);
-							const success = await this.daemonService.startDaemonBackground();
+							const success = await this.engineService.startEngineBackground();
 							if (success) {
-								new Notice('Daemon started');
+								new Notice('Engine started');
 								this.plugin.updateStatusBar();
 							} else {
-								new Notice('Failed to start daemon');
+								new Notice('Failed to start engine');
 							}
 							this.close();
 						})();
@@ -167,11 +167,11 @@ export class SetupModal extends Modal {
 
 		// Auto-launch toggle
 		new Setting(contentEl)
-			.setName('Auto-launch daemon')
-			.setDesc('Automatically start the daemon when Obsidian opens')
+			.setName('Auto-launch engine')
+			.setDesc('Automatically start the engine when Obsidian opens')
 			.addToggle(toggle =>
-				toggle.setValue(this.plugin.settings.autoLaunchDaemon ?? false).onChange(value => {
-					this.plugin.settings.autoLaunchDaemon = value;
+				toggle.setValue(this.plugin.settings.autoLaunchEngine ?? false).onChange(value => {
+					this.plugin.settings.autoLaunchEngine = value;
 					void this.plugin.saveSettings();
 				})
 			);
@@ -199,7 +199,7 @@ export class SetupModal extends Modal {
 
 		// Settings hint
 		contentEl.createEl('p', {
-			text: 'You can manage the daemon from plugin settings at any time.',
+			text: 'You can manage the engine from plugin settings at any time.',
 			cls: 'spark-setup-hint',
 		});
 
@@ -213,7 +213,7 @@ export class SetupModal extends Modal {
 		const codeBlock = manualInfo.createEl('code', {
 			cls: 'spark-setup-code',
 		});
-		codeBlock.setText(this.daemonService.getStartCommand());
+		codeBlock.setText(this.engineService.getStartCommand());
 	}
 
 	onClose() {

@@ -8,11 +8,11 @@ export interface ChatResult {
 	content: string;
 	filesModified?: string[];
 	error?: string;
-	conversationName?: string; // Generated chat name from daemon
+	conversationName?: string; // Generated chat name from engine
 }
 
 /**
- * Watches for daemon results and notifies listeners
+ * Watches for engine results and notifies listeners
  */
 export class ChatResultWatcher {
 	private app: App;
