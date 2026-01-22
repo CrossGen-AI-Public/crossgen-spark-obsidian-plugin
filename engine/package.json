@@ -1,6 +1,6 @@
 {
   "name": "spark-engine",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Spark Assistant Engine - Intelligence layer for Obsidian Spark",
   "main": "dist/index.js",
   "type": "module",

@@ -114,6 +114,21 @@ npm install
 echo -e "${GREEN}✓ Dev dependencies restored${NC}"
 echo ""
 
+# Create and push git tag
+TAG_NAME="engine-${VERSION}"
+echo -e "${YELLOW}→ Creating git tag ${TAG_NAME}...${NC}"
+if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+    echo -e "${RED}✗ Tag ${TAG_NAME} already exists locally.${NC}"
+    exit 1
+fi
+git tag "$TAG_NAME"
+echo -e "${GREEN}✓ Tag ${TAG_NAME} created${NC}"
+
+echo -e "${YELLOW}→ Pushing tag to origin...${NC}"
+git push origin "$TAG_NAME"
+echo -e "${GREEN}✓ Tag pushed to origin${NC}"
+echo ""
+
 # Upload to GitHub Releases
 echo -e "${YELLOW}→ Upload to GitHub Releases?${NC}"
 read -p "Create release engine-${VERSION} and upload tarball? [y/N] " -n 1 -r
@@ -124,14 +139,14 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${RED}✗ GitHub CLI (gh) not installed. Install with: brew install gh${NC}"
         exit 1
     fi
-    
+
     echo -e "${YELLOW}→ Creating GitHub release engine-${VERSION}...${NC}"
     gh release create "engine-${VERSION}" \
         "$RELEASE_DIR/$TARBALL" \
         --title "Engine ${VERSION}" \
         --notes "Spark Engine v${VERSION}" \
         --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin
-    
+
     echo -e "${GREEN}✓ Release engine-${VERSION} published to GitHub!${NC}"
 else
     echo -e "${BLUE}Skipped GitHub upload. To upload manually:${NC}"

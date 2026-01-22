@@ -91,6 +91,21 @@ echo -e "${BLUE}Build artifacts:${NC}"
 ls -lh dist/*.js dist/*.json dist/*.css 2>/dev/null | awk '{print "  " $9 " (" $5 ")"}'
 echo ""
 
+# Create and push git tag
+TAG_NAME="${VERSION}"
+echo -e "${YELLOW}→ Creating git tag ${TAG_NAME}...${NC}"
+if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+    echo -e "${RED}✗ Tag ${TAG_NAME} already exists locally.${NC}"
+    exit 1
+fi
+git tag "$TAG_NAME"
+echo -e "${GREEN}✓ Tag ${TAG_NAME} created${NC}"
+
+echo -e "${YELLOW}→ Pushing tag to origin...${NC}"
+git push origin "$TAG_NAME"
+echo -e "${GREEN}✓ Tag pushed to origin${NC}"
+echo ""
+
 # Upload to GitHub Releases
 echo -e "${YELLOW}→ Upload to GitHub Releases?${NC}"
 read -p "Create release ${VERSION} and upload files? [y/N] " -n 1 -r
@@ -101,7 +116,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${RED}✗ GitHub CLI (gh) not installed. Install with: brew install gh${NC}"
         exit 1
     fi
-    
+
     echo -e "${YELLOW}→ Creating GitHub release ${VERSION}...${NC}"
     gh release create "${VERSION}" \
         dist/main.js \
@@ -110,7 +125,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         --title "${VERSION}" \
         --notes "Spark Plugin v${VERSION}" \
         --repo CrossGen-AI-Public/crossgen-spark-obsidian-plugin
-    
+
     echo -e "${GREEN}✓ Release ${VERSION} published to GitHub!${NC}"
     echo ""
     echo -e "${BLUE}Release URL:${NC}"
