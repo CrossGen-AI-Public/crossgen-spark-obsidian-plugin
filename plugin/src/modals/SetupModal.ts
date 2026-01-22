@@ -58,7 +58,7 @@ export class SetupModal extends Modal {
 		const { contentEl } = this;
 
 		// Header
-		new Setting(contentEl).setName('Welcome to Spark').setHeading();
+		new Setting(contentEl).setName('Welcome to spark').setHeading();
 
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
@@ -71,17 +71,17 @@ export class SetupModal extends Modal {
 		});
 
 		const list = desc.createEl('ul');
-		list.createEl('li', { text: 'Download the Spark engine' });
+		list.createEl('li', { text: 'Download the spark engine' });
 		list.createEl('li', { text: 'Install it globally on your system' });
-		list.createEl('li', { text: 'Add the command to your PATH' });
+		list.createEl('li', { text: 'Add the command to your path' });
 
 		// Install button
 		new Setting(contentEl)
-			.setName('Install Spark engine')
+			.setName('Install spark engine')
 			.setDesc('Opens a terminal window to run the installation')
 			.addButton(btn =>
 				btn
-					.setButtonText('Install Spark engine')
+					.setButtonText('Install spark engine')
 					.setCta()
 					.onClick(() => {
 						this.engineService.installEngine();
@@ -133,12 +133,12 @@ export class SetupModal extends Modal {
 		const { contentEl } = this;
 
 		// Header
-		new Setting(contentEl).setName('Start Spark engine').setHeading();
+		new Setting(contentEl).setName('Start spark engine').setHeading();
 
 		// Description
 		const desc = contentEl.createDiv({ cls: 'spark-setup-description' });
 		desc.createEl('p', {
-			text: 'The Spark engine is installed but not running for this vault. Start it to enable AI features.',
+			text: 'The spark engine is installed but not running for this vault. Start it to enable AI features.',
 		});
 
 		// Start button

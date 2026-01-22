@@ -6,6 +6,7 @@ import { type App, ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ISparkPlugin } from '../types';
+import { showConfirmModal } from '../utils/confirmModal';
 import type {
 	WorkflowDefinition,
 	WorkflowGenerateRequest,
@@ -61,12 +62,17 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 	const handleDelete = useCallback(
 		async (e: React.MouseEvent, id: string, name: string) => {
 			e.stopPropagation(); // Don't trigger row click
-			if (confirm(`Delete workflow "${name}"? This cannot be undone.`)) {
+			const confirmed = await showConfirmModal(app, `Delete workflow "${name}"? This cannot be undone.`, {
+				title: 'Delete workflow',
+				confirmText: 'Delete',
+				dangerous: true,
+			});
+			if (confirmed) {
 				await storage.deleteWorkflow(id);
 				await loadWorkflows();
 			}
 		},
-		[loadWorkflows]
+		[app, loadWorkflows]
 	);
 
 	const formatDate = (isoString: string) => {
@@ -146,9 +152,11 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 
 			// Then refresh from disk a few times to pick up engine-written index updates.
 			for (const delayMs of [250, 750, 1500]) {
-				globalThis.setTimeout(async () => {
-					const index = await storage.loadRunsIndex();
-					if (index) setRunsIndex(index);
+				globalThis.setTimeout(() => {
+					void (async () => {
+						const index = await storage.loadRunsIndex();
+						if (index) setRunsIndex(index);
+					})();
 				}, delayMs);
 			}
 		},
@@ -321,9 +329,11 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 		const anyRunning = Object.values(runsIndex.workflows || {}).some((w) => w.status === 'running');
 		if (!anyRunning) return;
 
-		const interval = globalThis.setInterval(async () => {
-			const index = await storage.loadRunsIndex();
-			if (index) setRunsIndex(index);
+		const interval = globalThis.setInterval(() => {
+			void (async () => {
+				const index = await storage.loadRunsIndex();
+				if (index) setRunsIndex(index);
+			})();
 		}, 1000);
 
 		return () => globalThis.clearInterval(interval);
@@ -491,7 +501,7 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 						<button
 							type="button"
 							className="mod-cta"
-							onClick={clarificationQuestions ? handleClarificationSubmit : handleGenerateSubmit}
+							onClick={() => void (clarificationQuestions ? handleClarificationSubmit() : handleGenerateSubmit())}
 							disabled={isGenerating}
 						>
 							{clarificationQuestions ? 'Submit answers' : isGenerating ? 'Generating…' : 'Generate'}
@@ -605,7 +615,7 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 									<button
 										type="button"
 										className="spark-workflow-list-item-run clickable-icon"
-										onClick={(e) => handleRun(e, workflow.id)}
+										onClick={(e) => void handleRun(e, workflow.id)}
 										aria-label="Run workflow"
 										title="Run workflow"
 									>
@@ -626,7 +636,7 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 									<button
 										type="button"
 										className="spark-workflow-list-item-delete clickable-icon"
-										onClick={(e) => handleDelete(e, workflow.id, workflow.name)}
+										onClick={(e) => void handleDelete(e, workflow.id, workflow.name)}
 										aria-label="Delete workflow"
 										title="Delete workflow"
 									>
@@ -680,11 +690,11 @@ export class WorkflowListView extends ItemView {
 		return 'workflow';
 	}
 
-	async onOpen(): Promise<void> {
+	onOpen(): Promise<void> {
 		// Hide view header (we don't need it for the list view)
-		const viewHeader = this.containerEl.children[0] as HTMLElement;
+		const viewHeader = this.containerEl.children[0];
 		if (viewHeader) {
-			viewHeader.style.display = 'none';
+			viewHeader.addClass('spark-hidden');
 		}
 
 		const container = this.containerEl.children[1];
@@ -702,11 +712,13 @@ export class WorkflowListView extends ItemView {
 				}
 			})
 		);
+		return Promise.resolve();
 	}
 
-	async onClose(): Promise<void> {
+	onClose(): Promise<void> {
 		this.root?.unmount();
 		this.root = null;
+		return Promise.resolve();
 	}
 
 	/**
@@ -723,8 +735,8 @@ export class WorkflowListView extends ItemView {
 		this.root.render(
 			<WorkflowList
 				app={this.app}
-				onOpenWorkflow={(id) => this.openWorkflow(id)}
-				onCreateWorkflow={() => this.createWorkflow()}
+				onOpenWorkflow={(id) => void this.openWorkflow(id)}
+				onCreateWorkflow={() => void this.createWorkflow()}
 				refreshKey={this.refreshKey}
 			/>
 		);

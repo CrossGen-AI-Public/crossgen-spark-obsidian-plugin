@@ -17,6 +17,7 @@ import {
 	type Connection,
 	type NodeTypes,
 	type OnConnect,
+	type Node,
 	Panel,
 	MarkerType,
 	SelectionMode,
@@ -26,6 +27,7 @@ import type { ISparkPlugin } from '../types';
 import {
 	type WorkflowDefinition,
 	type WorkflowNode,
+	type WorkflowNodeData,
 	type WorkflowEdge,
 	type WorkflowRun,
 	type StepStatus,
@@ -89,16 +91,18 @@ function useAutoSave(
 		}
 
 		// Debounced save
-		timeoutRef.current = setTimeout(async () => {
-			const workflowToSave: WorkflowDefinition = {
-				...workflow,
-				nodes,
-				edges,
-				updated: new Date().toISOString(),
-			};
-			await storageRef.current.saveWorkflow(workflowToSave);
-			lastSavedRef.current = snapshot;
-			onWorkflowChange(workflowToSave);
+		timeoutRef.current = setTimeout(() => {
+			void (async () => {
+				const workflowToSave: WorkflowDefinition = {
+					...workflow,
+					nodes,
+					edges,
+					updated: new Date().toISOString(),
+				};
+				await storageRef.current.saveWorkflow(workflowToSave);
+				lastSavedRef.current = snapshot;
+				onWorkflowChange(workflowToSave);
+			})();
 		}, AUTO_SAVE_DELAY);
 
 		return () => {
@@ -175,7 +179,7 @@ function WorkflowCanvasInner({
 				hasInitializedRef.current = true;
 				// Small delay to ensure React Flow is ready
 				setTimeout(() => {
-					reactFlowInstance.fitView({ duration: 0 });
+					void reactFlowInstance.fitView({ duration: 0 });
 				}, 50);
 			}
 		};
@@ -195,14 +199,9 @@ function WorkflowCanvasInner({
 		return initialWorkflow || createEmptyWorkflow();
 	});
 
-	// React Flow state - cast to any to work around React Flow's strict Record<string, unknown> requirement
-	// Our WorkflowNodeData uses discriminated unions which don't satisfy the index signature
-	// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-	const [nodes, setNodes, onNodesChange] = useNodesState(workflow.nodes as any);
-	// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-	const [edges, setEdges, onEdgesChange] = useEdgesState(
-		workflow.edges.map(ensureEdgeClassName) as any
-	);
+	// React Flow state
+	const [nodes, setNodes, onNodesChange] = useNodesState(workflow.nodes);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(workflow.edges.map(ensureEdgeClassName));
 
 	// UI state - store ID only, derive node from nodes array to stay in sync
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -221,7 +220,7 @@ function WorkflowCanvasInner({
 			setSidebarMode('node');
 			// Center on the initial node
 			setTimeout(() => {
-				reactFlowInstance.setCenter(nodes[0].position.x + 100, nodes[0].position.y + 40, {
+				void reactFlowInstance.setCenter(nodes[0].position.x + 100, nodes[0].position.y + 40, {
 					zoom: 1,
 					duration: 300,
 				});
@@ -240,7 +239,7 @@ function WorkflowCanvasInner({
 
 	// Derive selectedNode from nodes array to always have fresh data
 	const selectedNode = selectedNodeId
-		? (nodes.find((n) => n.id === selectedNodeId) as WorkflowNode | undefined) ?? null
+		? (nodes.find((n) => n.id === selectedNodeId)) ?? null
 		: null;
 
 	// Clear selection if selected node was deleted (e.g., via keyboard delete)
@@ -300,10 +299,8 @@ function WorkflowCanvasInner({
 	useEffect(() => {
 		const updatedWorkflow: WorkflowDefinition = {
 			...workflow,
-			// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-			nodes: nodes as any as WorkflowNode[],
-			// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-			edges: edges as any as WorkflowEdge[],
+			nodes: nodes,
+			edges: edges,
 			updated: new Date().toISOString(),
 		};
 		setWorkflow(updatedWorkflow);
@@ -357,8 +354,7 @@ function WorkflowCanvasInner({
 	/**
 	 * Handle node selection
 	 */
-	// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-	const onNodeClick = useCallback((_event: React.MouseEvent, node: any) => {
+	const onNodeClick = useCallback((_event: React.MouseEvent, node: Node<WorkflowNodeData>) => {
 		setSelectedNodeId(node.id);
 		setSidebarMode('node');
 		// Smoothly pan to center on clicked node (no zoom change)
@@ -376,7 +372,7 @@ function WorkflowCanvasInner({
 		const targetY = -node.position.y * zoom + height / 2 - 20 * zoom;
 		// Only pan if significantly off-center
 		if (Math.abs(targetX - viewX) > 50 || Math.abs(targetY - viewY) > 50) {
-			reactFlowInstance.setViewport({ x: targetX, y: targetY, zoom }, { duration: 300 });
+			void reactFlowInstance.setViewport({ x: targetX, y: targetY, zoom }, { duration: 300 });
 		}
 	}, [reactFlowInstance]);
 
@@ -397,7 +393,7 @@ function WorkflowCanvasInner({
 			const targetX = -targetNode.position.x * zoom + availableWidth / 2 - 50 * zoom;
 			const targetY = -targetNode.position.y * zoom + height / 2 - 20 * zoom;
 			if (Math.abs(targetX - viewX) > 50 || Math.abs(targetY - viewY) > 50) {
-				reactFlowInstance.setViewport({ x: targetX, y: targetY, zoom }, { duration: 300 });
+				void reactFlowInstance.setViewport({ x: targetX, y: targetY, zoom }, { duration: 300 });
 			}
 		},
 		[nodes, reactFlowInstance]
@@ -440,7 +436,7 @@ function WorkflowCanvasInner({
 				setSidebarWidth(clamped);
 			};
 
-			const onUp = async () => {
+			const onUp = () => {
 				if (!isResizingRef.current) return;
 				isResizingRef.current = false;
 				resizeStartRef.current = null;
@@ -448,7 +444,7 @@ function WorkflowCanvasInner({
 				globalThis.removeEventListener('pointerup', onUp);
 
 				plugin.settings.workflowSidebarWidth = sidebarWidthRef.current;
-				await plugin.saveSettings();
+				void plugin.saveSettings();
 			};
 
 			globalThis.addEventListener('pointermove', onMove);
@@ -462,16 +458,17 @@ function WorkflowCanvasInner({
 	 */
 	const updateNode = useCallback(
 		(nodeId: string, data: Partial<WorkflowNode['data']>) => {
-			setNodes((nds) =>
-				nds.map((node) => {
-					if (node.id === nodeId) {
-						return {
-							...node,
-							data: { ...node.data, ...data },
-						};
-					}
-					return node;
-				})
+			setNodes(
+				(nds) =>
+					nds.map((node) => {
+						if (node.id === nodeId) {
+							return {
+								...node,
+								data: { ...node.data, ...data },
+							};
+						}
+						return node;
+					}) as WorkflowNode[]
 			);
 		},
 		[setNodes]
@@ -482,18 +479,18 @@ function WorkflowCanvasInner({
 	 */
 	const transformNode = useCallback(
 		(nodeId: string, newType: 'prompt' | 'code' | 'condition', newData: WorkflowNode['data']) => {
-			setNodes((nds) =>
-				// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-				nds.map((node): any => {
-					if (node.id === nodeId) {
-						return {
-							...node,
-							type: newType,
-							data: newData,
-						};
-					}
-					return node;
-				})
+			setNodes(
+				(nds) =>
+					nds.map((node) => {
+						if (node.id === nodeId) {
+							return {
+								...node,
+								type: newType,
+								data: newData,
+							};
+						}
+						return node;
+					})
 			);
 		},
 		[setNodes]
@@ -555,8 +552,7 @@ function WorkflowCanvasInner({
 				},
 			};
 
-			// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-			setNodes((nds) => [...nds, newNode as any]);
+			setNodes((nds) => [...nds, newNode]);
 
 			// If there's a source node, create an edge
 			if (sourceNodeId) {
@@ -603,7 +599,7 @@ function WorkflowCanvasInner({
 
 			// Center viewport on the new node
 			setTimeout(() => {
-				reactFlowInstance.setCenter(position.x + 100, position.y + 40, {
+				void reactFlowInstance.setCenter(position.x + 100, position.y + 40, {
 					zoom: reactFlowInstance.getZoom(),
 					duration: 300,
 				});
@@ -687,10 +683,8 @@ function WorkflowCanvasInner({
 	const saveWorkflowNow = useCallback(async () => {
 		const workflowToSave: WorkflowDefinition = {
 			...workflow,
-			// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-			nodes: nodes as any as WorkflowNode[],
-			// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-			edges: edges as any as WorkflowEdge[],
+			nodes: nodes,
+			edges: edges,
 			updated: new Date().toISOString(),
 		};
 		await storageRef.current.saveWorkflow(workflowToSave);
@@ -731,26 +725,28 @@ function WorkflowCanvasInner({
 		});
 		setNodeExecutionStatus(pendingStatus);
 
-		const pollInterval = setInterval(async () => {
-			const workflowRuns = await storageRef.current.loadRuns(workflow.id);
-			const currentRun = workflowRuns.find((r) => r.id === currentRunId);
+		const pollInterval = setInterval(() => {
+			void (async () => {
+				const workflowRuns = await storageRef.current.loadRuns(workflow.id);
+				const currentRun = workflowRuns.find((r) => r.id === currentRunId);
 
-			if (currentRun) {
-				setRuns(workflowRuns);
+				if (currentRun) {
+					setRuns(workflowRuns);
 
-				// Update node execution status from step results
-				const statusMap: Record<string, StepStatus> = { ...pendingStatus };
-				for (const step of currentRun.stepResults) {
-					statusMap[step.nodeId] = step.status;
+					// Update node execution status from step results
+					const statusMap: Record<string, StepStatus> = { ...pendingStatus };
+					for (const step of currentRun.stepResults) {
+						statusMap[step.nodeId] = step.status;
+					}
+					setNodeExecutionStatus(statusMap);
+
+					// Check if run is finished (completed or failed)
+					if (currentRun.status === 'completed' || currentRun.status === 'failed') {
+						setIsRunning(false);
+						setCurrentRunId(null);
+					}
 				}
-				setNodeExecutionStatus(statusMap);
-
-				// Check if run is finished (completed or failed)
-				if (currentRun.status === 'completed' || currentRun.status === 'failed') {
-					setIsRunning(false);
-					setCurrentRunId(null);
-				}
-			}
+			})();
 		}, 500); // Poll every 500ms
 
 		return () => clearInterval(pollInterval);
@@ -802,7 +798,7 @@ function WorkflowCanvasInner({
 	// Ensure edges have className derived from label AND execution status
 	const edgesWithClassName = useMemo(() => {
 		return edges.map((edge) => {
-			const workflowEdge = edge as WorkflowEdge;
+			const workflowEdge = edge;
 			let className = workflowEdge.className || '';
 
 			// Add label-based class
@@ -931,7 +927,7 @@ function WorkflowCanvasInner({
 					<button
 						type="button"
 						className={`spark-workflow-icon-btn spark-workflow-icon-btn-primary${isRunning ? ' spark-workflow-icon-btn-running' : ''}`}
-						onClick={runWorkflow}
+						onClick={() => void runWorkflow()}
 						disabled={isRunning}
 						title={isRunning ? 'Running...' : 'Run Workflow'}
 					>
@@ -983,10 +979,8 @@ function WorkflowCanvasInner({
 							app={app}
 							plugin={plugin}
 							node={selectedNode}
-							// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-							nodes={nodes as any as WorkflowNode[]}
-							// biome-ignore lint/suspicious/noExplicitAny: React Flow typing workaround
-							edges={edges as any as WorkflowEdge[]}
+							nodes={nodes}
+							edges={edges}
 							runs={runs.filter((r) => r.stepResults.some((s) => s.nodeId === selectedNode.id))}
 							onUpdateNode={updateNode}
 							onTransformNode={transformNode}
@@ -1000,6 +994,7 @@ function WorkflowCanvasInner({
 
 					{sidebarMode === 'workflowRuns' && (
 						<WorkflowRunsSidebar
+							app={app}
 							workflow={workflow}
 							runs={runs}
 							onRerun={runWorkflow}

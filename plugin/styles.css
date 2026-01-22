@@ -1,5 +1,10 @@
 /* Spark Assistant Styles */
 
+/* Utility: Hide an element */
+.spark-hidden {
+    display: none !important;
+}
+
 /* Command Palette */
 .spark-palette {
     position: absolute;

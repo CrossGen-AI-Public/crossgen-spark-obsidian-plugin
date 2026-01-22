@@ -37,9 +37,8 @@ Spark provides two powerful interfaces for AI interaction in Obsidian:
 
 **Key Innovation:** All powered by a file-based architecture. The plugin writes markdown, a engine watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files. 
 
----
 
-## 🚀 Quick Start
+**Key Innovation:** This is file-based architecture at its core. The plugin writes markdown, the engine watches and processes, results appear automatically. No complex APIs, no fragile integrations—just files.
 
 ### Prerequisites
 
@@ -164,6 +163,7 @@ spark start ~/Documents/MyVault
 3. Try `/summarize` or mention `@betty`
 4. Press `Cmd+K` to open chat widget
 5. For development: `cd plugin && npm run dev` for hot reload
+
 
 ---
 

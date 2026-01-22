@@ -2,7 +2,7 @@
  * WorkflowView - Obsidian ItemView that hosts the React workflow canvas
  */
 
-import { type App, ItemView, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
 import type { ISparkPlugin } from '../types';
 import { WorkflowCanvas } from './WorkflowCanvas';
@@ -59,17 +59,17 @@ export class WorkflowView extends ItemView {
 			if (workflow) {
 				this.workflow = workflow;
 				this.renderCanvas();
-				// Force tab title update - updateHeader is more reliable than requestSaveLayout
-				(this.leaf as any).updateHeader?.();
+				// Trigger layout save to refresh tab title from getDisplayText()
+				this.app.workspace.requestSaveLayout();
 			}
 		}
 	}
 
-	async onOpen(): Promise<void> {
+	onOpen(): Promise<void> {
 		// Hide Obsidian's view header - we have our own header in the React canvas
-		const viewHeader = this.containerEl.children[0] as HTMLElement;
+		const viewHeader = this.containerEl.children[0];
 		if (viewHeader) {
-			viewHeader.style.display = 'none';
+			viewHeader.addClass('spark-hidden');
 		}
 
 		const container = this.containerEl.children[1];
@@ -78,11 +78,13 @@ export class WorkflowView extends ItemView {
 
 		this.root = createRoot(container as HTMLElement);
 		this.renderCanvas();
+		return Promise.resolve();
 	}
 
-	async onClose(): Promise<void> {
+	onClose(): Promise<void> {
 		this.root?.unmount();
 		this.root = null;
+		return Promise.resolve();
 	}
 
 	/**
@@ -92,8 +94,8 @@ export class WorkflowView extends ItemView {
 		this.workflowId = workflow.id;
 		this.workflow = workflow;
 		this.renderCanvas();
-		// Force tab title update - updateHeader is more reliable than requestSaveLayout
-		(this.leaf as any).updateHeader?.();
+		// Trigger layout save to refresh tab title from getDisplayText()
+		this.app.workspace.requestSaveLayout();
 	}
 
 	/**
@@ -120,11 +122,11 @@ export class WorkflowView extends ItemView {
 				onWorkflowChange={(workflow) => {
 					this.workflow = workflow;
 					this.workflowId = workflow.id;
-					// Update tab title
-					(this.leaf as any).updateHeader?.();
+					// Trigger layout save to refresh tab title from getDisplayText()
+					this.app.workspace.requestSaveLayout();
 				}}
 				onNavigateToList={() => {
-					WorkflowManager.getInstance(this.app, this.plugin).showWorkflowList();
+					void WorkflowManager.getInstance(this.app, this.plugin).showWorkflowList();
 				}}
 			/>
 		);

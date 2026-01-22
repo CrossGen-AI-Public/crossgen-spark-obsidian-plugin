@@ -125,7 +125,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		});
 
 		// Add ribbon icon for chat (move to end of ribbon after layout ready)
-		const ribbonIcon = this.addRibbonIcon('bot-message-square', 'Open Spark chat', () => {
+		const ribbonIcon = this.addRibbonIcon('bot-message-square', 'Open spark chat', () => {
 			this.chatManager.toggleChat();
 		});
 		this.app.workspace.onLayoutReady(() => {
@@ -149,7 +149,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 		this.statusBarItem.empty();
 
 		if (!isInstalled) {
-			this.statusBarItem.setText('⚡ Spark (not installed)');
+			this.statusBarItem.setText('⚡ spark (not installed)');
 			this.statusBarItem.addClass('spark-status-offline');
 			this.statusBarItem.removeClass('spark-status-online');
 			this.statusBarItem.setAttribute(
@@ -157,7 +157,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 				'Spark engine not installed. Click to open chat.'
 			);
 		} else if (!isRunning) {
-			this.statusBarItem.setText('⚡ Spark (offline)');
+			this.statusBarItem.setText('⚡ spark (offline)');
 			this.statusBarItem.addClass('spark-status-offline');
 			this.statusBarItem.removeClass('spark-status-online');
 			this.statusBarItem.setAttribute(
@@ -165,7 +165,7 @@ export default class SparkPlugin extends Plugin implements ISparkPlugin {
 				'Spark engine not running. Click to open chat.'
 			);
 		} else {
-			this.statusBarItem.setText('⚡ Spark');
+			this.statusBarItem.setText('⚡ spark');
 			this.statusBarItem.addClass('spark-status-online');
 			this.statusBarItem.removeClass('spark-status-offline');
 			this.statusBarItem.setAttribute('aria-label', 'Spark engine running. Click to open chat.');

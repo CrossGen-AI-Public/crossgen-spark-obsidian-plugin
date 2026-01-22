@@ -16,8 +16,9 @@ export type WorkflowStatus = 'idle' | 'running' | 'completed' | 'failed' | 'canc
 
 /**
  * Base data for all node types
+ * Extends Record<string, unknown> to satisfy React Flow's type constraints
  */
-export interface BaseNodeData {
+export interface BaseNodeData extends Record<string, unknown> {
 	label: string;
 	description?: string;
 }
@@ -244,7 +245,7 @@ export const DEFAULT_WORKFLOW_SETTINGS: WorkflowSettings = {
  * Generate unique IDs
  */
 export function generateId(prefix: string): string {
-	return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).substr(2, 9)}`;
+	return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**

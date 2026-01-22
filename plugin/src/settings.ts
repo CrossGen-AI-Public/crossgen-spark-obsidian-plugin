@@ -57,7 +57,7 @@ export class SparkSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	private async loadApiKeys(): Promise<Record<string, string>> {
+	private loadApiKeys(): Record<string, string> {
 		const secretsPath = join(homedir(), '.spark', 'secrets.yaml');
 		try {
 			if (!existsSync(secretsPath)) return {};
@@ -75,7 +75,7 @@ export class SparkSettingTab extends PluginSettingTab {
 		}
 	}
 
-	private async saveApiKeys(apiKeys: Record<string, string>): Promise<void> {
+	private saveApiKeys(apiKeys: Record<string, string>): void {
 		const secretsDir = join(homedir(), '.spark');
 		const secretsPath = join(secretsDir, 'secrets.yaml');
 
@@ -165,7 +165,7 @@ export class SparkSettingTab extends PluginSettingTab {
 		// Plugin section
 		new Setting(containerEl).setName('Plugin').setHeading();
 		new Setting(containerEl)
-			.setDesc('Configure Spark plugin behavior and appearance.')
+			.setDesc('Configure spark plugin behavior and appearance.')
 			.setClass('spark-section-desc');
 
 		new Setting(containerEl)
@@ -186,7 +186,7 @@ export class SparkSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Engine').setHeading();
 		new Setting(containerEl)
-			.setDesc('The Spark engine handles AI requests for this vault.')
+			.setDesc('The spark engine handles AI requests for this vault.')
 			.setClass('spark-section-desc');
 
 		if (!isInstalled) {
@@ -196,7 +196,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				.setDesc('Required for AI features to work')
 				.addButton(btn =>
 					btn
-						.setButtonText('Install Spark engine')
+						.setButtonText('Install spark engine')
 						.setCta()
 						.onClick(() => {
 							engineService.installEngine();
@@ -461,7 +461,7 @@ export class SparkSettingTab extends PluginSettingTab {
 			// AI Model
 			new Setting(editorForm)
 				.setName('AI model')
-				.setDesc('Select from available Claude models')
+				.setDesc('Select from available claude models')
 				.addDropdown(dropdown => {
 					// Add all available Claude models
 					ALL_MODELS.forEach(model => {
@@ -697,7 +697,7 @@ export class SparkSettingTab extends PluginSettingTab {
 		this.configContainer.empty();
 
 		// Load API keys from encrypted secrets file
-		this.cachedApiKeys = await this.loadApiKeys();
+		this.cachedApiKeys = this.loadApiKeys();
 
 		const configPath = '.spark/config.yaml';
 
@@ -942,7 +942,7 @@ export class SparkSettingTab extends PluginSettingTab {
 								try {
 									// Update cached API keys and save to encrypted secrets file
 									this.cachedApiKeys[providerName] = apiKeyValue;
-									await this.saveApiKeys(this.cachedApiKeys);
+									this.saveApiKeys(this.cachedApiKeys);
 
 									// Validate with Zod
 									const result = SparkConfigSchema.safeParse(config);

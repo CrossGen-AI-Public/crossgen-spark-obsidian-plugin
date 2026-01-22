@@ -5,6 +5,7 @@
 import type { App } from 'obsidian';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { ISparkPlugin } from '../types';
+import { showConfirmModal } from '../utils/confirmModal';
 import type {
 	WorkflowNode,
 	WorkflowEdge,
@@ -153,7 +154,7 @@ interface ActionTypeOption {
 	type: 'prompt' | 'code' | 'condition';
 	label: string;
 	description: string;
-	icon: JSX.Element;
+	icon: React.JSX.Element;
 	defaultData: WorkflowNode['data'];
 }
 
@@ -209,11 +210,16 @@ export function Sidebar({ app, plugin, node, nodes, edges, runs, onUpdateNode, o
 		[node.id, onUpdateNode]
 	);
 
-	const handleDelete = useCallback(() => {
-		if (confirm('Delete this step?')) {
+	const handleDelete = useCallback(async () => {
+		const confirmed = await showConfirmModal(app, 'Delete this step?', {
+			title: 'Delete step',
+			confirmText: 'Delete',
+			dangerous: true,
+		});
+		if (confirmed) {
 			onDeleteNode(node.id);
 		}
-	}, [node.id, onDeleteNode]);
+	}, [app, node.id, onDeleteNode]);
 
 	const handleSelectActionType = useCallback(
 		(option: ActionTypeOption) => {
@@ -365,7 +371,7 @@ export function Sidebar({ app, plugin, node, nodes, edges, runs, onUpdateNode, o
 						<button
 							type="button"
 							className="spark-workflow-btn spark-workflow-btn-danger"
-							onClick={handleDelete}
+							onClick={() => void handleDelete()}
 						>
 							Delete Step
 						</button>
@@ -406,7 +412,7 @@ export function Sidebar({ app, plugin, node, nodes, edges, runs, onUpdateNode, o
 					<PropertiesTab
 						node={node}
 						onChange={handleChange}
-						onDelete={handleDelete}
+						onDelete={() => void handleDelete()}
 					/>
 				)}
 				{activeTab === 'prompt' && (

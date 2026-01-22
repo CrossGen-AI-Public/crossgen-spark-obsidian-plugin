@@ -2,10 +2,13 @@
  * WorkflowRunsSidebar - Workflow-level run history + run detail panel
  */
 
+import type { App } from 'obsidian';
 import { useCallback, useMemo, useState } from 'react';
 import type { StepResult, WorkflowDefinition, WorkflowRun } from './types';
+import { showConfirmModal } from '../utils/confirmModal';
 
 interface WorkflowRunsSidebarProps {
+	app: App;
 	workflow: WorkflowDefinition;
 	runs: WorkflowRun[];
 	onRerun: () => Promise<void>;
@@ -137,6 +140,7 @@ function StepRow({ step, label, canJump, onJump }: StepRowProps) {
 }
 
 export function WorkflowRunsSidebar({
+	app,
 	workflow,
 	runs,
 	onRerun,
@@ -174,10 +178,15 @@ export function WorkflowRunsSidebar({
 
 	const handleDelete = useCallback(async () => {
 		if (!selectedRun) return;
-		if (!confirm('Delete this run? This cannot be undone.')) return;
+		const confirmed = await showConfirmModal(app, 'Delete this run? This cannot be undone.', {
+			title: 'Delete run',
+			confirmText: 'Delete',
+			dangerous: true,
+		});
+		if (!confirmed) return;
 		await onDeleteRun(selectedRun.id);
 		setSelectedRunId(null);
-	}, [selectedRun, onDeleteRun]);
+	}, [app, selectedRun, onDeleteRun]);
 
 	if (sortedRuns.length === 0) {
 		return (
@@ -195,7 +204,7 @@ export function WorkflowRunsSidebar({
 							<button
 								type="button"
 								className="spark-workflow-btn spark-workflow-btn-primary"
-								onClick={onRerun}
+								onClick={() => void onRerun()}
 							>
 								Run workflow
 							</button>

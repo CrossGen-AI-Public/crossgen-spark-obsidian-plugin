@@ -8,20 +8,17 @@ export default defineConfig([
     ignores: ["plugin/dist/**", "plugin/node_modules/**", "plugin/coverage/**"],
   },
   {
-    files: ["plugin/src/**/*.ts"],
+    files: ["plugin/src/**/*.ts", "plugin/src/**/*.tsx"],
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./plugin/tsconfig.json" },
     },
   },
   {
-    files: ["plugin/src/**/*.ts"],
+    files: ["plugin/src/**/*.ts", "plugin/src/**/*.tsx"],
     rules: {
       // TypeScript handles undefined globals (no-undef false-positives for window/document/console/etc).
       "no-undef": "off",
-
-      // Not part of the review bot signal; too noisy for our current workflow.
-      "@typescript-eslint/no-deprecated": "off",
 
       // The Obsidian review bot focuses on plugin-specific rules + a small subset of TS rules.
       // These "unsafe" rules are extremely noisy in real-world Obsidian plugin code (events, DOM, CM internals).
@@ -30,13 +27,11 @@ export default defineConfig([
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
 
-      "obsidianmd/ui/sentence-case": [
-        "error",
-        {
-          brands: ["Spark", "Spark Assistant", "Obsidian", "Claude", "CodeMirror"],
-          acronyms: ["AI", "API", "PATH", "UUID", "PID", "JSONL"],
-        },
-      ],
+      // Ensure async functions actually use await (catches unnecessary async keywords)
+      "@typescript-eslint/require-await": "error",
+
+      // Use defaults for brands/acronyms to match the Obsidian review bot
+      "obsidianmd/ui/sentence-case": ["error", { enforceCamelCaseLower: true, allowAutoFix: true }],
     },
   },
 ]);
