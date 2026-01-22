@@ -95,14 +95,14 @@ echo ""
 TAG_NAME="${VERSION}"
 echo -e "${YELLOW}→ Creating git tag ${TAG_NAME}...${NC}"
 if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-    echo -e "${RED}✗ Tag ${TAG_NAME} already exists locally.${NC}"
-    exit 1
+    echo -e "${BLUE}ℹ Tag ${TAG_NAME} already exists locally, skipping creation${NC}"
+else
+    git tag "$TAG_NAME"
+    echo -e "${GREEN}✓ Tag ${TAG_NAME} created${NC}"
 fi
-git tag "$TAG_NAME"
-echo -e "${GREEN}✓ Tag ${TAG_NAME} created${NC}"
 
 echo -e "${YELLOW}→ Pushing tag to origin...${NC}"
-git push origin "$TAG_NAME"
+git push origin "$TAG_NAME" 2>/dev/null || echo -e "${BLUE}ℹ Tag already exists on remote${NC}"
 echo -e "${GREEN}✓ Tag pushed to origin${NC}"
 echo ""
 
