@@ -1,6 +1,6 @@
 {
   "name": "spark",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Spark Assistant - AI-powered automation for Obsidian",
   "main": "dist/main.js",
   "scripts": {
