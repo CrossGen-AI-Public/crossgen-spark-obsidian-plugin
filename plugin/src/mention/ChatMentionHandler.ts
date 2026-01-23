@@ -1,4 +1,4 @@
-import type { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
 import { FuzzyMatcher } from '../command-palette/FuzzyMatcher';
 import { ItemLoader } from '../command-palette/ItemLoader';
 import { PaletteView } from '../command-palette/PaletteView';
@@ -326,7 +326,7 @@ export class ChatMentionHandler {
 	 * Get the currently active file in the workspace
 	 */
 	private getActiveFile() {
-		return this.app.workspace.getActiveFile() as TFile | null;
+		return this.app.workspace.getActiveFile();
 	}
 
 	/**

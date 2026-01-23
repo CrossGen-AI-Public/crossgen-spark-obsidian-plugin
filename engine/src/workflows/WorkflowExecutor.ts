@@ -23,6 +23,7 @@ import type {
   LabeledOutput,
   StepResult,
   WorkflowDefinition,
+  WorkflowEdge,
   WorkflowInputContext,
   WorkflowNode,
   WorkflowQueueItem,
@@ -449,23 +450,40 @@ export class WorkflowExecutor {
     // we want to use the most recent upstream value, not a merged object keyed by node ids.
     // This keeps code/expressions simple (e.g. input.results, input.score) and makes loops intuitive.
     if (node.type === 'condition' || node.type === 'code') {
-      const stepOutputKeys = Array.from(context.stepOutputs.keys());
-      let bestEdge = incomingEdges[0];
-      let bestIndex = -1;
-
-      for (const edge of incomingEdges) {
-        const idx = stepOutputKeys.indexOf(edge.source);
-        if (idx > bestIndex) {
-          bestIndex = idx;
-          bestEdge = edge;
-        }
-      }
-
-      const value = bestEdge ? context.stepOutputs.get(bestEdge.source) : undefined;
-      return value !== undefined ? value : context.input;
+      return this.getMostRecentInput(incomingEdges, context);
     }
 
-    // For other node types (e.g. code), if multiple incoming edges, merge outputs
+    // For other node types, merge outputs
+    return this.mergeIncomingOutputs(incomingEdges, context);
+  }
+
+  /**
+   * Get the most recent output from incoming edges (for condition/code nodes)
+   */
+  private getMostRecentInput(incomingEdges: WorkflowEdge[], context: ExecutionContext): unknown {
+    const stepOutputKeys = Array.from(context.stepOutputs.keys());
+    let bestEdge = incomingEdges[0];
+    let bestIndex = -1;
+
+    for (const edge of incomingEdges) {
+      const idx = stepOutputKeys.indexOf(edge.source);
+      if (idx > bestIndex) {
+        bestIndex = idx;
+        bestEdge = edge;
+      }
+    }
+
+    const value = bestEdge ? context.stepOutputs.get(bestEdge.source) : undefined;
+    return value !== undefined ? value : context.input;
+  }
+
+  /**
+   * Merge outputs from multiple incoming edges into a single object
+   */
+  private mergeIncomingOutputs(
+    incomingEdges: WorkflowEdge[],
+    context: ExecutionContext
+  ): Record<string, unknown> {
     const merged: Record<string, unknown> = {};
     for (const edge of incomingEdges) {
       const output = context.stepOutputs.get(edge.source);
