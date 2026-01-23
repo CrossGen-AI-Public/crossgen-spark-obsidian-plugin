@@ -73,6 +73,8 @@ export class ResultWriter {
         originalError: error,
       });
     }
+
+    return Promise.resolve();
   }
 
   /**
@@ -115,6 +117,8 @@ export class ResultWriter {
       this.logger.error('Failed to update status', { error, filePath });
       // Don't throw - status update is non-critical
     }
+
+    return Promise.resolve();
   }
 
   /**
@@ -152,6 +156,8 @@ export class ResultWriter {
         originalError: error,
       });
     }
+
+    return Promise.resolve();
   }
 
   /**
@@ -197,5 +203,7 @@ export class ResultWriter {
         originalError: error,
       });
     }
+
+    return Promise.resolve();
   }
 }

@@ -25,5 +25,7 @@ Analyze Q4 2023 financial performance and compare with Q3 and budget targets.
 - @invoices/2023/Q4/
 
 
+*Error processing inline chat: API key not provided. Add your API key in the Spark plugin settings.*
+
 
 

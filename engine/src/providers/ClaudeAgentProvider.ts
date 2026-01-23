@@ -91,10 +91,11 @@ export class ClaudeAgentProvider implements IAIProvider {
             // Explicitly allow file operation tools (capitalized names per SDK docs)
             allowedTools: ['Read', 'Write', 'Edit'],
             // Auto-approve all file operations (we're already sandboxed via cwd)
-            canUseTool: async () => ({
-              behavior: 'allow' as const,
-              updatedInput: {},
-            }),
+            canUseTool: async () =>
+              Promise.resolve({
+                behavior: 'allow' as const,
+                updatedInput: {},
+              }),
             // Hooks for logging tool usage
             hooks: {
               PreToolUse: [
@@ -109,7 +110,7 @@ export class ClaudeAgentProvider implements IAIProvider {
                         tool: hookInput.tool_name,
                         input: hookInput.tool_input,
                       });
-                      return {};
+                      return Promise.resolve({});
                     },
                   ],
                 },
@@ -127,7 +128,7 @@ export class ClaudeAgentProvider implements IAIProvider {
                         tool: hookInput.tool_name,
                         result: hookInput.tool_response,
                       });
-                      return {};
+                      return Promise.resolve({});
                     },
                   ],
                 },
@@ -300,12 +301,12 @@ export class ClaudeAgentProvider implements IAIProvider {
     // Check if API key is available
     const apiKey = this.config.apiKey;
     if (!apiKey) {
-      return false;
+      return Promise.resolve(false);
     }
 
     // Simple health check - we could ping the API but that's expensive
     // For now, just check API key existence
-    return true;
+    return Promise.resolve(true);
   }
 
   /**

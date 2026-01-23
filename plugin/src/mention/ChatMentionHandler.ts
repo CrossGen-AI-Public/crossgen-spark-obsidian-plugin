@@ -325,8 +325,8 @@ export class ChatMentionHandler {
 	/**
 	 * Get the currently active file in the workspace
 	 */
-	private getActiveFile(): TFile | null {
-		return this.app.workspace.getActiveFile();
+	private getActiveFile() {
+		return this.app.workspace.getActiveFile() as TFile | null;
 	}
 
 	/**

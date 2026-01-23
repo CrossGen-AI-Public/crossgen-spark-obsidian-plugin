@@ -12,7 +12,7 @@ import { ChangeDebouncer } from './ChangeDebouncer.js';
 import { PathMatcher } from './PathMatcher.js';
 
 export class FileWatcher extends EventEmitter implements IFileWatcher {
-  private watcher: FSWatcher | null;
+  private watcher = null as FSWatcher | null;
   private debouncer: ChangeDebouncer;
   private pathMatcher: PathMatcher;
   private config: FileWatcherConfig;

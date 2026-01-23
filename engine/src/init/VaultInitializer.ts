@@ -75,6 +75,8 @@ export class VaultInitializer {
 
     // Create default commands if missing
     this.createDefaultCommands(sparkDir);
+
+    return Promise.resolve();
   }
 
   /**

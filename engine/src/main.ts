@@ -50,7 +50,7 @@ export class SparkEngine implements ISparkEngine {
   // Config-dependent - initialized in start()
   private config: SparkConfig | null = null;
   private watcher: FileWatcher | null = null;
-  private configWatcher: FSWatcher | null = null;
+  private configWatcher = null as FSWatcher | null;
   private commandExecutor: CommandExecutor | null = null;
   private chatQueueHandler: ChatQueueHandler | null = null;
   private workflowExecutor: WorkflowExecutor | null = null;

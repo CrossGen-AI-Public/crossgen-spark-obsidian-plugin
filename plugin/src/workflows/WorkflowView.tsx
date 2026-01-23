@@ -17,7 +17,7 @@ interface WorkflowViewState extends Record<string, unknown> {
 }
 
 export class WorkflowView extends ItemView {
-	private root: Root | null = null;
+	private root = null as Root | null;
 	private plugin: ISparkPlugin;
 	private workflowId: string | null = null;
 	private workflow: WorkflowDefinition | null = null;

@@ -51,7 +51,7 @@ export class ConditionRunner {
         result: boolResult,
       });
 
-      return boolResult;
+      return Promise.resolve(boolResult);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Condition evaluation failed', {

@@ -669,7 +669,7 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 }
 
 export class WorkflowListView extends ItemView {
-	private root: Root | null = null;
+	private root = null as Root | null;
 	private plugin: ISparkPlugin;
 	private refreshKey = 0;
 

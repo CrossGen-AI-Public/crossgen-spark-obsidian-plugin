@@ -30,7 +30,7 @@ export class InlineChatManager {
 	private detector: InlineChatDetector;
 	private activeWidget: InlineChatWidget | null = null;
 	private currentMention: DetectedAgentMention | null = null;
-	private currentEditor: Editor | null = null;
+	private currentEditor = null as Editor | null;
 	private editorChangeHandler: ((editor: Editor) => void) | null = null;
 	private markerId: string = ''; // Unique ID for this inline chat instance
 	private pendingChats: Map<string, PendingChat> = new Map(); // Track chats waiting for engine
