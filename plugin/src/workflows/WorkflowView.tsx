@@ -17,7 +17,7 @@ interface WorkflowViewState extends Record<string, unknown> {
 }
 
 export class WorkflowView extends ItemView {
-	private root = null as Root | null;
+	private root?: Root;
 	private plugin: ISparkPlugin;
 	private workflowId: string | null = null;
 	private workflow: WorkflowDefinition | null = null;
@@ -83,7 +83,7 @@ export class WorkflowView extends ItemView {
 
 	onClose(): Promise<void> {
 		this.root?.unmount();
-		this.root = null;
+		this.root = undefined;
 		return Promise.resolve();
 	}
 

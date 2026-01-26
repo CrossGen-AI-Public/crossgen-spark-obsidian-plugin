@@ -817,7 +817,7 @@ export class SparkSettingTab extends PluginSettingTab {
 				});
 
 				// Function to update model dropdown when provider type changes
-				let modelDropdownSetting = null as Setting | null;
+				let modelDropdownSetting: Setting | undefined;
 				const updateModelDropdown = () => {
 					// Remove the old model dropdown if it exists
 					if (modelDropdownSetting?.settingEl) {
