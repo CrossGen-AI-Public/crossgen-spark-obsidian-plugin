@@ -835,8 +835,8 @@ export class SparkSettingTab extends PluginSettingTab {
 					return modelSetting;
 				};
 
-				// Track current model dropdown for updates (using ref pattern to avoid union type)
-				const modelDropdownRef: { current: ReturnType<typeof createModelDropdown> } = {
+				// Track current model dropdown for updates
+				const modelDropdownRef = {
 					current: createModelDropdown(),
 				};
 				const updateModelDropdown = () => {
