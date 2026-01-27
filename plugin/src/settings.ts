@@ -835,15 +835,15 @@ export class SparkSettingTab extends PluginSettingTab {
 					return modelSetting;
 				};
 
-				// Track current model dropdown for updates
-				let modelDropdownSetting: ReturnType<typeof createModelDropdown> | undefined;
+				// Track current model dropdown for updates (using ref pattern to avoid union type)
+				const modelDropdownRef: { current: ReturnType<typeof createModelDropdown> } = {
+					current: createModelDropdown(),
+				};
 				const updateModelDropdown = () => {
-					// Remove the old model dropdown if it exists
-					if (modelDropdownSetting?.settingEl) {
-						modelDropdownSetting.settingEl.remove();
-					}
+					// Remove the old model dropdown
+					modelDropdownRef.current.settingEl.remove();
 					// Create new model dropdown with updated models
-					modelDropdownSetting = createModelDropdown();
+					modelDropdownRef.current = createModelDropdown();
 				};
 
 				new Setting(providerContent)
