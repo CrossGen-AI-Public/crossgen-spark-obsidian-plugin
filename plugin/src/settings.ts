@@ -816,17 +816,6 @@ export class SparkSettingTab extends PluginSettingTab {
 					toggleProvider();
 				});
 
-				// Function to update model dropdown when provider type changes
-				let modelDropdownSetting: ReturnType<typeof createModelDropdown> | undefined;
-				const updateModelDropdown = () => {
-					// Remove the old model dropdown if it exists
-					if (modelDropdownSetting?.settingEl) {
-						modelDropdownSetting.settingEl.remove();
-					}
-					// Create new model dropdown with updated models
-					modelDropdownSetting = createModelDropdown();
-				};
-
 				// Create model dropdown function
 				const createModelDropdown = () => {
 					const modelSetting = new Setting(providerContent)
@@ -844,6 +833,17 @@ export class SparkSettingTab extends PluginSettingTab {
 							return dropdown;
 						});
 					return modelSetting;
+				};
+
+				// Track current model dropdown for updates
+				let modelDropdownSetting: ReturnType<typeof createModelDropdown> | undefined;
+				const updateModelDropdown = () => {
+					// Remove the old model dropdown if it exists
+					if (modelDropdownSetting?.settingEl) {
+						modelDropdownSetting.settingEl.remove();
+					}
+					// Create new model dropdown with updated models
+					modelDropdownSetting = createModelDropdown();
 				};
 
 				new Setting(providerContent)
