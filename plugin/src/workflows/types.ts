@@ -222,6 +222,106 @@ export interface WorkflowRunsIndex {
 export type SidebarTab = 'properties' | 'prompt' | 'code' | 'runs';
 
 /**
+ * Chat message for workflow chat
+ */
+export interface WorkflowChatMessage {
+	id: string;
+	role: 'user' | 'assistant';
+	content: string;
+	timestamp: number;
+}
+
+/**
+ * Summary of a workflow run for edit context
+ */
+export interface WorkflowRunSummary {
+	id: string;
+	status: 'completed' | 'failed' | 'cancelled';
+	startTime: number;
+	endTime?: number;
+	error?: string;
+	stepResults: StepResultSummary[];
+}
+
+/**
+ * Summary of a step result for edit context
+ */
+export interface StepResultSummary {
+	nodeId: string;
+	nodeLabel: string;
+	status: 'completed' | 'failed' | 'skipped';
+	input?: unknown;
+	output?: unknown;
+	error?: string;
+	cycleCount?: number;
+}
+
+/**
+ * Workflow edit request (written to .spark/workflow-edit-queue/{requestId}.json)
+ */
+export interface WorkflowEditRequest {
+	requestId: string;
+	workflowId: string;
+	timestamp: number;
+	source: 'workflow-chat';
+
+	// Current state
+	workflow: WorkflowDefinition;
+	selectedNodeId?: string;
+
+	// Run history context
+	recentRuns: WorkflowRunSummary[];
+
+	// Conversation
+	message: string;
+	conversationHistory: WorkflowChatMessage[];
+
+	// For multi-turn clarification
+	threadId?: string;
+}
+
+/**
+ * Workflow edit progress stage
+ */
+export type WorkflowEditProgressStage =
+	| 'queued'
+	| 'processing'
+	| 'validating'
+	| 'repairing'
+	| 'layout'
+	| 'writing';
+
+/**
+ * Workflow edit result (written to .spark/workflow-edit-results/{requestId}.json)
+ */
+export type WorkflowEditResult =
+	| {
+			requestId: string;
+			status: 'processing';
+			stage: WorkflowEditProgressStage;
+			progress?: number;
+			message?: string;
+			updatedAt: number;
+	  }
+	| {
+			requestId: string;
+			status: 'completed';
+			updatedWorkflow?: WorkflowDefinition;
+			responseMessage: string;
+			changesDescription?: string;
+	  }
+	| {
+			requestId: string;
+			status: 'needs_clarification';
+			questions: string[];
+	  }
+	| {
+			requestId: string;
+			status: 'failed';
+			error: string;
+	  };
+
+/**
  * Canvas context for child components
  */
 export interface WorkflowCanvasContext {

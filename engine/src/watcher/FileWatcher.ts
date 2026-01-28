@@ -161,6 +161,10 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
     ) {
       return true;
     }
+    // Workflow edit queue files (.spark/workflow-edit-queue/*.json)
+    if (relativePath.startsWith('.spark/workflow-edit-queue/') && relativePath.endsWith('.json')) {
+      return true;
+    }
     // Chat queue files are .md and match normal patterns, but listed for completeness
     // if (relativePath.startsWith('.spark/chat-queue/') && relativePath.endsWith('.md')) {
     //   return true;

@@ -1939,7 +1939,12 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     background: transparent;
     flex-shrink: 0;
     position: relative;
-    /* Draw divider on the sidebar edge (avoid pseudo-element offset). */
+    /* Reset hr defaults */
+    margin: 0;
+    padding: 0;
+    border: none;
+    height: 100%;
+    /* Draw divider on the sidebar edge */
     border-right: 1px solid var(--background-modifier-border);
 }
 
@@ -3687,4 +3692,315 @@ svg.react-flow__connectionline {
 
 .spark-edge-executed .react-flow__edge-path[marker-end] {
     marker-end: url(#spark-arrow-executed);
+}
+
+/* ==============================
+   Workflow Chat Panel
+   ============================== */
+
+.spark-workflow-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.spark-workflow-chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.spark-workflow-chat-clear-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.spark-workflow-chat-clear-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.spark-workflow-chat-clear-btn:hover:not(:disabled) {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+}
+
+.spark-workflow-chat-clear-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.spark-workflow-chat-context {
+    padding: 6px 16px;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.spark-workflow-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.spark-workflow-chat-empty {
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 40px;
+}
+
+.spark-workflow-chat-empty p {
+    margin: 8px 0;
+}
+
+.spark-workflow-chat-empty-hint {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.spark-workflow-chat-message {
+    max-width: 85%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.spark-workflow-chat-user {
+    align-self: flex-end;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-bottom-right-radius: 4px;
+}
+
+.spark-workflow-chat-assistant {
+    align-self: flex-start;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    border-bottom-left-radius: 4px;
+}
+
+.spark-workflow-chat-message-content {
+    word-break: break-word;
+}
+
+/* Markdown formatting in workflow chat messages - match main chat */
+.spark-workflow-chat-message-content p {
+    margin: 0 0 8px 0;
+}
+
+.spark-workflow-chat-message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.spark-workflow-chat-message-content code {
+    background: var(--background-modifier-border);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.spark-workflow-chat-message-content pre {
+    background: var(--background-modifier-border);
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 8px 0;
+    position: relative;
+}
+
+.spark-workflow-chat-message-content pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.85em;
+}
+
+.spark-workflow-chat-message-content ul,
+.spark-workflow-chat-message-content ol {
+    margin: 4px 0;
+    padding-left: 20px;
+}
+
+.spark-workflow-chat-message-content li {
+    margin: 2px 0;
+}
+
+.spark-workflow-chat-message-content strong {
+    font-weight: 600;
+}
+
+.spark-workflow-chat-message-content em {
+    font-style: italic;
+}
+
+.spark-workflow-chat-message-content h1,
+.spark-workflow-chat-message-content h2,
+.spark-workflow-chat-message-content h3,
+.spark-workflow-chat-message-content h4 {
+    margin: 12px 0 8px 0;
+    font-weight: 600;
+}
+
+.spark-workflow-chat-message-content h1:first-child,
+.spark-workflow-chat-message-content h2:first-child,
+.spark-workflow-chat-message-content h3:first-child,
+.spark-workflow-chat-message-content h4:first-child {
+    margin-top: 0;
+}
+
+.spark-workflow-chat-message-content blockquote {
+    border-left: 3px solid var(--background-modifier-border);
+    margin: 8px 0;
+    padding-left: 12px;
+    color: var(--text-muted);
+}
+
+.spark-workflow-chat-loading {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.spark-workflow-chat-loading-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: spark-chat-dot 1.4s ease-in-out infinite both;
+}
+
+.spark-workflow-chat-loading-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.spark-workflow-chat-loading-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes spark-chat-dot {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0.6);
+        opacity: 0.5;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.spark-workflow-chat-clarifications {
+    padding: 12px;
+    background: var(--background-secondary-alt);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.spark-workflow-chat-clarifications-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.spark-workflow-chat-clarifications ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+}
+
+.spark-workflow-chat-clarifications li {
+    margin: 4px 0;
+}
+
+.spark-workflow-chat-error {
+    padding: 8px 12px;
+    background: rgba(var(--color-red-rgb), 0.1);
+    color: var(--text-error);
+    font-size: 12px;
+    border-left: 3px solid var(--text-error);
+    margin: 0 12px;
+}
+
+.spark-workflow-chat-input-container {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+}
+
+.spark-workflow-chat-input {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    line-height: 1.4;
+}
+
+.spark-workflow-chat-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+}
+
+.spark-workflow-chat-input:disabled {
+    opacity: 0.5;
+}
+
+.spark-workflow-chat-send {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    align-self: flex-end;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.15s;
+}
+
+.spark-workflow-chat-send:hover:not(:disabled) {
+    background: var(--interactive-accent-hover);
+}
+
+.spark-workflow-chat-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.spark-workflow-chat-send.spark-workflow-chat-send-loading {
+    font-size: 0;
+}
+
+.spark-workflow-chat-send .spark-workflow-spinner {
+    width: 14px;
+    height: 14px;
+    animation: spark-spin 1s linear infinite;
 }

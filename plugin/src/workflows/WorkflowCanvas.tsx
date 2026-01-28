@@ -40,6 +40,7 @@ import { CodeNode } from './nodes/CodeNode';
 import { ConditionNode } from './nodes/ConditionNode';
 import { Sidebar } from './Sidebar';
 import { WorkflowRunsSidebar } from './WorkflowRunsSidebar';
+import { WorkflowChat } from './WorkflowChat';
 import { WorkflowStorage } from './WorkflowStorage';
 
 interface WorkflowCanvasProps {
@@ -205,7 +206,7 @@ function WorkflowCanvasInner({
 
 	// UI state - store ID only, derive node from nodes array to stay in sync
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-	const [sidebarMode, setSidebarMode] = useState<'node' | 'workflowRuns' | null>(null);
+	const [sidebarMode, setSidebarMode] = useState<'node' | 'workflowRuns' | 'chat' | null>(null);
 
 	// Auto-select initial action node on empty workflow (first load)
 	const hasAutoSelectedRef = useRef(false);
@@ -409,7 +410,7 @@ function WorkflowCanvasInner({
 			return;
 		}
 		setSelectedNodeId(null);
-		// Keep workflow-level Runs panel open when it is active.
+		// Keep workflow-level panels (Runs, Chat) open when active.
 		if (sidebarMode === 'node') {
 			setSidebarMode(null);
 		}
@@ -774,6 +775,10 @@ function WorkflowCanvasInner({
 		setSidebarMode((mode) => (mode === 'workflowRuns' ? null : 'workflowRuns'));
 	}, []);
 
+	const openChat = useCallback(() => {
+		setSidebarMode((mode) => (mode === 'chat' ? null : 'chat'));
+	}, []);
+
 	/**
 	 * Update workflow name
 	 */
@@ -926,6 +931,26 @@ function WorkflowCanvasInner({
 					</button>
 					<button
 						type="button"
+						className={`spark-workflow-icon-btn${sidebarMode === 'chat' ? ' spark-workflow-icon-btn-active' : ''}`}
+						onClick={openChat}
+						title="Workflow Chat"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+						</svg>
+					</button>
+					<button
+						type="button"
 						className={`spark-workflow-icon-btn spark-workflow-icon-btn-primary${isRunning ? ' spark-workflow-icon-btn-running' : ''}`}
 						onClick={() => void runWorkflow()}
 						disabled={isRunning}
@@ -971,7 +996,7 @@ function WorkflowCanvasInner({
 			</ReactFlow>
 
 			{/* Sidebar */}
-			{(sidebarMode === 'workflowRuns' || (sidebarMode === 'node' && selectedNode)) && (
+			{(sidebarMode === 'workflowRuns' || sidebarMode === 'chat' || (sidebarMode === 'node' && selectedNode)) && (
 				<div className="spark-workflow-sidebar-wrapper" style={{ width: `${sidebarWidth}px` }}>
 					<hr className="spark-workflow-sidebar-resizer" aria-label="Resize sidebar" onPointerDown={handleSidebarResizePointerDown} />
 					{sidebarMode === 'node' && selectedNode && (
@@ -1003,6 +1028,24 @@ function WorkflowCanvasInner({
 								await loadRuns();
 							}}
 							onJumpToNode={jumpToNode}
+							onClose={() => setSidebarMode(null)}
+						/>
+					)}
+
+					{sidebarMode === 'chat' && (
+						<WorkflowChat
+							app={app}
+							plugin={plugin}
+							workflow={workflow}
+							selectedNodeId={selectedNodeId}
+							runs={runs}
+							onWorkflowUpdate={(updatedWorkflow) => {
+								// Apply the updated workflow from chat
+								setNodes(updatedWorkflow.nodes);
+								setEdges(updatedWorkflow.edges.map(ensureEdgeClassName));
+								setWorkflow(updatedWorkflow);
+								onWorkflowChange(updatedWorkflow);
+							}}
 							onClose={() => setSidebarMode(null)}
 						/>
 					)}

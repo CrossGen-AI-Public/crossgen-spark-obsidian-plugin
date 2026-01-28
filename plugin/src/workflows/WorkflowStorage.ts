@@ -5,6 +5,8 @@
 import type { App } from 'obsidian';
 import type {
 	WorkflowDefinition,
+	WorkflowEditRequest,
+	WorkflowEditResult,
 	WorkflowGenerateRequest,
 	WorkflowGenerateResult,
 	WorkflowQueueItem,
@@ -18,6 +20,8 @@ const WORKFLOW_QUEUE_DIR = '.spark/workflow-queue';
 const WORKFLOW_RUNS_INDEX_PATH = '.spark/workflow-runs/index.json';
 const WORKFLOW_GENERATE_QUEUE_DIR = '.spark/workflow-generate-queue';
 const WORKFLOW_GENERATE_RESULTS_DIR = '.spark/workflow-generate-results';
+const WORKFLOW_EDIT_QUEUE_DIR = '.spark/workflow-edit-queue';
+const WORKFLOW_EDIT_RESULTS_DIR = '.spark/workflow-edit-results';
 
 export class WorkflowStorage {
 	private readonly app: App;
@@ -303,6 +307,30 @@ export class WorkflowStorage {
 		try {
 			const raw = await this.app.vault.adapter.read(path);
 			return JSON.parse(raw) as WorkflowGenerateResult;
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Queue a workflow edit request
+	 */
+	async queueWorkflowEdit(request: WorkflowEditRequest): Promise<void> {
+		await this.ensureDir(WORKFLOW_EDIT_QUEUE_DIR);
+		const path = `${WORKFLOW_EDIT_QUEUE_DIR}/${request.requestId}.json`;
+		await this.app.vault.adapter.write(path, JSON.stringify(request, null, 2));
+	}
+
+	/**
+	 * Load a workflow edit result if present; returns null if missing/unreadable.
+	 */
+	async loadWorkflowEditResult(requestId: string): Promise<WorkflowEditResult | null> {
+		const path = `${WORKFLOW_EDIT_RESULTS_DIR}/${requestId}.json`;
+		const exists = await this.app.vault.adapter.exists(path);
+		if (!exists) return null;
+		try {
+			const raw = await this.app.vault.adapter.read(path);
+			return JSON.parse(raw) as WorkflowEditResult;
 		} catch {
 			return null;
 		}
