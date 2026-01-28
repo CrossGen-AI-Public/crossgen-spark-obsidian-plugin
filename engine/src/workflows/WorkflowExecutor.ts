@@ -147,7 +147,9 @@ export class WorkflowExecutor {
   }
 
   /**
-   * Execute a workflow
+   * Execute a workflow using topological execution model.
+   * Each node executes exactly once when all its upstream nodes have completed.
+   * This properly handles fan-in patterns (multiple nodes → single node).
    */
   private async executeWorkflow(queueItem: WorkflowQueueItem): Promise<void> {
     const { workflowId, runId, input } = queueItem;
@@ -185,18 +187,7 @@ export class WorkflowExecutor {
     this.saveRun(run);
 
     try {
-      // Find entry points: all nodes with no incoming edges
-      const targetNodeIds = new Set(workflow.edges.map((e) => e.target));
-      const entryNodes = workflow.nodes.filter((n) => !targetNodeIds.has(n.id));
-      if (entryNodes.length === 0) {
-        throw new Error('No entry point found in workflow (no node without incoming edges)');
-      }
-
-      // Execute from all entry nodes
-      // For multiple entry points (e.g., multiple file nodes), execute all of them
-      for (const entryNode of entryNodes) {
-        await this.executeFromNode(workflow, entryNode.id, context, run);
-      }
+      await this.runTopologicalExecution(workflow, context, run);
 
       // Mark as completed
       run.status = 'completed';
@@ -231,39 +222,490 @@ export class WorkflowExecutor {
   }
 
   /**
-   * Execute workflow from a specific node
+   * Run the topological execution loop.
+   * Executes nodes in dependency order, handling condition branches and loops.
    */
-  private async executeFromNode(
+  private async runTopologicalExecution(
     workflow: WorkflowDefinition,
-    nodeId: string,
     context: ExecutionContext,
     run: WorkflowRun
   ): Promise<void> {
+    // Identify back-edges (edges that create cycles) using DFS
+    const backEdges = this.identifyBackEdges(workflow);
+
+    // Build forward upstream map (excludes back-edges)
+    const forwardUpstreamMap = this.buildForwardUpstreamMap(workflow, backEdges);
+
+    // Track execution state
+    const pendingNodes = new Set(workflow.nodes.map((n) => n.id));
+    const executedNodes = new Set<string>();
+    // Track which nodes are reachable (for condition branch handling)
+    const reachableNodes = new Set(workflow.nodes.map((n) => n.id));
+
+    // Execute nodes in topological order using dynamic ready-check
+    while (pendingNodes.size > 0) {
+      const readyNodes = this.findReadyNodes(
+        pendingNodes,
+        executedNodes,
+        reachableNodes,
+        forwardUpstreamMap
+      );
+
+      if (readyNodes.length === 0) {
+        // No progress possible - remaining nodes are unreachable (condition branch not taken)
+        break;
+      }
+
+      // Execute all ready nodes (in order for determinism)
+      for (const nodeId of readyNodes) {
+        await this.executeReadyNode(
+          workflow,
+          nodeId,
+          context,
+          run,
+          pendingNodes,
+          executedNodes,
+          reachableNodes
+        );
+      }
+    }
+  }
+
+  /**
+   * Execute a single ready node and update execution state.
+   */
+  private async executeReadyNode(
+    workflow: WorkflowDefinition,
+    nodeId: string,
+    context: ExecutionContext,
+    run: WorkflowRun,
+    pendingNodes: Set<string>,
+    executedNodes: Set<string>,
+    reachableNodes: Set<string>
+  ): Promise<void> {
     const node = workflow.nodes.find((n) => n.id === nodeId);
-    if (!node) {
-      throw new Error(`Node ${nodeId} not found`);
+    if (!node) return;
+
+    // Execute the node
+    const result = await this.executeNode(workflow, node, context, run);
+
+    // Move from pending to executed
+    pendingNodes.delete(nodeId);
+    executedNodes.add(nodeId);
+
+    // If step failed, stop execution
+    if (result.status === 'failed') {
+      throw new Error(`Step ${nodeId} failed: ${result.error}`);
     }
 
-    // Track visit count for loop detection
-    const visitCount = (context.visitCounts.get(nodeId) || 0) + 1;
-    context.visitCounts.set(nodeId, visitCount);
+    // Handle condition node branching (marks untaken branch as unreachable)
+    if (node.type === 'condition') {
+      this.updateReachabilityForCondition(
+        workflow,
+        node,
+        result.output,
+        reachableNodes,
+        pendingNodes,
+        executedNodes
+      );
+    }
 
-    // Check node-specific cycle limit for condition nodes (revisits only)
+    // Check for loop back-edges: if this node has outgoing edges to already-executed nodes,
+    // reset those loop sections for re-execution
+    this.handleLoopBackEdges(
+      workflow,
+      nodeId,
+      pendingNodes,
+      executedNodes,
+      reachableNodes,
+      context
+    );
+  }
+
+  /**
+   * Handle loop back-edges after a node executes.
+   * If this node has outgoing edges to already-executed nodes (back-edges),
+   * reset the loop section for re-execution (respecting maxCycles).
+   */
+  private handleLoopBackEdges(
+    workflow: WorkflowDefinition,
+    nodeId: string,
+    pendingNodes: Set<string>,
+    executedNodes: Set<string>,
+    reachableNodes: Set<string>,
+    context: ExecutionContext
+  ): void {
+    // Find outgoing edges that point to already-executed nodes (back-edges)
+    const outgoingEdges = workflow.edges.filter((e) => e.source === nodeId);
+
+    for (const edge of outgoingEdges) {
+      if (executedNodes.has(edge.target)) {
+        // This is a back-edge to an already-executed node - potential loop
+        const targetNode = workflow.nodes.find((n) => n.id === edge.target);
+        if (!targetNode) continue;
+
+        // Check if the target (typically a condition node) has exceeded maxCycles
+        if (targetNode.type === 'condition') {
+          const conditionData = targetNode.data as { maxCycles?: number };
+          const maxCycles = conditionData.maxCycles || 10;
+          const visitCount = context.visitCounts.get(edge.target) || 0;
+
+          if (visitCount >= maxCycles) {
+            // Max cycles reached, don't reset the loop
+            continue;
+          }
+        }
+
+        // Reset the loop section for re-execution
+        this.resetLoopSection(
+          workflow,
+          edge.target, // Loop start (the node we're looping back to)
+          nodeId, // Loop end (the node with the back-edge)
+          pendingNodes,
+          executedNodes,
+          reachableNodes
+        );
+      }
+    }
+  }
+
+  /**
+   * Identify back-edges in the workflow graph using DFS from entry points.
+   * A back-edge is an edge that points to an ancestor in the DFS tree (creates a cycle).
+   * Returns a Set of edge IDs that are back-edges.
+   */
+  private identifyBackEdges(workflow: WorkflowDefinition): Set<string> {
+    const backEdges = new Set<string>();
+
+    // Find entry points (nodes with no incoming edges)
+    const targetNodeIds = new Set(workflow.edges.map((e) => e.target));
+    const entryNodeIds = workflow.nodes.filter((n) => !targetNodeIds.has(n.id)).map((n) => n.id);
+
+    // If no entry points found, all nodes might be in a cycle - use first node
+    const firstNode = workflow.nodes[0];
+    if (entryNodeIds.length === 0 && firstNode) {
+      entryNodeIds.push(firstNode.id);
+    }
+
+    // DFS state
+    const visited = new Set<string>();
+    const inStack = new Set<string>(); // Nodes currently in recursion stack
+
+    const dfs = (nodeId: string): void => {
+      visited.add(nodeId);
+      inStack.add(nodeId);
+
+      // Check all outgoing edges
+      for (const edge of workflow.edges) {
+        if (edge.source !== nodeId) continue;
+
+        if (inStack.has(edge.target)) {
+          // Target is an ancestor in DFS tree - this is a back-edge
+          backEdges.add(edge.id);
+        } else if (!visited.has(edge.target)) {
+          // Continue DFS
+          dfs(edge.target);
+        }
+      }
+
+      inStack.delete(nodeId);
+    };
+
+    // Run DFS from all entry points
+    for (const entryId of entryNodeIds) {
+      if (!visited.has(entryId)) {
+        dfs(entryId);
+      }
+    }
+
+    // Also run DFS from any unvisited nodes (handles disconnected components)
+    for (const node of workflow.nodes) {
+      if (!visited.has(node.id)) {
+        dfs(node.id);
+      }
+    }
+
+    return backEdges;
+  }
+
+  /**
+   * Build a map of nodeId → Set of forward upstream nodeIds (excluding back-edges)
+   */
+  private buildForwardUpstreamMap(
+    workflow: WorkflowDefinition,
+    backEdges: Set<string>
+  ): Map<string, Set<string>> {
+    const upstreamMap = new Map<string, Set<string>>();
+    for (const node of workflow.nodes) {
+      upstreamMap.set(node.id, new Set());
+    }
+    for (const edge of workflow.edges) {
+      // Skip back-edges - they don't create forward dependencies
+      if (backEdges.has(edge.id)) continue;
+
+      const upstreams = upstreamMap.get(edge.target);
+      if (upstreams) {
+        upstreams.add(edge.source);
+      }
+    }
+    return upstreamMap;
+  }
+
+  /**
+   * Find nodes that are ready to execute:
+   * - In pending set
+   * - Reachable (not on an untaken condition branch)
+   * - All forward upstream nodes have been executed (back-edges already excluded from map)
+   */
+  private findReadyNodes(
+    pendingNodes: Set<string>,
+    executedNodes: Set<string>,
+    reachableNodes: Set<string>,
+    forwardUpstreamMap: Map<string, Set<string>>
+  ): string[] {
+    const ready: string[] = [];
+
+    for (const nodeId of pendingNodes) {
+      // Skip if not reachable
+      if (!reachableNodes.has(nodeId)) continue;
+
+      // Get forward upstream nodes (back-edges already excluded)
+      const upstreams = forwardUpstreamMap.get(nodeId) || new Set();
+
+      // Check if all reachable forward upstreams have executed
+      let allUpstreamsReady = true;
+      for (const upstreamId of upstreams) {
+        // Skip if upstream is not reachable (on untaken branch)
+        if (!reachableNodes.has(upstreamId)) continue;
+
+        // This is a forward upstream - must be executed
+        if (!executedNodes.has(upstreamId)) {
+          allUpstreamsReady = false;
+          break;
+        }
+      }
+
+      if (allUpstreamsReady) {
+        ready.push(nodeId);
+      }
+    }
+
+    // Sort for deterministic execution order (by node id)
+    return ready.sort();
+  }
+
+  /**
+   * Update reachability based on condition node result.
+   * Only the taken branch remains reachable; nodes on the untaken branch become unreachable.
+   * Important for loops: restore reachability for taken branch (may have been unreachable in previous iteration).
+   */
+  private updateReachabilityForCondition(
+    workflow: WorkflowDefinition,
+    conditionNode: WorkflowNode,
+    output: unknown,
+    reachableNodes: Set<string>,
+    pendingNodes: Set<string>,
+    _executedNodes: Set<string>
+  ): void {
+    const conditionResult = Boolean(output);
+    const takenHandle = conditionResult ? 'true' : 'false';
+    const untakenHandle = conditionResult ? 'false' : 'true';
+
+    // Find edges from this condition node
+    const outgoingEdges = workflow.edges.filter((e) => e.source === conditionNode.id);
+
+    // First, restore reachability for the taken branch
+    // This is important for loops where the condition result may change
+    for (const edge of outgoingEdges) {
+      if (edge.sourceHandle === takenHandle) {
+        this.markBranchReachable(workflow, edge.target, reachableNodes, pendingNodes);
+      }
+    }
+
+    // Then mark untaken branch as unreachable
+    for (const edge of outgoingEdges) {
+      if (edge.sourceHandle === untakenHandle) {
+        this.markBranchUnreachable(workflow, edge.target, reachableNodes, pendingNodes);
+      }
+    }
+  }
+
+  /**
+   * Mark a branch as reachable, propagating to downstream nodes that are pending.
+   */
+  private markBranchReachable(
+    workflow: WorkflowDefinition,
+    startNodeId: string,
+    reachableNodes: Set<string>,
+    pendingNodes: Set<string>
+  ): void {
+    // BFS to mark nodes as reachable
+    const queue = [startNodeId];
+    const visited = new Set<string>();
+
+    let nodeId = queue.shift();
+    while (nodeId !== undefined) {
+      if (!visited.has(nodeId)) {
+        visited.add(nodeId);
+
+        // Mark reachable if it's pending
+        if (pendingNodes.has(nodeId)) {
+          reachableNodes.add(nodeId);
+        }
+
+        // Find downstream nodes
+        const downstream = workflow.edges.filter((e) => e.source === nodeId).map((e) => e.target);
+        for (const nextId of downstream) {
+          if (!visited.has(nextId) && pendingNodes.has(nextId)) {
+            queue.push(nextId);
+          }
+        }
+      }
+      nodeId = queue.shift();
+    }
+  }
+
+  /**
+   * Mark a branch as unreachable, propagating to downstream nodes.
+   * A node is only marked unreachable if ALL its upstream nodes are unreachable.
+   * This handles reconverging branches correctly.
+   */
+  private markBranchUnreachable(
+    workflow: WorkflowDefinition,
+    startNodeId: string,
+    reachableNodes: Set<string>,
+    pendingNodes: Set<string>
+  ): void {
+    // First, mark the start node as unreachable
+    if (pendingNodes.has(startNodeId)) {
+      reachableNodes.delete(startNodeId);
+    }
+
+    // Then propagate: a node becomes unreachable only if ALL its upstream nodes are unreachable
+    // We need to iterate until no more changes (fixed-point)
+    let changed = true;
+    while (changed) {
+      changed = false;
+
+      for (const node of workflow.nodes) {
+        // Skip if already unreachable or not pending
+        if (!reachableNodes.has(node.id) || !pendingNodes.has(node.id)) continue;
+
+        // Find all upstream nodes (incoming edges)
+        const upstreamIds = workflow.edges.filter((e) => e.target === node.id).map((e) => e.source);
+
+        // If no upstreams, this is an entry node - stays reachable
+        if (upstreamIds.length === 0) continue;
+
+        // Check if ALL upstream nodes are unreachable
+        const allUpstreamsUnreachable = upstreamIds.every((upId) => !reachableNodes.has(upId));
+
+        if (allUpstreamsUnreachable) {
+          reachableNodes.delete(node.id);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  /**
+   * Reset nodes in a loop section for re-execution.
+   * Finds all nodes between loopStartId and conditionId and moves them from executed back to pending.
+   */
+  private resetLoopSection(
+    workflow: WorkflowDefinition,
+    loopStartId: string,
+    conditionId: string,
+    pendingNodes: Set<string>,
+    executedNodes: Set<string>,
+    reachableNodes: Set<string>
+  ): void {
+    // Find all nodes in the loop (from loopStart to condition, inclusive)
+    const loopNodes = this.findLoopNodes(workflow, loopStartId, conditionId);
+
+    for (const nodeId of loopNodes) {
+      if (executedNodes.has(nodeId)) {
+        executedNodes.delete(nodeId);
+        pendingNodes.add(nodeId);
+        reachableNodes.add(nodeId);
+      }
+    }
+  }
+
+  /**
+   * Find all nodes that are part of a loop from startId to endId
+   */
+  private findLoopNodes(workflow: WorkflowDefinition, startId: string, endId: string): Set<string> {
+    const loopNodes = new Set<string>();
+
+    // BFS from startId, looking for paths that reach endId
+    const queue: string[] = [startId];
+    const visited = new Set<string>();
+
+    let nodeId = queue.shift();
+    while (nodeId !== undefined) {
+      if (!visited.has(nodeId)) {
+        visited.add(nodeId);
+        loopNodes.add(nodeId);
+
+        // Stop at the condition node (but include it)
+        if (nodeId !== endId) {
+          // Find downstream nodes
+          const downstream = workflow.edges.filter((e) => e.source === nodeId).map((e) => e.target);
+          for (const nextId of downstream) {
+            if (!visited.has(nextId)) {
+              queue.push(nextId);
+            }
+          }
+        }
+      }
+      nodeId = queue.shift();
+    }
+
+    return loopNodes;
+  }
+
+  /**
+   * Execute a single node
+   */
+  private async executeNode(
+    workflow: WorkflowDefinition,
+    node: WorkflowNode,
+    context: ExecutionContext,
+    run: WorkflowRun
+  ): Promise<StepResult> {
+    // Track visit count for loop detection
+    const visitCount = (context.visitCounts.get(node.id) || 0) + 1;
+    context.visitCounts.set(node.id, visitCount);
+
+    // Check node-specific cycle limit for condition nodes
     if (node.type === 'condition') {
       const conditionData = node.data as ConditionNodeData & { type: 'condition' };
       if (visitCount > conditionData.maxCycles) {
         this.logger.warn('Condition node max cycles exceeded, stopping loop', {
-          nodeId,
+          nodeId: node.id,
           maxCycles: conditionData.maxCycles,
           visitCount,
         });
-        return;
+        // Return a "completed" result to stop execution gracefully
+        const skipResult: StepResult = {
+          nodeId: node.id,
+          status: 'completed',
+          input: undefined,
+          startTime: Date.now(),
+          endTime: Date.now(),
+          cycleCount: visitCount,
+          output: false, // Treat max cycles as "false" to exit loop
+        };
+        run.stepResults.push(skipResult);
+        this.saveRun(run);
+        return skipResult;
       }
     }
 
     context.totalCycles++;
 
-    // Get input from previous step
+    // Get input from upstream nodes
     const previousOutput = this.getNodeInput(workflow, node, context);
 
     // Create initial "running" result and save immediately for UI feedback
@@ -277,7 +719,7 @@ export class WorkflowExecutor {
     run.stepResults.push(runningResult);
     this.saveRun(run);
 
-    // Execute the step (pass workflow for prompt nodes to access labels)
+    // Execute the step
     const result = await this.executeStep(workflow, node, previousOutput, context);
     result.cycleCount = visitCount;
 
@@ -288,7 +730,6 @@ export class WorkflowExecutor {
     if (resultIndex !== -1) {
       run.stepResults[resultIndex] = result;
     } else {
-      // Fallback: push if not found (shouldn't happen)
       run.stepResults.push(result);
     }
 
@@ -299,26 +740,13 @@ export class WorkflowExecutor {
     if (result.status === 'completed') {
       if (node.type === 'condition') {
         // Condition nodes pass through their INPUT, not their boolean output
-        // The output (true/false) is only used for routing decisions
-        // This preserves data flow through conditional branches
-        context.stepOutputs.set(nodeId, previousOutput);
+        context.stepOutputs.set(node.id, previousOutput);
       } else if (result.output !== undefined) {
-        context.stepOutputs.set(nodeId, result.output);
+        context.stepOutputs.set(node.id, result.output);
       }
     }
 
-    // If step failed, stop execution
-    if (result.status === 'failed') {
-      throw new Error(`Step ${nodeId} failed: ${result.error}`);
-    }
-
-    // Find next node(s) to execute
-    const nextNodes = this.getNextNodes(workflow, node, result.output);
-
-    // Execute next nodes
-    for (const nextNodeId of nextNodes) {
-      await this.executeFromNode(workflow, nextNodeId, context, run);
-    }
+    return result;
   }
 
   /**
@@ -687,33 +1115,6 @@ export class WorkflowExecutor {
       }
     }
     return merged;
-  }
-
-  /**
-   * Get next nodes based on current node and output
-   */
-  private getNextNodes(
-    workflow: WorkflowDefinition,
-    node: WorkflowNode,
-    output: unknown
-  ): string[] {
-    const outgoingEdges = workflow.edges.filter((e) => e.source === node.id);
-
-    if (outgoingEdges.length === 0) {
-      return [];
-    }
-
-    // For condition nodes, filter by sourceHandle (the source of truth for which port the edge comes from)
-    if (node.type === 'condition') {
-      const conditionResult = Boolean(output);
-      const expectedHandle = conditionResult ? 'true' : 'false';
-      // Use sourceHandle as the source of truth - it indicates which output port (true/false) the edge comes from
-      const matchingEdges = outgoingEdges.filter((e) => e.sourceHandle === expectedHandle);
-      return matchingEdges.map((e) => e.target);
-    }
-
-    // For other nodes, return all targets
-    return outgoingEdges.map((e) => e.target);
   }
 
   /**

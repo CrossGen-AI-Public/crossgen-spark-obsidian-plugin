@@ -205,14 +205,14 @@ describe('File Node Execution', () => {
 
     await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
 
-    // The prompt is called twice (once per file node entry path)
-    // On the second call, both file outputs are in context
-    expect(mockCommandExecutor.executeWorkflowPrompt).toHaveBeenCalledTimes(2);
+    // With topological execution, prompt runs ONCE after both file nodes complete
+    // (not twice like depth-first traversal)
+    expect(mockCommandExecutor.executeWorkflowPrompt).toHaveBeenCalledTimes(1);
 
-    // The second call should have both files as attachments
-    const secondCall = mockCommandExecutor.executeWorkflowPrompt.mock.calls[1]![0] as { inputContext: { attachments?: FileAttachment[] } };
-    expect(secondCall.inputContext.attachments).toHaveLength(2);
-    const paths = secondCall.inputContext.attachments!.map((a: FileAttachment) => a.path).sort();
+    // The single call should have both files as attachments
+    const call = mockCommandExecutor.executeWorkflowPrompt.mock.calls[0]![0] as { inputContext: { attachments?: FileAttachment[] } };
+    expect(call.inputContext.attachments).toHaveLength(2);
+    const paths = call.inputContext.attachments!.map((a: FileAttachment) => a.path).sort();
     expect(paths).toEqual(['file1.md', 'file2.md']);
   });
 
