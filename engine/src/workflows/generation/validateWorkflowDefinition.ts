@@ -105,10 +105,10 @@ function warnIfInvalidPosition(rawPosition: unknown, nodeId: string, warnings: s
   }
 }
 
-type EngineWorkflowNodeType = 'prompt' | 'code' | 'condition';
+type EngineWorkflowNodeType = 'prompt' | 'code' | 'condition' | 'file';
 
 function isEngineWorkflowNodeType(value: string | null): value is EngineWorkflowNodeType {
-  return value === 'prompt' || value === 'code' || value === 'condition';
+  return value === 'prompt' || value === 'code' || value === 'condition' || value === 'file';
 }
 
 type NodeBase = {
@@ -266,6 +266,31 @@ function normalizeConditionNode(base: NodeBase, errors: string[]): WorkflowNode 
   };
 }
 
+function normalizeFileNode(base: NodeBase, errors: string[]): WorkflowNode | null {
+  const path = normalizeString(base.data.path);
+  if (!path) {
+    errors.push(`File node ${base.nodeId} missing data.path.`);
+    return null;
+  }
+
+  // Default lastModified and fileSize if not provided
+  const lastModified = isFiniteNumber(base.data.lastModified) ? base.data.lastModified : Date.now();
+  const fileSize = isFiniteNumber(base.data.fileSize) ? base.data.fileSize : 0;
+
+  return {
+    id: base.nodeId,
+    type: 'file',
+    position: base.position,
+    data: {
+      type: 'file',
+      label: base.label,
+      path,
+      lastModified,
+      fileSize,
+    },
+  };
+}
+
 function normalizeNodeByType(
   base: NodeBase,
   errors: string[]
@@ -277,6 +302,11 @@ function normalizeNodeByType(
 
   if (base.type === 'code') {
     const node = normalizeCodeNode(base, errors);
+    return node ? { node, isCondition: false } : null;
+  }
+
+  if (base.type === 'file') {
+    const node = normalizeFileNode(base, errors);
     return node ? { node, isCondition: false } : null;
   }
 

@@ -3783,6 +3783,8 @@ svg.react-flow__connectionline {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .spark-workflow-chat-empty {
@@ -3806,6 +3808,9 @@ svg.react-flow__connectionline {
     border-radius: 12px;
     font-size: 13px;
     line-height: 1.5;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
 }
 
 .spark-workflow-chat-user {

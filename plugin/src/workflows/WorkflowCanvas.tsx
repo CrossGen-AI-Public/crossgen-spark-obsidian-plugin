@@ -1184,7 +1184,7 @@ function WorkflowCanvasInner({
 						<WorkflowChat
 							app={app}
 							plugin={plugin}
-							workflow={workflow}
+							workflow={{ ...workflow, nodes, edges }}
 							selectedNodeId={selectedNodeId}
 							runs={runs}
 							onWorkflowUpdate={(updatedWorkflow) => {
