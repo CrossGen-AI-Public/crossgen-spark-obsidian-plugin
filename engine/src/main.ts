@@ -310,6 +310,27 @@ export class SparkEngine implements ISparkEngine {
         chatNameGenerator
       );
 
+      // Recreate workflow handlers with new config
+      this.workflowExecutor = new WorkflowExecutor(
+        this.vaultPath,
+        this.logger,
+        this.commandExecutor
+      );
+
+      this.workflowGenerateHandler = new WorkflowGenerateHandler(
+        this.vaultPath,
+        this.logger,
+        this.commandExecutor.getProviderFactory(),
+        this.config.ai
+      );
+
+      this.workflowEditHandler = new WorkflowEditHandler(
+        this.vaultPath,
+        this.logger,
+        this.commandExecutor.getProviderFactory(),
+        this.config.ai
+      );
+
       this.logger.info('AI components reinitialized with new config');
 
       // Update logger with new config
