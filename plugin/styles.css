@@ -2477,7 +2477,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 220px;
+    max-height: 300px;
     overflow: auto;
     padding: 6px;
     background: var(--background-secondary);
@@ -2491,6 +2491,7 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     text-align: left;
     padding: 0;
     background: var(--background-primary);
+    flex-shrink: 0; /* Prevent compression - enable scrolling instead */
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
     overflow: hidden;
