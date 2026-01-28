@@ -4,7 +4,7 @@
 
 import { runInNewContext } from 'node:vm';
 import type { Logger } from '../logger/Logger.js';
-import type { CodeNodeData, ExecutionContext, WorkflowNode } from './types.js';
+import type { CodeNodeData, ExecutionContext, FileAttachment, WorkflowNode } from './types.js';
 
 // Timeout for code execution (5 seconds)
 const CODE_TIMEOUT_MS = 5000;
@@ -19,16 +19,22 @@ export class CodeRunner {
   /**
    * Run a code step
    */
-  async run(node: WorkflowNode, input: unknown, context: ExecutionContext): Promise<unknown> {
+  async run(
+    node: WorkflowNode,
+    input: unknown,
+    context: ExecutionContext,
+    attachments?: FileAttachment[]
+  ): Promise<unknown> {
     const data = node.data as CodeNodeData & { type: 'code' };
 
     this.logger.debug('Running code step', {
       nodeId: node.id,
       codeLength: data.code.length,
+      attachmentCount: attachments?.length ?? 0,
     });
 
     // Create sandbox context
-    const sandbox = this.createSandbox(input, context);
+    const sandbox = this.createSandbox(input, context, attachments);
 
     try {
       // Wrap code to handle return statement
@@ -59,10 +65,17 @@ export class CodeRunner {
   /**
    * Create sandboxed execution context
    */
-  private createSandbox(input: unknown, context: ExecutionContext): Record<string, unknown> {
+  private createSandbox(
+    input: unknown,
+    context: ExecutionContext,
+    attachments?: FileAttachment[]
+  ): Record<string, unknown> {
     return {
       // Input from previous step
       input,
+
+      // File attachments from connected file nodes
+      attachments: attachments ?? [],
 
       // Context information
       context: {

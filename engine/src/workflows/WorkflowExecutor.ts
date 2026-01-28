@@ -20,6 +20,8 @@ import { PromptRunner } from './PromptRunner.js';
 import type {
   ConditionNodeData,
   ExecutionContext,
+  FileAttachment,
+  FileNodeData,
   LabeledOutput,
   StepResult,
   WorkflowDefinition,
@@ -182,15 +184,18 @@ export class WorkflowExecutor {
     this.saveRun(run);
 
     try {
-      // Find entry point: first node with no incoming edges
+      // Find entry points: all nodes with no incoming edges
       const targetNodeIds = new Set(workflow.edges.map((e) => e.target));
-      const entryNode = workflow.nodes.find((n) => !targetNodeIds.has(n.id));
-      if (!entryNode) {
+      const entryNodes = workflow.nodes.filter((n) => !targetNodeIds.has(n.id));
+      if (entryNodes.length === 0) {
         throw new Error('No entry point found in workflow (no node without incoming edges)');
       }
 
-      // Execute from entry node
-      await this.executeFromNode(workflow, entryNode.id, context, run);
+      // Execute from all entry nodes
+      // For multiple entry points (e.g., multiple file nodes), execute all of them
+      for (const entryNode of entryNodes) {
+        await this.executeFromNode(workflow, entryNode.id, context, run);
+      }
 
       // Mark as completed
       run.status = 'completed';
@@ -334,6 +339,9 @@ export class WorkflowExecutor {
     try {
       let output: unknown;
 
+      // Collect file attachments for nodes that can receive them
+      const attachments = this.collectFileAttachments(workflow, node.id, context);
+
       switch (node.type) {
         case 'prompt': {
           // Build structured input context for prompt nodes
@@ -343,11 +351,15 @@ export class WorkflowExecutor {
         }
 
         case 'code':
-          output = await this.codeRunner.run(node, input, context);
+          output = await this.codeRunner.run(node, input, context, attachments);
           break;
 
         case 'condition':
-          output = await this.conditionRunner.run(node, input, context);
+          output = await this.conditionRunner.run(node, input, context, attachments);
+          break;
+
+        case 'file':
+          output = await this.executeFileNode(node);
           break;
 
         default:
@@ -366,6 +378,54 @@ export class WorkflowExecutor {
   }
 
   /**
+   * Execute a file node - reads file content and returns it as an attachment
+   */
+  private async executeFileNode(node: WorkflowNode): Promise<FileAttachment> {
+    const data = node.data as FileNodeData & { type: 'file' };
+    const filePath = join(this.vaultPath, data.path);
+
+    this.logger.debug('Executing file node', {
+      nodeId: node.id,
+      path: data.path,
+    });
+
+    if (!existsSync(filePath)) {
+      throw new Error(`File not found: ${data.path}`);
+    }
+
+    const content = readFileSync(filePath, 'utf-8');
+
+    return {
+      path: data.path,
+      content,
+    };
+  }
+
+  /**
+   * Collect file attachments from upstream file nodes
+   */
+  private collectFileAttachments(
+    workflow: WorkflowDefinition,
+    nodeId: string,
+    context: ExecutionContext
+  ): FileAttachment[] {
+    const attachments: FileAttachment[] = [];
+    const incomingEdges = workflow.edges.filter((e) => e.target === nodeId);
+
+    for (const edge of incomingEdges) {
+      const sourceNode = workflow.nodes.find((n) => n.id === edge.source);
+      if (sourceNode?.type === 'file') {
+        const output = context.stepOutputs.get(edge.source);
+        if (output && typeof output === 'object' && 'path' in output && 'content' in output) {
+          attachments.push(output as FileAttachment);
+        }
+      }
+    }
+
+    return attachments;
+  }
+
+  /**
    * Build structured input context for prompt nodes
    * Distinguishes between primary input (most recent) and context (other inputs)
    */
@@ -377,21 +437,28 @@ export class WorkflowExecutor {
   ): WorkflowInputContext {
     const incomingEdges = workflow.edges.filter((e) => e.target === nodeId);
 
+    // Collect file attachments from connected file nodes
+    const attachments = this.collectFileAttachments(workflow, nodeId, context);
+
     // No incoming edges - use workflow input
     if (incomingEdges.length === 0) {
       return {
         primary: null,
         context: [],
         workflowInput: context.input,
+        attachments: attachments.length > 0 ? attachments : undefined,
       };
     }
 
-    // Collect all inputs with labels
+    // Collect all inputs with labels (excluding file nodes - they go in attachments)
     const inputs: LabeledOutput[] = [];
     for (const edge of incomingEdges) {
+      const sourceNode = workflow.nodes.find((n) => n.id === edge.source);
+      // Skip file nodes - their output goes in attachments, not inputs
+      if (sourceNode?.type === 'file') continue;
+
       const output = context.stepOutputs.get(edge.source);
       if (output !== undefined) {
-        const sourceNode = workflow.nodes.find((n) => n.id === edge.source);
         inputs.push({
           nodeId: edge.source,
           label: sourceNode?.data.label || edge.source,
@@ -422,6 +489,7 @@ export class WorkflowExecutor {
       primary: primaryInput,
       context: contextInputs,
       workflowInput: context.input,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
   }
 

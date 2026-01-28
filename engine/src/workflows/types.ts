@@ -4,7 +4,7 @@
  */
 
 // Step types available in workflows
-export type StepType = 'prompt' | 'code' | 'condition';
+export type StepType = 'prompt' | 'code' | 'condition' | 'file';
 
 // Step status during execution
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
@@ -48,12 +48,31 @@ export interface ConditionNodeData extends BaseNodeData {
 }
 
 /**
+ * File step data
+ * Provides file content as attachment to connected nodes
+ */
+export interface FileNodeData extends BaseNodeData {
+  path: string; // Vault-relative path (e.g., "notes/my-file.md")
+  lastModified: number; // Timestamp for display
+  fileSize: number; // Bytes for display
+}
+
+/**
+ * File attachment (content resolved at execution time)
+ */
+export interface FileAttachment {
+  path: string;
+  content: string;
+}
+
+/**
  * Union type for all node data
  */
 export type WorkflowNodeData =
   | ({ type: 'prompt' } & PromptNodeData)
   | ({ type: 'code' } & CodeNodeData)
-  | ({ type: 'condition' } & ConditionNodeData);
+  | ({ type: 'condition' } & ConditionNodeData)
+  | ({ type: 'file' } & FileNodeData);
 
 /**
  * Position for nodes
@@ -179,6 +198,8 @@ export interface WorkflowInputContext {
   context: LabeledOutput[];
   /** Original workflow input (if any) */
   workflowInput?: unknown;
+  /** File attachments from connected file nodes */
+  attachments?: FileAttachment[];
 }
 
 /**

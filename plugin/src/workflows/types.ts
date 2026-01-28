@@ -6,7 +6,7 @@
 import type { Edge } from '@xyflow/react';
 
 // Step types available in workflows
-export type StepType = 'action' | 'prompt' | 'code' | 'condition';
+export type StepType = 'action' | 'prompt' | 'code' | 'condition' | 'file';
 
 // Step status during execution
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
@@ -56,13 +56,24 @@ export interface ConditionNodeData extends BaseNodeData {
 export type ActionNodeData = BaseNodeData;
 
 /**
+ * File step data
+ * Provides file content as attachment to connected nodes
+ */
+export interface FileNodeData extends BaseNodeData {
+	path: string; // Vault-relative path (e.g., "notes/my-file.md")
+	lastModified: number; // Timestamp for display
+	fileSize: number; // Bytes for display
+}
+
+/**
  * Union type for all node data
  */
 export type WorkflowNodeData =
 	| ({ type: 'action' } & ActionNodeData)
 	| ({ type: 'prompt' } & PromptNodeData)
 	| ({ type: 'code' } & CodeNodeData)
-	| ({ type: 'condition' } & ConditionNodeData);
+	| ({ type: 'condition' } & ConditionNodeData)
+	| ({ type: 'file' } & FileNodeData);
 
 /**
  * Workflow node with typed data

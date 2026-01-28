@@ -568,6 +568,16 @@ export class CommandExecutor {
       }
     }
 
+    // File attachments
+    if (request.inputContext.attachments && request.inputContext.attachments.length > 0) {
+      parts.push('## Attached Files');
+      for (const attachment of request.inputContext.attachments) {
+        parts.push(`--- ${attachment.path} ---`);
+        parts.push(attachment.content);
+        parts.push('');
+      }
+    }
+
     // The actual task - with variable substitution
     const task = this.substituteVariables(request.task, primaryOutput);
     parts.push('## Task');

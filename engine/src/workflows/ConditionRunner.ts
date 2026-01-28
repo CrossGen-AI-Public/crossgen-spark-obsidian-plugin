@@ -4,7 +4,7 @@
 
 import { runInNewContext } from 'node:vm';
 import type { Logger } from '../logger/Logger.js';
-import type { ConditionNodeData, ExecutionContext, WorkflowNode } from './types.js';
+import type { ConditionNodeData, ExecutionContext, FileAttachment, WorkflowNode } from './types.js';
 
 // Timeout for expression evaluation (1 second)
 const EXPRESSION_TIMEOUT_MS = 1000;
@@ -20,12 +20,18 @@ export class ConditionRunner {
    * Run a condition step
    * Returns boolean result that determines which branch to take
    */
-  async run(node: WorkflowNode, input: unknown, context: ExecutionContext): Promise<boolean> {
+  async run(
+    node: WorkflowNode,
+    input: unknown,
+    context: ExecutionContext,
+    attachments?: FileAttachment[]
+  ): Promise<boolean> {
     const data = node.data as ConditionNodeData & { type: 'condition' };
 
     this.logger.debug('Running condition step', {
       nodeId: node.id,
       expression: data.expression,
+      attachmentCount: attachments?.length ?? 0,
     });
 
     // Expose deterministic loop info for this node.
@@ -33,7 +39,12 @@ export class ConditionRunner {
     const iteration = context.visitCounts.get(node.id) ?? 1;
 
     // Create sandbox for expression evaluation
-    const sandbox = this.createSandbox(input, context, { iteration, maxCycles: data.maxCycles });
+    const sandbox = this.createSandbox(
+      input,
+      context,
+      { iteration, maxCycles: data.maxCycles },
+      attachments
+    );
 
     try {
       // Evaluate expression
@@ -69,7 +80,8 @@ export class ConditionRunner {
   private createSandbox(
     input: unknown,
     context: ExecutionContext,
-    loop: { iteration: number; maxCycles: number }
+    loop: { iteration: number; maxCycles: number },
+    attachments?: FileAttachment[]
   ): Record<string, unknown> {
     return {
       // Input from previous step (main variable for conditions)
@@ -77,6 +89,9 @@ export class ConditionRunner {
 
       // Also expose as 'output' for consistency
       output: input,
+
+      // File attachments from connected file nodes
+      attachments: attachments ?? [],
 
       // Loop helpers
       iteration: loop.iteration,

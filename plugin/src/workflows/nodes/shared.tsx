@@ -124,6 +124,49 @@ export function NodeHandles() {
 }
 
 /**
+ * Output-only handles for source nodes (e.g., file nodes)
+ * Only source handles - no target handles since these are entry points
+ * Handles on all four edges for flexible connections
+ */
+export function SourceOnlyHandles() {
+	return (
+		<>
+			{/* Left side output */}
+			<Handle
+				type="source"
+				position={Position.Left}
+				id="left-out"
+				className="spark-workflow-handle"
+			/>
+
+			{/* Right side output */}
+			<Handle
+				type="source"
+				position={Position.Right}
+				id="right-out"
+				className="spark-workflow-handle"
+			/>
+
+			{/* Top output */}
+			<Handle
+				type="source"
+				position={Position.Top}
+				id="top-out"
+				className="spark-workflow-handle"
+			/>
+
+			{/* Bottom output */}
+			<Handle
+				type="source"
+				position={Position.Bottom}
+				id="bottom-out"
+				className="spark-workflow-handle"
+			/>
+		</>
+	);
+}
+
+/**
  * Handles for condition nodes with true/false branches
  * Inputs on left/top/bottom, true/false outputs on right
  */

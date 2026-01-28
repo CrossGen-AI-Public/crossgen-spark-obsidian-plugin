@@ -38,6 +38,7 @@ import { ActionNode } from './nodes/ActionNode';
 import { PromptNode } from './nodes/PromptNode';
 import { CodeNode } from './nodes/CodeNode';
 import { ConditionNode } from './nodes/ConditionNode';
+import { FileNode } from './nodes/FileNode';
 import { Sidebar } from './Sidebar';
 import { WorkflowRunsSidebar } from './WorkflowRunsSidebar';
 import { WorkflowChat } from './WorkflowChat';
@@ -61,6 +62,7 @@ const nodeTypes = {
 	prompt: PromptNode,
 	code: CodeNode,
 	condition: ConditionNode,
+	file: FileNode,
 } as unknown as NodeTypes;
 
 // Auto-save debounce delay in milliseconds
@@ -120,8 +122,8 @@ const defaultEdgeOptions = {
 	animated: true,
 	markerEnd: {
 		type: MarkerType.ArrowClosed,
-		width: 20,
-		height: 20,
+		width: 12,
+		height: 12,
 	},
 	pathOptions: {
 		borderRadius: 16, // Rounded corners on turns
@@ -679,6 +681,121 @@ function WorkflowCanvasInner({
 	);
 
 	/**
+	 * Check if a drag event contains a file from Obsidian's file explorer
+	 */
+	const isObsidianFileDrag = useCallback((event: React.DragEvent): boolean => {
+		// Obsidian sets 'text/plain' with the file path when dragging from file explorer
+		return event.dataTransfer.types.includes('text/plain');
+	}, []);
+
+	/**
+	 * Extract file path from Obsidian drag event
+	 */
+	const extractFilePath = useCallback((event: React.DragEvent): string | null => {
+		const data = event.dataTransfer.getData('text/plain');
+		if (!data) return null;
+
+		// Obsidian sends obsidian:// URL scheme
+		// Format: obsidian://open?vault=vault-name&file=path%2Fto%2Ffile
+		if (data.startsWith('obsidian://')) {
+			try {
+				const url = new URL(data);
+				const filePath = url.searchParams.get('file');
+				if (!filePath) return null;
+				// URL-decode the path and add .md extension if needed
+				const decoded = decodeURIComponent(filePath);
+				return decoded.endsWith('.md') ? decoded : `${decoded}.md`;
+			} catch {
+				return null;
+			}
+		}
+
+		// Fallback: plain path (must be .md)
+		if (!data.endsWith('.md')) return null;
+		return data;
+	}, []);
+
+	/**
+	 * Handle drag over canvas - show drop feedback for valid files
+	 */
+	const onDragOver = useCallback(
+		(event: React.DragEvent) => {
+			if (isObsidianFileDrag(event)) {
+				event.preventDefault();
+				event.dataTransfer.dropEffect = 'copy';
+			}
+		},
+		[isObsidianFileDrag]
+	);
+
+	/**
+	 * Handle file drop on canvas - create file node
+	 */
+	const onDrop = useCallback(
+		(event: React.DragEvent) => {
+			event.preventDefault();
+
+			const path = extractFilePath(event);
+			if (!path) return;
+
+			// Convert screen coordinates to flow coordinates
+			const position = reactFlowInstance.screenToFlowPosition({
+				x: event.clientX,
+				y: event.clientY,
+			});
+
+			// Offset to center the node on the drop point
+			position.x -= 75;
+			position.y -= 30;
+
+			// Get file metadata from vault
+			const file = app.vault.getAbstractFileByPath(path);
+			const stat = file && 'stat' in file ? (file as { stat: { mtime: number; size: number } }).stat : null;
+
+			// Create file node
+			const newNode: WorkflowNode = {
+				id: generateId('file'),
+				type: 'file',
+				position,
+				data: {
+					type: 'file',
+					label: path.split('/').pop() || path,
+					path,
+					lastModified: stat?.mtime || Date.now(),
+					fileSize: stat?.size || 0,
+				},
+			};
+
+			setNodes((nds) => [...nds, newNode]);
+
+			// Select the new node
+			setSelectedNodeId(newNode.id);
+			setSidebarMode('node');
+		},
+		[app, extractFilePath, reactFlowInstance, setNodes]
+	);
+
+	/**
+	 * Handle double-click on file nodes - open file in Obsidian
+	 */
+	const onNodeDoubleClick = useCallback(
+		(_event: React.MouseEvent, node: WorkflowNode) => {
+			if (node.type !== 'file') return;
+
+			const fileData = node.data as { path?: string };
+			if (!fileData.path) return;
+
+			// Open the file in Obsidian
+			const file = app.vault.getAbstractFileByPath(fileData.path);
+			if (file && 'extension' in file) {
+				// openLinkText will focus existing tab or open new one
+				void app.workspace.openLinkText(fileData.path, '', false);
+			}
+		},
+		[app]
+	);
+
+	/**
 	 * Save workflow immediately (used before running)
 	 */
 	const saveWorkflowNow = useCallback(async () => {
@@ -839,8 +956,11 @@ function WorkflowCanvasInner({
 				onConnect={onConnect}
 				onConnectEnd={onConnectEnd}
 				onNodeClick={onNodeClick}
+				onNodeDoubleClick={onNodeDoubleClick}
 				onPaneClick={onPaneClick}
 				onSelectionChange={onSelectionChange}
+				onDragOver={onDragOver}
+				onDrop={onDrop}
 				nodeTypes={nodeTypes}
 				defaultEdgeOptions={defaultEdgeOptions}
 				fitView
