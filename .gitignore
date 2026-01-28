@@ -62,6 +62,9 @@ example-vault/.spark/workflow-runs/*
 example-vault/.spark/workflow-queue/*
 example-vault/.spark/workflow-generate-queue/*
 example-vault/.spark/workflow-generate-results/*
+example-vault/.spark/workflow-edit-results/*
+example-vault/.spark/workflow-edit-queue/*
+example-vault/.spark/workflow-chats/*
 
 # Add the conversations directory to VCS, but ignore all files inside
 example-vault/.spark/conversations/*

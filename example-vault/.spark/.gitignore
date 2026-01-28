@@ -6,6 +6,8 @@ history.json
 logs/*.md
 notifications.jsonl
 reload-status.json
+workflow-chats/
+workflow-edit-results/
 workflow-queue/
 workflow-runs/
 workflows/

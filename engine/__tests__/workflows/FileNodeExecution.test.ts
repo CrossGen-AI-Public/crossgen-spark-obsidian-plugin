@@ -286,4 +286,194 @@ describe('File Node Execution', () => {
     const codeResult = run.stepResults.find((r: { nodeId: string }) => r.nodeId === codeNode.id);
     expect(codeResult.output).toBe(true);
   });
+
+  describe('Bidirectional File Nodes (Write Mode)', () => {
+    it('writes prompt output to connected file node', async () => {
+      // Prompt -> File (write mode)
+      const promptNode = createPromptNode('Generate some content.');
+      const fileNode = createFileNode('output.md', 'file_output');
+      const workflow = createWorkflow(
+        [promptNode, fileNode],
+        [{ id: 'e1', source: promptNode.id, target: fileNode.id }]
+      );
+
+      // Mock AI response
+      mockCommandExecutor.executeWorkflowPrompt.mockResolvedValue({ content: '# Generated Content\n\nThis is AI generated.' });
+
+      await saveWorkflow(workflow);
+      const runId = 'run_write_prompt';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      // Check run completed
+      const run = await readRunResult(workflow.id, runId);
+      expect(run.status).toBe('completed');
+
+      // Check file was created with the AI output
+      const fileContent = await vault.readFile('output.md');
+      expect(fileContent).toBe('# Generated Content\n\nThis is AI generated.');
+    });
+
+    it('writes code output to connected file node', async () => {
+      // Code -> File (write mode)
+      const codeNode = createCodeNode('return "Code output result"');
+      const fileNode = createFileNode('code-output.txt', 'file_output');
+      const workflow = createWorkflow(
+        [codeNode, fileNode],
+        [{ id: 'e1', source: codeNode.id, target: fileNode.id }]
+      );
+
+      await saveWorkflow(workflow);
+      const runId = 'run_write_code';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      // Check run completed
+      const run = await readRunResult(workflow.id, runId);
+      expect(run.status).toBe('completed');
+
+      // Check file was created with code output
+      const fileContent = await vault.readFile('code-output.txt');
+      expect(fileContent).toBe('Code output result');
+    });
+
+    it('writes same content to multiple file targets', async () => {
+      // Prompt -> [File1, File2] (both in write mode)
+      const promptNode = createPromptNode('Generate content.');
+      const file1 = createFileNode('output1.md', 'file_1');
+      const file2 = createFileNode('output2.md', 'file_2');
+      const workflow = createWorkflow(
+        [promptNode, file1, file2],
+        [
+          { id: 'e1', source: promptNode.id, target: file1.id },
+          { id: 'e2', source: promptNode.id, target: file2.id },
+        ]
+      );
+
+      mockCommandExecutor.executeWorkflowPrompt.mockResolvedValue({ content: 'Shared content' });
+
+      await saveWorkflow(workflow);
+      const runId = 'run_write_multi';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      const run = await readRunResult(workflow.id, runId);
+      expect(run.status).toBe('completed');
+
+      // Both files should have the same content
+      const content1 = await vault.readFile('output1.md');
+      const content2 = await vault.readFile('output2.md');
+      expect(content1).toBe('Shared content');
+      expect(content2).toBe('Shared content');
+    });
+
+    it('creates parent directories when writing to nested path', async () => {
+      const codeNode = createCodeNode('return "Nested file content"');
+      const fileNode = createFileNode('nested/path/to/output.md', 'file_nested');
+      const workflow = createWorkflow(
+        [codeNode, fileNode],
+        [{ id: 'e1', source: codeNode.id, target: fileNode.id }]
+      );
+
+      await saveWorkflow(workflow);
+      const runId = 'run_write_nested';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      const run = await readRunResult(workflow.id, runId);
+      expect(run.status).toBe('completed');
+
+      // File should exist in nested directory
+      const fileContent = await vault.readFile('nested/path/to/output.md');
+      expect(fileContent).toBe('Nested file content');
+    });
+
+    it('passes file targets to prompt request for AI awareness', async () => {
+      const promptNode = createPromptNode('Generate JSON data.');
+      const fileNode = createFileNode('data.json', 'file_json');
+      const workflow = createWorkflow(
+        [promptNode, fileNode],
+        [{ id: 'e1', source: promptNode.id, target: fileNode.id }]
+      );
+
+      mockCommandExecutor.executeWorkflowPrompt.mockResolvedValue({ content: '{"test": true}' });
+
+      await saveWorkflow(workflow);
+      const runId = 'run_file_targets';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      // Verify the prompt request included file targets
+      expect(mockCommandExecutor.executeWorkflowPrompt).toHaveBeenCalled();
+      const call = mockCommandExecutor.executeWorkflowPrompt.mock.calls[0]![0] as { fileTargets?: Array<{ path: string }> };
+      expect(call.fileTargets).toBeDefined();
+      expect(call.fileTargets).toHaveLength(1);
+      expect(call.fileTargets![0]!.path).toBe('data.json');
+    });
+
+    it('handles file node in write mode (skips reading)', async () => {
+      // File in read mode -> Prompt -> File in write mode
+      await vault.writeFile('input.md', '# Input Content');
+
+      const inputFile = createFileNode('input.md', 'file_input');
+      const promptNode = createPromptNode('Transform: $input');
+      const outputFile = createFileNode('output.md', 'file_output');
+
+      const workflow = createWorkflow(
+        [inputFile, promptNode, outputFile],
+        [
+          { id: 'e1', source: inputFile.id, target: promptNode.id },
+          { id: 'e2', source: promptNode.id, target: outputFile.id },
+        ]
+      );
+
+      mockCommandExecutor.executeWorkflowPrompt.mockResolvedValue({ content: 'Transformed content' });
+
+      await saveWorkflow(workflow);
+      const runId = 'run_read_write';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      const run = await readRunResult(workflow.id, runId);
+      expect(run.status).toBe('completed');
+
+      // Input file attachment should be passed to prompt
+      const call = mockCommandExecutor.executeWorkflowPrompt.mock.calls[0]![0] as { inputContext: { attachments?: FileAttachment[] } };
+      expect(call.inputContext.attachments).toHaveLength(1);
+      expect(call.inputContext.attachments![0]!.path).toBe('input.md');
+
+      // Output file should have the transformed content
+      const outputContent = await vault.readFile('output.md');
+      expect(outputContent).toBe('Transformed content');
+    });
+
+    it('writes JSON objects as formatted JSON', async () => {
+      const codeNode = createCodeNode('return { key: "value", nested: { num: 42 } }');
+      const fileNode = createFileNode('data.json', 'file_json');
+      const workflow = createWorkflow(
+        [codeNode, fileNode],
+        [{ id: 'e1', source: codeNode.id, target: fileNode.id }]
+      );
+
+      await saveWorkflow(workflow);
+      const runId = 'run_write_json';
+      await queueWorkflow(workflow.id, runId);
+
+      await executor.processQueueFile(`.spark/workflow-queue/${runId}.json`);
+
+      const run = await readRunResult(workflow.id, runId);
+      expect(run.status).toBe('completed');
+
+      // File should have formatted JSON
+      const fileContent = await vault.readFile('data.json');
+      const parsed = JSON.parse(fileContent);
+      expect(parsed).toEqual({ key: 'value', nested: { num: 42 } });
+    });
+  });
 });

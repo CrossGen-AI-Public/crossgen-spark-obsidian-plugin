@@ -13,6 +13,7 @@ import type { CommandExecutor } from '../execution/CommandExecutor.js';
 import type { Logger } from '../logger/Logger.js';
 import type {
   ExecutionContext,
+  FileTarget,
   LabeledOutput,
   PromptNodeData,
   WorkflowInputContext,
@@ -35,7 +36,8 @@ export class PromptRunner {
   async run(
     node: WorkflowNode,
     inputContext: WorkflowInputContext,
-    context: ExecutionContext
+    context: ExecutionContext,
+    fileTargets?: FileTarget[]
   ): Promise<unknown> {
     const data = node.data as PromptNodeData & { type: 'prompt' };
 
@@ -49,6 +51,7 @@ export class PromptRunner {
       structuredOutput: !!data.structuredOutput,
       hasPrimaryInput: !!inputContext.primary,
       contextCount: inputContext.context.length,
+      fileTargetCount: fileTargets?.length || 0,
     });
 
     // Build the request with proper separation of concerns
@@ -63,6 +66,7 @@ export class PromptRunner {
       task: cleanPrompt,
       structuredOutput: data.structuredOutput,
       outputSchema: data.outputSchema,
+      fileTargets: fileTargets && fileTargets.length > 0 ? fileTargets : undefined,
     };
 
     // Execute via command executor

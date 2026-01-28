@@ -521,14 +521,36 @@ export class CommandExecutor {
     }
     parts.push('');
 
+    // File target information (if any)
+    if (request.fileTargets && request.fileTargets.length > 0) {
+      parts.push('## Output Destination');
+      const [firstTarget] = request.fileTargets;
+      if (request.fileTargets.length === 1 && firstTarget) {
+        parts.push(`Your response will be written to: ${firstTarget.path}`);
+      } else {
+        parts.push('Your response will be written to these files:');
+        for (const target of request.fileTargets) {
+          parts.push(`- ${target.path}`);
+        }
+      }
+      parts.push('');
+      parts.push('Format your output appropriately for the file type:');
+      parts.push('- .md files: Use Markdown formatting');
+      parts.push('- .json files: Output valid JSON only, no markdown fences');
+      parts.push('- Code files (.js, .ts, .py, etc.): Output code only, no markdown fences');
+      parts.push('');
+    }
+
     // Behavior guidelines
     parts.push('## Guidelines');
     parts.push('- Be concise and direct. No preamble or pleasantries.');
     parts.push('- Your output feeds into the next workflow step.');
     parts.push('- Focus on completing the task exactly as specified.');
-    parts.push(
-      '- Only write to files when explicitly asked (e.g., "save to file", "create a file"). Otherwise, return content directly.'
-    );
+    if (!request.fileTargets || request.fileTargets.length === 0) {
+      parts.push(
+        '- Only write to files when explicitly asked (e.g., "save to file", "create a file"). Otherwise, return content directly.'
+      );
+    }
 
     return parts.join('\n');
   }

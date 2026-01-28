@@ -122,8 +122,8 @@ const defaultEdgeOptions = {
 	animated: true,
 	markerEnd: {
 		type: MarkerType.ArrowClosed,
-		width: 12,
-		height: 12,
+		width: 20,
+		height: 20,
 	},
 	pathOptions: {
 		borderRadius: 16, // Rounded corners on turns
@@ -906,16 +906,34 @@ function WorkflowCanvasInner({
 	// Memoize proOptions to avoid re-renders
 	const proOptions = useMemo(() => ({ hideAttribution: true }), []);
 
-	// Add execution status to nodes for rendering
+	// Compute which file nodes have incoming edges (write mode)
+	const fileNodesWithIncoming = useMemo(() => {
+		const result = new Set<string>();
+		for (const edge of edges) {
+			const targetNode = nodes.find((n) => n.id === edge.target);
+			if (targetNode?.type === 'file') {
+				// Check if source is a non-file node (prompt, code, etc.)
+				const sourceNode = nodes.find((n) => n.id === edge.source);
+				if (sourceNode && sourceNode.type !== 'file') {
+					result.add(edge.target);
+				}
+			}
+		}
+		return result;
+	}, [nodes, edges]);
+
+	// Add execution status and hasIncoming to nodes for rendering
 	const nodesWithStatus = useMemo(() => {
 		return nodes.map((node) => ({
 			...node,
 			data: {
 				...node.data,
 				executionStatus: nodeExecutionStatus[node.id] as StepStatus | undefined,
+				// Add hasIncoming for file nodes
+				...(node.type === 'file' ? { hasIncoming: fileNodesWithIncoming.has(node.id) } : {}),
 			},
 		}));
-	}, [nodes, nodeExecutionStatus]);
+	}, [nodes, nodeExecutionStatus, fileNodesWithIncoming]);
 
 	// Ensure edges have className derived from label AND execution status
 	const edgesWithClassName = useMemo(() => {
@@ -942,7 +960,17 @@ function WorkflowCanvasInner({
 			}
 
 			// Animated edges for pending/not-yet-executed paths
-			return { ...workflowEdge, className, animated: !isExecuted };
+			// Explicitly set markerEnd to ensure consistent arrow sizes
+			return {
+				...workflowEdge,
+				className,
+				animated: !isExecuted,
+				markerEnd: {
+					type: MarkerType.ArrowClosed,
+					width: 20,
+					height: 20,
+				},
+			};
 		});
 	}, [edges, nodeExecutionStatus]);
 

@@ -124,7 +124,7 @@ export function NodeHandles() {
 }
 
 /**
- * Output-only handles for source nodes (e.g., file nodes)
+ * Output-only handles for source nodes (e.g., file nodes in read-only mode)
  * Only source handles - no target handles since these are entry points
  * Handles on all four edges for flexible connections
  */
@@ -156,6 +156,74 @@ export function SourceOnlyHandles() {
 			/>
 
 			{/* Bottom output */}
+			<Handle
+				type="source"
+				position={Position.Bottom}
+				id="bottom-out"
+				className="spark-workflow-handle"
+			/>
+		</>
+	);
+}
+
+/**
+ * Bidirectional handles for file nodes
+ * Input handles (target) for writing TO file
+ * Output handles (source) for reading FROM file
+ * This allows file nodes to be both data sources and destinations
+ */
+export function BidirectionalHandles() {
+	return (
+		<>
+			{/* Left side - both input and output */}
+			<Handle
+				type="target"
+				position={Position.Left}
+				id="left-in"
+				className="spark-workflow-handle"
+			/>
+			<Handle
+				type="source"
+				position={Position.Left}
+				id="left-out"
+				className="spark-workflow-handle"
+			/>
+
+			{/* Right side - both input and output */}
+			<Handle
+				type="target"
+				position={Position.Right}
+				id="right-in"
+				className="spark-workflow-handle"
+			/>
+			<Handle
+				type="source"
+				position={Position.Right}
+				id="right-out"
+				className="spark-workflow-handle"
+			/>
+
+			{/* Top side - both input and output */}
+			<Handle
+				type="target"
+				position={Position.Top}
+				id="top-in"
+				className="spark-workflow-handle"
+			/>
+			<Handle
+				type="source"
+				position={Position.Top}
+				id="top-out"
+				className="spark-workflow-handle"
+			/>
+
+			{/* Bottom side - both input and output */}
+			<Handle
+				type="target"
+				position={Position.Bottom}
+				id="bottom-in"
+				className="spark-workflow-handle"
+			/>
 			<Handle
 				type="source"
 				position={Position.Bottom}

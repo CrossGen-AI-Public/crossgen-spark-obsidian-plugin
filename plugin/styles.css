@@ -1745,9 +1745,10 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     text-overflow: ellipsis;
 }
 
-/* File node - wider to accommodate filenames */
+/* File node - wider to accommodate filenames, blue accent like triggers */
 .spark-workflow-node-file {
     max-width: 320px;
+    border-color: var(--color-blue);
 }
 
 .spark-workflow-node-path {
@@ -1813,6 +1814,18 @@ div:has(>.spark-conversation-suggestion-content):hover .spark-conversation-delet
     background: rgba(128, 128, 128, 0.25);
     color: var(--text-normal);
     border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* Write mode badge for file nodes */
+.spark-workflow-node-badge-write {
+    background: rgba(82, 139, 255, 0.25);
+    color: var(--color-blue);
+    border: 1px solid rgba(82, 139, 255, 0.4);
+}
+
+/* File node in write mode - subtle blue accent */
+.spark-workflow-node-file-write {
+    border-color: var(--color-blue);
 }
 
 /* Node type colors */
@@ -3701,9 +3714,11 @@ svg.react-flow__connectionline {
 }
 
 /* Executed edges - solid line with success color */
+/* Note: stroke-width affects marker/arrow size in React Flow (markerUnits="strokeWidth") */
+/* Keep at 1 to maintain consistent arrow sizes with non-executed edges */
 .spark-edge-executed .react-flow__edge-path {
     stroke: var(--text-success);
-    stroke-width: 2.5;
+    stroke-width: 1;
 }
 
 /* ==============================

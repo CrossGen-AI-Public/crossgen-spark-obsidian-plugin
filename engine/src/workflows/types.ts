@@ -203,6 +203,15 @@ export interface WorkflowInputContext {
 }
 
 /**
+ * File target for writing prompt/code output to files
+ */
+export interface FileTarget {
+  nodeId: string;
+  path: string;
+  label: string;
+}
+
+/**
  * Request from PromptRunner to CommandExecutor
  * Separates concerns: system prompt addons vs user message structure
  */
@@ -228,4 +237,7 @@ export interface WorkflowPromptRequest {
   // Output requirements
   structuredOutput?: boolean;
   outputSchema?: string;
+
+  // File targets for writing output
+  fileTargets?: FileTarget[];
 }

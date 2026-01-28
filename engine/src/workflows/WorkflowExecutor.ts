@@ -22,6 +22,7 @@ import type {
   ExecutionContext,
   FileAttachment,
   FileNodeData,
+  FileTarget,
   LabeledOutput,
   StepResult,
   WorkflowDefinition,
@@ -332,40 +333,12 @@ export class WorkflowExecutor {
     const result: StepResult = {
       nodeId: node.id,
       status: 'running',
-      input, // Store input for debugging/display
+      input,
       startTime: Date.now(),
     };
 
     try {
-      let output: unknown;
-
-      // Collect file attachments for nodes that can receive them
-      const attachments = this.collectFileAttachments(workflow, node.id, context);
-
-      switch (node.type) {
-        case 'prompt': {
-          // Build structured input context for prompt nodes
-          const inputContext = this.buildInputContext(workflow, node.id, input, context);
-          output = await this.promptRunner.run(node, inputContext, context);
-          break;
-        }
-
-        case 'code':
-          output = await this.codeRunner.run(node, input, context, attachments);
-          break;
-
-        case 'condition':
-          output = await this.conditionRunner.run(node, input, context, attachments);
-          break;
-
-        case 'file':
-          output = await this.executeFileNode(node);
-          break;
-
-        default:
-          throw new Error(`Unknown step type: ${String(node.type)}`);
-      }
-
+      const output = await this.executeStepByType(workflow, node, input, context);
       result.status = 'completed';
       result.output = output;
     } catch (error) {
@@ -378,17 +351,128 @@ export class WorkflowExecutor {
   }
 
   /**
-   * Execute a file node - reads file content and returns it as an attachment
+   * Execute step based on node type
    */
-  private async executeFileNode(node: WorkflowNode): Promise<FileAttachment> {
+  private async executeStepByType(
+    workflow: WorkflowDefinition,
+    node: WorkflowNode,
+    input: unknown,
+    context: ExecutionContext
+  ): Promise<unknown> {
+    const attachments = this.collectFileAttachments(workflow, node.id, context);
+
+    switch (node.type) {
+      case 'prompt':
+        return this.executePromptNode(workflow, node, input, context);
+
+      case 'code':
+        return this.executeCodeNode(workflow, node, input, context, attachments);
+
+      case 'condition':
+        return this.conditionRunner.run(node, input, context, attachments);
+
+      case 'file':
+        return this.executeFileNode(node, workflow);
+
+      default:
+        throw new Error(`Unknown step type: ${String(node.type)}`);
+    }
+  }
+
+  /**
+   * Execute a prompt node and write to connected file nodes
+   */
+  private async executePromptNode(
+    workflow: WorkflowDefinition,
+    node: WorkflowNode,
+    input: unknown,
+    context: ExecutionContext
+  ): Promise<unknown> {
+    const fileTargets = this.getDownstreamFileTargets(workflow, node.id);
+    const inputContext = this.buildInputContext(workflow, node.id, input, context);
+    const output = await this.promptRunner.run(node, inputContext, context, fileTargets);
+
+    this.writeOutputToFileTargets(output, fileTargets);
+    return output;
+  }
+
+  /**
+   * Execute a code node and write to connected file nodes
+   */
+  private async executeCodeNode(
+    workflow: WorkflowDefinition,
+    node: WorkflowNode,
+    input: unknown,
+    context: ExecutionContext,
+    attachments: FileAttachment[]
+  ): Promise<unknown> {
+    const fileTargets = this.getDownstreamFileTargets(workflow, node.id);
+    const output = await this.codeRunner.run(node, input, context, attachments);
+
+    this.writeOutputToFileTargets(output, fileTargets);
+    return output;
+  }
+
+  /**
+   * Write output to connected file targets
+   */
+  private writeOutputToFileTargets(output: unknown, fileTargets: FileTarget[]): void {
+    if (fileTargets.length === 0 || output === undefined) return;
+
+    const content = this.extractContentForFileWrite(output);
+    for (const target of fileTargets) {
+      this.writeToFileNode(target.path, content);
+    }
+  }
+
+  /**
+   * Extract string content from output for writing to files
+   */
+  private extractContentForFileWrite(output: unknown): string {
+    if (typeof output === 'string') {
+      return output;
+    }
+    if (typeof output === 'object' && output !== null) {
+      // Handle { content: string } wrapper from prompt responses
+      if ('content' in output && typeof (output as { content: unknown }).content === 'string') {
+        return (output as { content: string }).content;
+      }
+      // Serialize objects as JSON
+      return JSON.stringify(output, null, 2);
+    }
+    return String(output);
+  }
+
+  /**
+   * Execute a file node - reads file content and returns it as an attachment
+   * In write mode (has incoming edges), the file is written to by upstream nodes
+   */
+  private async executeFileNode(
+    node: WorkflowNode,
+    workflow: WorkflowDefinition
+  ): Promise<FileAttachment | null> {
     const data = node.data as FileNodeData & { type: 'file' };
     const filePath = join(this.vaultPath, data.path);
+
+    // Check if this is a write-mode file node (has incoming edges from non-file nodes)
+    const hasIncomingFromNonFile = workflow.edges.some((e) => {
+      if (e.target !== node.id) return false;
+      const sourceNode = workflow.nodes.find((n) => n.id === e.source);
+      return sourceNode && sourceNode.type !== 'file';
+    });
 
     this.logger.debug('Executing file node', {
       nodeId: node.id,
       path: data.path,
+      isWriteMode: hasIncomingFromNonFile,
     });
 
+    // In write mode, skip reading - the file will be written to by upstream nodes
+    if (hasIncomingFromNonFile) {
+      return null;
+    }
+
+    // Read mode - return file content as attachment
     if (!existsSync(filePath)) {
       throw new Error(`File not found: ${data.path}`);
     }
@@ -399,6 +483,49 @@ export class WorkflowExecutor {
       path: data.path,
       content,
     };
+  }
+
+  /**
+   * Get file nodes connected as targets (downstream) from a source node
+   * These are files that should receive the node's output
+   */
+  private getDownstreamFileTargets(workflow: WorkflowDefinition, nodeId: string): FileTarget[] {
+    const targets: FileTarget[] = [];
+    const outgoingEdges = workflow.edges.filter((e) => e.source === nodeId);
+
+    for (const edge of outgoingEdges) {
+      const targetNode = workflow.nodes.find((n) => n.id === edge.target);
+      if (targetNode?.type === 'file') {
+        const fileData = targetNode.data as FileNodeData & { type: 'file' };
+        targets.push({
+          nodeId: targetNode.id,
+          path: fileData.path,
+          label: fileData.label,
+        });
+      }
+    }
+
+    return targets;
+  }
+
+  /**
+   * Write content to a file node's path
+   * Creates parent directories if they don't exist
+   */
+  private writeToFileNode(path: string, content: string): void {
+    const filePath = join(this.vaultPath, path);
+    const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+
+    // Create parent directories if needed
+    if (dir && !existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    writeFileSync(filePath, content, 'utf-8');
+    this.logger.debug('Wrote content to file node', {
+      path,
+      contentLength: content.length,
+    });
   }
 
   /**
