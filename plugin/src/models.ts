@@ -3,6 +3,7 @@
  */
 export enum ProviderType {
 	ANTHROPIC = 'anthropic',
+	LOCAL = 'local',
 }
 
 /**
@@ -40,14 +41,69 @@ export const MODEL_LABELS: Record<string, string> = {
 	[ClaudeModel.HAIKU_3]: 'Claude Haiku 3',
 };
 
-// Get all models by provider
-export function getModelsByProvider(provider: ProviderType): string[] {
-	switch (provider) {
-		case ProviderType.ANTHROPIC:
-			return Object.values(ClaudeModel);
-		default:
-			return [];
+/**
+ * Local model info from engine's .spark/local-models.json
+ */
+interface LocalModelsFile {
+	connected: boolean;
+	models: Array<{
+		path: string;
+		displayName: string;
+		paramsString?: string;
+		sizeBytes?: number;
+		trainedForToolUse?: boolean;
+		maxContextLength?: number;
+	}>;
+	timestamp: number;
+}
+
+// Cached local models from engine-written file
+let cachedLocalModels: string[] = [];
+let lmStudioConnected = false;
+
+const LOCAL_MODELS_PATH = '.spark/local-models.json';
+
+/**
+ * Fetch local models by reading .spark/local-models.json written by the engine.
+ * The engine handles LM Studio communication (no CORS issues in Node.js).
+ * @param readFile - async function to read a vault file (e.g. adapter.read)
+ */
+export async function fetchLocalModels(
+	readFile: (path: string) => Promise<string>
+): Promise<string[]> {
+	try {
+		const content = await readFile(LOCAL_MODELS_PATH);
+		const data = JSON.parse(content) as LocalModelsFile;
+		lmStudioConnected = data.connected;
+		cachedLocalModels = data.models.map(m => m.path);
+		return cachedLocalModels;
+	} catch {
+		lmStudioConnected = false;
+		return cachedLocalModels;
 	}
+}
+
+// Get cached local models (sync)
+export function getLocalModels(): string[] {
+	return cachedLocalModels;
+}
+
+// Whether LM Studio server was reachable (based on engine's last check)
+export function isLMStudioConnected(): boolean {
+	return lmStudioConnected;
+}
+
+// Extract display name from model path (e.g. "lmstudio-community/Qwen2.5-3B-Instruct" → "Qwen2.5-3B-Instruct")
+export function getLocalModelLabel(modelPath: string): string {
+	const parts = modelPath.split('/');
+	return parts.length > 1 ? parts[parts.length - 1] : modelPath;
+}
+
+// Get all models by provider
+export function getModelsByProvider(provider: string): string[] {
+	if (provider === 'anthropic') return Object.values(ClaudeModel);
+	if (provider === 'local') return getLocalModels();
+	return [];
 }
 
 // Get all model values as array
@@ -55,14 +111,15 @@ export const ALL_MODELS = Object.values(ClaudeModel);
 
 // Get model label
 export function getModelLabel(model: string): string {
-	return MODEL_LABELS[model] || model;
+	return MODEL_LABELS[model] || getLocalModelLabel(model);
 }
 
 // Provider labels
-export const PROVIDER_LABELS: Record<ProviderType, string> = {
+export const PROVIDER_LABELS: Record<string, string> = {
 	[ProviderType.ANTHROPIC]: 'Anthropic Claude',
+	[ProviderType.LOCAL]: 'Local (LM Studio)',
 };
 
 export function getProviderLabel(provider: string): string {
-	return PROVIDER_LABELS[provider as ProviderType] || provider;
+	return PROVIDER_LABELS[provider] || provider;
 }

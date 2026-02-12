@@ -11,10 +11,14 @@ import {
 } from './constants';
 import { decryptSecrets, encryptSecrets, isEncrypted } from './crypto/index';
 import {
-	ALL_MODELS,
+	ClaudeModel,
+	fetchLocalModels,
+	getLocalModelLabel,
+	getLocalModels,
 	getModelLabel,
 	getModelsByProvider,
 	getProviderLabel,
+	isLMStudioConnected,
 	ProviderType,
 } from './models';
 import { EngineService } from './services/EngineService';
@@ -40,6 +44,7 @@ interface AgentConfig {
 	context_folders?: string[];
 	tools?: string[];
 	ai: {
+		provider?: string;
 		model: string;
 		temperature: number;
 	};
@@ -161,6 +166,9 @@ export class SparkSettingTab extends PluginSettingTab {
 	private populateGeneralTab(containerEl: HTMLElement) {
 		// Engine section
 		this.populateEngineSection(containerEl);
+
+		// Local model section
+		this.populateLocalModelSection(containerEl);
 
 		// Plugin section
 		new Setting(containerEl).setName('Plugin').setHeading();
@@ -308,6 +316,215 @@ export class SparkSettingTab extends PluginSettingTab {
 		}
 	}
 
+	private populateLocalModelSection(containerEl: HTMLElement) {
+		new Setting(containerEl).setName('Local model').setHeading();
+		new Setting(containerEl)
+			.setDesc(
+				'Route all AI requests through a local model. Overrides provider settings for every agent.'
+			)
+			.setClass('spark-section-desc');
+
+		const sectionContainer = containerEl.createDiv();
+
+		// Pre-fetch local models, then render
+		void fetchLocalModels(path => this.app.vault.adapter.read(path)).then(() => {
+			void this.renderLocalModelSection(sectionContainer);
+		});
+	}
+
+	private async renderLocalModelSection(containerEl: HTMLElement) {
+		containerEl.empty();
+		const adapter = this.app.vault.adapter;
+		const configPath = '.spark/config.yaml';
+
+		let rawConfig: Record<string, unknown>;
+		try {
+			const content = await adapter.read(configPath);
+			rawConfig = yaml.load(content) as Record<string, unknown>;
+		} catch {
+			containerEl.createEl('p', {
+				text: 'Could not load config.yaml',
+				cls: 'setting-item-description',
+			});
+			return;
+		}
+
+		const ai = rawConfig.ai as Record<string, unknown>;
+		const providers = (ai.providers ?? {}) as Record<string, Record<string, unknown>>;
+		const localOverride = (ai.localOverride ?? { enabled: false, model: '' }) as {
+			enabled: boolean;
+			model: string;
+		};
+
+		// Toggle (above model dropdown)
+		new Setting(containerEl)
+			.setName('Use local model')
+			.setDesc('Send all requests to a local model instead of cloud providers')
+			.addToggle(toggle => {
+				toggle.setValue(localOverride.enabled).onChange(value => {
+					localOverride.enabled = value;
+					renderModelDropdown();
+					void this.saveLocalOverride(rawConfig, localOverride, providers);
+				});
+			});
+
+		// Model dropdown container (rebuilt on refresh)
+		const modelContainer = containerEl.createDiv();
+
+		const renderModelDropdown = () => {
+			modelContainer.empty();
+			if (!localOverride.enabled) return;
+
+			const localModels = getLocalModels();
+			const connected = isLMStudioConnected();
+
+			if (!connected) {
+				const hint = modelContainer.createDiv({ cls: 'setting-item-description' });
+				setCssProps(hint, {
+					padding: '0.5em',
+					marginBottom: '0.5em',
+					backgroundColor: 'var(--background-secondary)',
+					borderRadius: '4px',
+				});
+				hint.createEl('strong', { text: 'Not connected. ' });
+				hint.appendText('Start the local server, then click refresh.');
+
+				const modelSetting = new Setting(modelContainer)
+					.setName('Model')
+					.setDesc('Enter model name manually')
+					.addText(text => {
+						text
+							.setPlaceholder('Model name')
+							.setValue(localOverride.model)
+							.onChange(value => {
+								localOverride.model = value;
+							});
+						return text;
+					});
+				modelSetting.addExtraButton(btn => {
+					btn
+						.setIcon('refresh-cw')
+						.setTooltip('Retry connection')
+						.onClick(() => {
+							void fetchLocalModels(path => adapter.read(path)).then(() => renderModelDropdown());
+						});
+				});
+				modelSetting.addButton(btn =>
+					btn
+						.setButtonText('Save')
+						.setCta()
+						.onClick(() => {
+							void this.saveLocalOverride(rawConfig, localOverride, providers);
+						})
+				);
+			} else if (localModels.length > 0) {
+				// Default to first model if none selected
+				if (!localOverride.model) {
+					localOverride.model = localModels[0];
+				}
+
+				const modelSetting = new Setting(modelContainer)
+					.setName('Model')
+					.setDesc('Select local model')
+					.addDropdown(dropdown => {
+						for (const model of localModels) {
+							dropdown.addOption(model, getLocalModelLabel(model));
+						}
+						dropdown.setValue(localOverride.model).onChange(value => {
+							localOverride.model = value;
+							void this.saveLocalOverride(rawConfig, localOverride, providers);
+						});
+						return dropdown;
+					});
+				modelSetting.addExtraButton(btn => {
+					btn
+						.setIcon('refresh-cw')
+						.setTooltip('Refresh models')
+						.onClick(() => {
+							void fetchLocalModels(path => adapter.read(path)).then(() => renderModelDropdown());
+						});
+				});
+			} else {
+				const hint = modelContainer.createDiv({ cls: 'setting-item-description' });
+				setCssProps(hint, {
+					padding: '0.5em',
+					marginBottom: '0.5em',
+					backgroundColor: 'var(--background-secondary)',
+					borderRadius: '4px',
+				});
+				hint.createEl('strong', { text: 'No models found. ' });
+				hint.appendText('Download one in the app or run: ');
+				hint.createEl('code', { text: 'lms get <model-name>' });
+
+				const modelSetting = new Setting(modelContainer)
+					.setName('Model')
+					.setDesc('Enter model name manually')
+					.addText(text => {
+						text
+							.setPlaceholder('Model name')
+							.setValue(localOverride.model)
+							.onChange(value => {
+								localOverride.model = value;
+							});
+						return text;
+					});
+				modelSetting.addExtraButton(btn => {
+					btn
+						.setIcon('refresh-cw')
+						.setTooltip('Refresh models')
+						.onClick(() => {
+							void fetchLocalModels(path => adapter.read(path)).then(() => renderModelDropdown());
+						});
+				});
+				modelSetting.addButton(btn =>
+					btn
+						.setButtonText('Save')
+						.setCta()
+						.onClick(() => {
+							void this.saveLocalOverride(rawConfig, localOverride, providers);
+						})
+				);
+			}
+		};
+
+		renderModelDropdown();
+	}
+
+	private async saveLocalOverride(
+		rawConfig: Record<string, unknown>,
+		localOverride: { enabled: boolean; model: string },
+		providers: Record<string, Record<string, unknown>>
+	) {
+		const adapter = this.app.vault.adapter;
+		const configPath = '.spark/config.yaml';
+
+		// Auto-create local provider if missing and override is enabled
+		if (localOverride.enabled && !providers['local']) {
+			providers['local'] = {
+				type: 'local',
+				model: localOverride.model,
+				maxTokens: 4096,
+				temperature: 0.7,
+				options: { backend: 'lmstudio', enableTools: false },
+			};
+			(rawConfig.ai as Record<string, unknown>).providers = providers;
+		}
+
+		// Write localOverride into the config
+		(rawConfig.ai as Record<string, unknown>).localOverride = localOverride;
+
+		try {
+			const yamlStr = yaml.dump(rawConfig, { lineWidth: -1 });
+			await adapter.write(configPath, yamlStr);
+			new Notice(
+				localOverride.enabled ? 'Local model override enabled' : 'Local model override disabled'
+			);
+		} catch (error) {
+			console.error('[Spark] Error saving local override:', error);
+			new Notice('Error saving configuration');
+		}
+	}
+
 	private populateAgentsTab(containerEl: HTMLElement) {
 		// Agents Section
 		new Setting(containerEl).setName('Agents').setHeading();
@@ -329,11 +546,15 @@ export class SparkSettingTab extends PluginSettingTab {
 			);
 
 		this.agentsContainer = containerEl.createDiv();
+		// Load agents immediately, fetch local models in background (non-blocking)
+		void fetchLocalModels(path => this.app.vault.adapter.read(path));
 		void this.loadAgents();
 	}
 
 	private populateAdvancedTab(containerEl: HTMLElement) {
 		this.configContainer = containerEl.createDiv();
+		// Pre-fetch local models (non-blocking, populates cache for dropdowns)
+		void fetchLocalModels(path => this.app.vault.adapter.read(path));
 		void this.loadConfig();
 	}
 
@@ -458,16 +679,49 @@ export class SparkSettingTab extends PluginSettingTab {
 						.onChange(value => (agent.tools = value ? value.split(',').map(s => s.trim()) : []))
 				);
 
-			// AI Model
+			// AI Model (grouped dropdown)
 			new Setting(editorForm)
 				.setName('AI model')
-				.setDesc('Select from available claude models')
+				.setDesc('Select model')
 				.addDropdown(dropdown => {
-					// Add all available Claude models
-					ALL_MODELS.forEach(model => {
-						dropdown.addOption(model, getModelLabel(model));
+					const selectEl = dropdown.selectEl;
+					selectEl.empty();
+
+					// Group 1: Anthropic Claude
+					const claudeGroup = selectEl.createEl('optgroup', {
+						attr: { label: 'Anthropic Claude' },
 					});
-					dropdown.setValue(agent.ai.model).onChange(value => (agent.ai.model = value));
+					for (const model of Object.values(ClaudeModel)) {
+						claudeGroup.createEl('option', {
+							value: model,
+							text: getModelLabel(model),
+						});
+					}
+
+					// Group 2: Local (LM Studio) — only if models available
+					const localModels = getLocalModels();
+					if (localModels.length > 0) {
+						const localGroup = selectEl.createEl('optgroup', {
+							attr: { label: 'Local (LM Studio)' },
+						});
+						for (const model of localModels) {
+							localGroup.createEl('option', {
+								value: model,
+								text: getLocalModelLabel(model),
+							});
+						}
+					}
+
+					dropdown.setValue(agent.ai.model);
+					dropdown.onChange(value => {
+						agent.ai.model = value;
+						// Auto-detect provider
+						if (value.startsWith('claude-')) {
+							delete agent.ai.provider;
+						} else {
+							agent.ai.provider = 'local';
+						}
+					});
 					return dropdown;
 				});
 
@@ -734,14 +988,16 @@ export class SparkSettingTab extends PluginSettingTab {
 			// AI Provider Settings
 			new Setting(this.configContainer).setName('AI provider').setHeading();
 
-			// Get available provider names
-			const providerNames = Object.keys(config.ai.providers);
+			// Get available provider names (exclude local — managed in General tab)
+			const providerNames = Object.keys(config.ai.providers).filter(
+				name => config.ai.providers[name]?.type !== 'local'
+			);
 
 			new Setting(this.configContainer)
 				.setName('Default provider')
 				.setDesc('Which provider to use by default')
 				.addDropdown(dropdown => {
-					// Add all available providers as options
+					// Add non-local providers as options
 					providerNames.forEach(name => {
 						dropdown.addOption(name, name);
 					});
@@ -779,6 +1035,9 @@ export class SparkSettingTab extends PluginSettingTab {
 			});
 
 			for (const [providerName, providerConfig] of Object.entries(config.ai.providers)) {
+				// Skip local providers — managed in General tab
+				if (providerConfig.type === 'local') continue;
+
 				// Provider item (no borders, clean accordion style)
 				const providerItem = providersContainer.createDiv({ cls: 'spark-provider-item' });
 
@@ -816,91 +1075,219 @@ export class SparkSettingTab extends PluginSettingTab {
 					toggleProvider();
 				});
 
-				// Create model dropdown function
-				const createModelDropdown = () => {
-					const modelSetting = new Setting(providerContent)
-						.setName('Model')
-						.setDesc(`Select ${getProviderLabel(providerConfig.type)} model`)
-						.addDropdown(dropdown => {
-							// Get models for the current provider type
-							const availableModels = getModelsByProvider(providerConfig.type);
-							availableModels.forEach(model => {
-								dropdown.addOption(model, getModelLabel(model));
-							});
-							dropdown
-								.setValue(providerConfig.model)
-								.onChange(value => (providerConfig.model = value));
-							return dropdown;
-						});
-					return modelSetting;
-				};
+				// Container for model dropdown (rebuilt on type change)
+				const modelContainer = providerContent.createDiv();
 
-				// Track current model dropdown for updates
-				const modelDropdownRef = {
-					current: createModelDropdown(),
-				};
-				const updateModelDropdown = () => {
-					// Remove the old model dropdown
-					modelDropdownRef.current.settingEl.remove();
-					// Create new model dropdown with updated models
-					modelDropdownRef.current = createModelDropdown();
+				// Create model dropdown (handles both Anthropic and Local)
+				const createModelDropdown = () => {
+					modelContainer.empty();
+					const isLocal = providerConfig.type === 'local';
+
+					if (isLocal) {
+						const localModels = getLocalModels();
+						const connected = isLMStudioConnected();
+
+						if (!connected) {
+							// Server not running — show instructions
+							const hint = modelContainer.createDiv({
+								cls: 'setting-item-description',
+							});
+							setCssProps(hint, {
+								padding: '0.5em',
+								marginBottom: '0.5em',
+								backgroundColor: 'var(--background-secondary)',
+								borderRadius: '4px',
+							});
+							hint.createEl('strong', { text: 'Not connected. ' });
+							hint.appendText('Start the local server, then reload the engine config to refresh.');
+
+							const modelSetting = new Setting(modelContainer)
+								.setName('Model')
+								.setDesc('Enter model name manually')
+								.addText(text => {
+									text
+										.setPlaceholder('Model name')
+										.setValue(providerConfig.model)
+										.onChange(value => (providerConfig.model = value));
+									return text;
+								});
+							modelSetting.addExtraButton(btn => {
+								btn
+									.setIcon('refresh-cw')
+									.setTooltip('Retry connection')
+									.onClick(() => {
+										void fetchLocalModels(path => this.app.vault.adapter.read(path)).then(() =>
+											createModelDropdown()
+										);
+									});
+							});
+						} else if (localModels.length > 0) {
+							const modelSetting = new Setting(modelContainer)
+								.setName('Model')
+								.setDesc('Select local model')
+								.addDropdown(dropdown => {
+									for (const model of localModels) {
+										dropdown.addOption(model, getLocalModelLabel(model));
+									}
+									dropdown
+										.setValue(providerConfig.model)
+										.onChange(value => (providerConfig.model = value));
+									return dropdown;
+								});
+							modelSetting.addExtraButton(btn => {
+								btn
+									.setIcon('refresh-cw')
+									.setTooltip('Refresh models')
+									.onClick(() => {
+										void fetchLocalModels(path => this.app.vault.adapter.read(path)).then(() =>
+											createModelDropdown()
+										);
+									});
+							});
+						} else {
+							// Connected but no models downloaded
+							const hint = modelContainer.createDiv({
+								cls: 'setting-item-description',
+							});
+							setCssProps(hint, {
+								padding: '0.5em',
+								marginBottom: '0.5em',
+								backgroundColor: 'var(--background-secondary)',
+								borderRadius: '4px',
+							});
+							hint.createEl('strong', { text: 'No models found. ' });
+							hint.appendText('Download one in the app or run: ');
+							hint.createEl('code', { text: 'lms get <model-name>' });
+
+							const modelSetting = new Setting(modelContainer)
+								.setName('Model')
+								.setDesc('Enter model name manually')
+								.addText(text => {
+									text
+										.setPlaceholder('Model name')
+										.setValue(providerConfig.model)
+										.onChange(value => (providerConfig.model = value));
+									return text;
+								});
+							modelSetting.addExtraButton(btn => {
+								btn
+									.setIcon('refresh-cw')
+									.setTooltip('Refresh models')
+									.onClick(() => {
+										void fetchLocalModels(path => this.app.vault.adapter.read(path)).then(() =>
+											createModelDropdown()
+										);
+									});
+							});
+						}
+					} else {
+						new Setting(modelContainer)
+							.setName('Model')
+							.setDesc(`Select ${getProviderLabel(providerConfig.type)} model`)
+							.addDropdown(dropdown => {
+								const availableModels = getModelsByProvider(providerConfig.type);
+								for (const model of availableModels) {
+									dropdown.addOption(model, getModelLabel(model));
+								}
+								dropdown
+									.setValue(providerConfig.model)
+									.onChange(value => (providerConfig.model = value));
+								return dropdown;
+							});
+					}
 				};
 
 				new Setting(providerContent)
 					.setName('Type')
 					.setDesc('Provider type')
 					.addDropdown(dropdown => {
-						// Add all available provider types
 						Object.values(ProviderType).forEach(type => {
 							dropdown.addOption(type, getProviderLabel(type));
 						});
 						dropdown.setValue(providerConfig.type).onChange(value => {
 							providerConfig.type = value as ProviderType;
-							// Update model dropdown when provider type changes
-							updateModelDropdown();
-							// Update header title
+							createModelDropdown();
+							updateConditionalSections();
 							titleEl.textContent = `${providerName} (${getProviderLabel(providerConfig.type)})`;
 						});
 						return dropdown;
 					});
 
 				// Create initial model dropdown
-				updateModelDropdown();
+				createModelDropdown();
 
-				// API Key input
+				// API Key section (hidden for local providers)
+				const apiKeyContainer = providerContent.createDiv();
 				const isOptional = providerName === 'claude-code';
 				let apiKeyValue = this.cachedApiKeys[providerName] || '';
 
-				const apiKeySetting = new Setting(providerContent)
-					.setName('API key')
-					.setDesc(isOptional ? 'Optional for claude-code' : 'Required')
-					.addText(text => {
-						text.inputEl.type = 'password';
-						text.setPlaceholder('Enter API key...');
-						text.setValue(apiKeyValue);
-						text.onChange(value => {
-							apiKeyValue = value;
-						});
-						return text;
-					});
+				const renderApiKey = () => {
+					apiKeyContainer.empty();
+					if (providerConfig.type === 'local') return;
 
-				// Add Show/Hide button
-				apiKeySetting.addButton(btn => {
-					btn.setButtonText('Show').onClick(() => {
-						const input = apiKeySetting.controlEl.querySelector(
-							'input[type="password"], input[type="text"]'
-						) as HTMLInputElement;
-						if (input) {
-							if (input.type === 'password') {
-								input.type = 'text';
-								btn.setButtonText('Hide');
-							} else {
-								input.type = 'password';
-								btn.setButtonText('Show');
+					const apiKeySetting = new Setting(apiKeyContainer)
+						.setName('API key')
+						.setDesc(isOptional ? 'Optional for claude-code' : 'Required')
+						.addText(text => {
+							text.inputEl.type = 'password';
+							text.setPlaceholder('Enter API key...');
+							text.setValue(apiKeyValue);
+							text.onChange(value => {
+								apiKeyValue = value;
+							});
+							return text;
+						});
+
+					apiKeySetting.addButton(btn => {
+						btn.setButtonText('Show').onClick(() => {
+							const input = apiKeyContainer.querySelector(
+								'input[type="password"], input[type="text"]'
+							) as HTMLInputElement;
+							if (input) {
+								if (input.type === 'password') {
+									input.type = 'text';
+									btn.setButtonText('Hide');
+								} else {
+									input.type = 'password';
+									btn.setButtonText('Show');
+								}
 							}
-						}
+						});
 					});
-				});
+				};
+				renderApiKey();
+
+				// Tools toggle (only for local providers)
+				const toolsContainer = providerContent.createDiv();
+				const providerOptions = (providerConfig as Record<string, unknown>).options as
+					| Record<string, unknown>
+					| undefined;
+				let enableTools = providerOptions?.enableTools !== false;
+
+				const renderToolsToggle = () => {
+					toolsContainer.empty();
+					if (providerConfig.type !== 'local') return;
+
+					new Setting(toolsContainer)
+						.setName('Enable tools')
+						.setDesc('Allow read/write/edit tools (disable for small models)')
+						.addToggle(toggle => {
+							toggle.setValue(enableTools).onChange(value => {
+								enableTools = value;
+								// Ensure options object exists on providerConfig
+								const pc = providerConfig as Record<string, unknown>;
+								if (!pc.options) pc.options = {};
+								(pc.options as Record<string, unknown>).enableTools = value;
+							});
+						});
+				};
+				renderToolsToggle();
+
+				// Update conditional sections when type changes
+				const updateConditionalSections = () => {
+					renderApiKey();
+					renderToolsToggle();
+				};
 
 				new Setting(providerContent)
 					.setName('Max tokens')

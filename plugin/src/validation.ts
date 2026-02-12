@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ALL_MODELS, ProviderType } from './models';
 
 // Agent validation schema
 export const AgentConfigSchema = z.object({
@@ -9,7 +8,8 @@ export const AgentConfigSchema = z.object({
 	context_folders: z.array(z.string()).optional(),
 	tools: z.array(z.string()).optional(),
 	ai: z.object({
-		model: z.enum([...ALL_MODELS] as [string, ...string[]]),
+		provider: z.string().optional(),
+		model: z.string().min(1, 'Model is required'),
 		temperature: z
 			.number()
 			.min(0, 'Temperature must be at least 0.0')
@@ -32,12 +32,19 @@ export const SparkConfigSchema = z.object({
 		providers: z.record(
 			z.string(),
 			z.object({
-				type: z.enum(ProviderType),
-				model: z.enum([...ALL_MODELS] as [string, ...string[]]),
+				type: z.string().min(1, 'Provider type is required'),
+				model: z.string().min(1, 'Model is required'),
 				maxTokens: z.number().positive('Max tokens must be positive'),
 				temperature: z.number().min(0).max(1),
+				options: z.record(z.string(), z.unknown()).optional(),
 			})
 		),
+		localOverride: z
+			.object({
+				enabled: z.boolean(),
+				model: z.string(),
+			})
+			.optional(),
 	}),
 	logging: z.object({
 		level: z.enum(['debug', 'info', 'warn', 'error']),
