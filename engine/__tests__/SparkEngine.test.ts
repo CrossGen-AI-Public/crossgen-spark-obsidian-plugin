@@ -6,6 +6,11 @@ import { Logger } from '../src/logger/Logger.js';
 // Mock Anthropic SDK to prevent actual API calls
 jest.mock('@anthropic-ai/sdk');
 
+// Mock the Claude Agent SDK (used by ClaudeAgentProvider registered by SparkEngine)
+jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
+    query: jest.fn(),
+}));
+
 describe('SparkEngine', () => {
     let vault: TestVault;
     let engine: SparkEngine;

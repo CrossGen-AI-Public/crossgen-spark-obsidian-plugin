@@ -3,7 +3,7 @@
  * Orchestrates all engine components
  */
 
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FSWatcher } from 'chokidar';
 import chokidar from 'chokidar';
@@ -21,8 +21,10 @@ import {
   ClaudeAgentProvider,
   ClaudeCodeProvider,
   ClaudeDirectProvider,
+  LocalProvider,
   ProviderRegistry,
 } from './providers/index.js';
+import { LMStudioBackend } from './providers/local/LMStudioBackend.js';
 import { ResultWriter } from './results/ResultWriter.js';
 import type { SparkConfig } from './types/config.js';
 import type { EngineState, ISparkEngine } from './types/index.js';
@@ -199,6 +201,9 @@ export class SparkEngine implements ISparkEngine {
       await this.workflowEditHandler.scanQueue();
       this.logger.debug('Workflow edit queue scanned');
 
+      // Write local models file for plugin (non-blocking)
+      void this.writeLocalModelsFile();
+
       // Record engine start in inspector
       this.inspector.recordStart();
 
@@ -263,6 +268,11 @@ export class SparkEngine implements ISparkEngine {
     // Register Claude Code Provider (Claude Code CLI - leverages Max subscription)
     registry.registerProvider('claude-code', ProviderType.ANTHROPIC, (config) => {
       return new ClaudeCodeProvider(config);
+    });
+
+    // Register Local Provider (LM Studio and other local backends)
+    registry.registerProvider('local', ProviderType.LOCAL, (config) => {
+      return new LocalProvider(config);
     });
 
     this.logger.debug('AI providers registered', {
@@ -333,6 +343,9 @@ export class SparkEngine implements ISparkEngine {
 
       this.logger.info('AI components reinitialized with new config');
 
+      // Refresh local models file for plugin
+      void this.writeLocalModelsFile();
+
       // Update logger with new config
       this.logger.updateConfig(newConfig.logging);
       this.logger.info('Configuration reloaded successfully', {
@@ -369,6 +382,48 @@ export class SparkEngine implements ISparkEngine {
       this.logger.warn('Config reload failed after retries, keeping current config', {
         error: message,
       });
+    }
+  }
+
+  /**
+   * Write local models file for plugin consumption.
+   * The plugin can't use @lmstudio/sdk directly (CORS in browser context),
+   * so the engine writes this file and the plugin reads it.
+   */
+  private async writeLocalModelsFile(): Promise<void> {
+    const sparkDir = join(this.vaultPath, '.spark');
+    if (!existsSync(sparkDir)) return;
+
+    // Only probe LM Studio when a local provider is actually configured
+    const providers = this.config?.ai?.providers;
+    if (!providers) return;
+    const hasLocalProvider = Object.values(providers).some((p) => p.type === ProviderType.LOCAL);
+    if (!hasLocalProvider) return;
+
+    const filePath = join(sparkDir, 'local-models.json');
+
+    try {
+      const backend = new LMStudioBackend();
+      const models = await Promise.race([
+        backend.listModels(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+      ]);
+
+      writeFileSync(
+        filePath,
+        JSON.stringify({ connected: true, models, timestamp: Date.now() }, null, 2)
+      );
+      this.logger.debug('Local models file written', { modelCount: models.length });
+    } catch {
+      try {
+        writeFileSync(
+          filePath,
+          JSON.stringify({ connected: false, models: [], timestamp: Date.now() }, null, 2)
+        );
+      } catch {
+        // .spark dir may not exist yet
+      }
+      this.logger.debug('Local models file written (disconnected)');
     }
   }
 

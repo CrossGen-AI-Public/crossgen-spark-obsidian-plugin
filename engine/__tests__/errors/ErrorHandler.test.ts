@@ -183,6 +183,43 @@ describe('ErrorHandler', () => {
             expect(output).toContain('API key');
         });
 
+        it('should provide suggestions for LOCAL_CONTEXT_LENGTH', async () => {
+            const handler = new ErrorHandler({ exitOnError: false });
+            const error = new SparkError('Prompt too long', 'LOCAL_CONTEXT_LENGTH');
+
+            const consoleErrors: string[] = [];
+            const originalError = console.error;
+            console.error = (...args: unknown[]) => {
+                consoleErrors.push(args.join(' '));
+            };
+
+            await handler.handle(error, { operation: 'Testing' });
+
+            console.error = originalError;
+
+            const output = consoleErrors.join('\n');
+            expect(output).toContain('shorter message');
+            expect(output).toContain('larger context window');
+        });
+
+        it('should provide suggestions for LOCAL_CONNECTION_ERROR', async () => {
+            const handler = new ErrorHandler({ exitOnError: false });
+            const error = new SparkError('Cannot connect', 'LOCAL_CONNECTION_ERROR');
+
+            const consoleErrors: string[] = [];
+            const originalError = console.error;
+            console.error = (...args: unknown[]) => {
+                consoleErrors.push(args.join(' '));
+            };
+
+            await handler.handle(error, { operation: 'Testing' });
+
+            console.error = originalError;
+
+            const output = consoleErrors.join('\n');
+            expect(output).toContain('LM Studio is running');
+        });
+
         it('should provide no suggestions for unknown error codes', async () => {
             const handler = new ErrorHandler({ exitOnError: false });
             const error = new SparkError('Unknown error', 'UNKNOWN_ERROR');

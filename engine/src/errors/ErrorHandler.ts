@@ -141,6 +141,35 @@ export class ErrorHandler {
           'If persists for >5 minutes, try restarting the engine',
         ];
 
+      case 'LOCAL_CONTEXT_LENGTH':
+        return [
+          'Try a shorter message or clear conversation history',
+          'Reduce context by using fewer or smaller files',
+          'Use a model with a larger context window',
+          'Increase context length in LM Studio model settings',
+        ];
+
+      case 'LOCAL_MODEL_NOT_FOUND':
+        return [
+          'Open LM Studio and download the model',
+          'Check the model name in .spark/config.yaml matches LM Studio',
+          'Run `lms ls` to see available models',
+        ];
+
+      case 'LOCAL_CONNECTION_ERROR':
+        return [
+          'Make sure LM Studio is running',
+          'Check that the LM Studio local server is started',
+          'Verify LM Studio is listening on the default port (1234)',
+        ];
+
+      case 'LOCAL_MODEL_ERROR':
+        return [
+          'Check LM Studio is running and the local server is started',
+          'Verify the model is downloaded and loaded in LM Studio',
+          'Check LM Studio logs for details',
+        ];
+
       case 'ALREADY_RUNNING':
         return [
           'Run: spark stop <vault> to stop the existing engine',

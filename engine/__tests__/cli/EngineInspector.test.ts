@@ -10,6 +10,11 @@ import { TestVault } from '../utils/TestVault.js';
 // Mock Anthropic SDK to prevent actual API calls
 jest.mock('@anthropic-ai/sdk');
 
+// Mock the Claude Agent SDK
+jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
+    query: jest.fn(),
+}));
+
 describe('EngineInspector', () => {
     let vault: TestVault;
     let engine: SparkEngine;

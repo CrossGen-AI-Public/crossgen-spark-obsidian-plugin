@@ -6,6 +6,7 @@ export default {
     injectGlobals: true,
     moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
+        '^@lmstudio/sdk$': '<rootDir>/__tests__/setup/__mocks__/lmstudio-sdk.ts',
     },
     transform: {
         '^.+\\.ts$': [

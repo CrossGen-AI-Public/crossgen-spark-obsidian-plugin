@@ -7,6 +7,7 @@ import { AIProviderFactory } from '../../src/providers/AIProviderFactory.js';
 import { ProviderRegistry } from '../../src/providers/ProviderRegistry.js';
 import { ClaudeAgentProvider } from '../../src/providers/ClaudeAgentProvider.js';
 import { ClaudeDirectProvider } from '../../src/providers/ClaudeDirectProvider.js';
+import { LocalProvider } from '../../src/providers/LocalProvider.js';
 import { Logger } from '../../src/logger/Logger.js';
 import type { AIConfig } from '../../src/types/config.js';
 import { ProviderType } from '../../src/types/provider.js';
@@ -37,13 +38,24 @@ jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
     query: jest.fn(),
 }));
 
-// Mock Anthropic SDK  
+// Mock Anthropic SDK
 jest.mock('@anthropic-ai/sdk', () => {
     return jest.fn().mockImplementation(() => ({
         messages: {
             create: jest.fn(),
         },
     }));
+});
+
+// Mock LMStudioBackend so LocalProvider can be instantiated without a real server
+jest.mock('../../src/providers/local/LMStudioBackend.js', () => {
+    class LMStudioBackend {
+        name = 'lmstudio';
+        async complete() { return { content: 'mock', model: 'mock', usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } }; }
+        async listModels() { return []; }
+        async isAvailable() { return true; }
+    }
+    return { LMStudioBackend };
 });
 
 describe('AIProviderFactory', () => {
@@ -85,6 +97,8 @@ describe('AIProviderFactory', () => {
             new ClaudeAgentProvider(config));
         registry.registerProvider('claude-client', ProviderType.ANTHROPIC, (config) =>
             new ClaudeDirectProvider(config));
+        registry.registerProvider('local', ProviderType.LOCAL, (config) =>
+            new LocalProvider(config));
 
         factory = new AIProviderFactory('/test/vault');
     });
@@ -144,6 +158,157 @@ describe('AIProviderFactory', () => {
             const removed = factory.removeFromCache('non-existent');
 
             expect(removed).toBe(false);
+        });
+    });
+
+    describe('localOverride', () => {
+        const configWithLocal: AIConfig = {
+            defaultProvider: 'claude-agent',
+            providers: {
+                'claude-agent': {
+                    type: ProviderType.ANTHROPIC,
+                    model: 'claude-sonnet-4-5-20250929',
+                    maxTokens: 4096,
+                    temperature: 0.7,
+                },
+                'local': {
+                    type: ProviderType.LOCAL,
+                    model: 'default-local-model',
+                    maxTokens: 2048,
+                    temperature: 0.7,
+                    options: { backend: 'lmstudio' },
+                },
+            },
+            localOverride: { enabled: true, model: 'override-model' },
+        };
+
+        it('should redirect non-local provider to local when override is enabled', () => {
+            const provider = factory.createFromConfig(configWithLocal, 'claude-agent');
+            expect(provider).toBeInstanceOf(LocalProvider);
+            expect(provider.getConfig().model).toBe('override-model');
+        });
+
+        it('should redirect in createWithAgentConfig when override is enabled', () => {
+            const provider = factory.createWithAgentConfig(configWithLocal, {
+                model: 'claude-sonnet-4-5-20250929',
+            });
+            expect(provider).toBeInstanceOf(LocalProvider);
+            expect(provider.getConfig().model).toBe('override-model');
+        });
+
+        it('should not override agent that already specifies provider: local', () => {
+            const provider = factory.createWithAgentConfig(configWithLocal, {
+                provider: 'local',
+                model: 'my-specific-local-model',
+            });
+            expect(provider).toBeInstanceOf(LocalProvider);
+            // Agent keeps its own model, not the override model
+            expect(provider.getConfig().model).toBe('my-specific-local-model');
+        });
+
+        it('should use normal behavior when override is disabled', () => {
+            const disabledConfig: AIConfig = {
+                ...configWithLocal,
+                localOverride: { enabled: false, model: 'override-model' },
+            };
+            process.env.TEST_SECRET_ANTHROPIC = 'test-key';
+            const provider = factory.createFromConfig(disabledConfig, 'claude-agent');
+            expect(provider).toBeInstanceOf(ClaudeAgentProvider);
+        });
+
+        it('should throw when override is enabled but no local provider configured', () => {
+            const noLocalConfig: AIConfig = {
+                defaultProvider: 'claude-agent',
+                providers: {
+                    'claude-agent': {
+                        type: ProviderType.ANTHROPIC,
+                        model: 'claude-sonnet-4-5-20250929',
+                        maxTokens: 4096,
+                        temperature: 0.7,
+                    },
+                },
+                localOverride: { enabled: true, model: 'override-model' },
+            };
+            expect(() => factory.createFromConfig(noLocalConfig, 'claude-agent')).toThrow(
+                'localOverride is enabled but no "local" provider is configured'
+            );
+        });
+
+        it('should use default provider with override when no explicit provider requested', () => {
+            const provider = factory.createFromConfig(configWithLocal);
+            expect(provider).toBeInstanceOf(LocalProvider);
+            expect(provider.getConfig().model).toBe('override-model');
+        });
+
+        it('should use normal behavior when localOverride is undefined', () => {
+            const noOverrideConfig: AIConfig = {
+                defaultProvider: 'claude-agent',
+                providers: {
+                    'claude-agent': {
+                        type: ProviderType.ANTHROPIC,
+                        model: 'claude-sonnet-4-5-20250929',
+                        maxTokens: 4096,
+                        temperature: 0.7,
+                    },
+                    'local': {
+                        type: ProviderType.LOCAL,
+                        model: 'default-local-model',
+                        maxTokens: 2048,
+                        temperature: 0.7,
+                        options: { backend: 'lmstudio' },
+                    },
+                },
+            };
+            process.env.TEST_SECRET_ANTHROPIC = 'test-key';
+            const provider = factory.createFromConfig(noOverrideConfig, 'claude-agent');
+            expect(provider).toBeInstanceOf(ClaudeAgentProvider);
+        });
+
+        it('should use override model not base local model', () => {
+            // The override model should be used, not the local provider's configured model
+            const provider = factory.createFromConfig(configWithLocal, 'claude-agent');
+            expect(provider.getConfig().model).toBe('override-model');
+            expect(provider.getConfig().model).not.toBe('default-local-model');
+        });
+
+        it('should redirect createWithAgentConfig with no agentConfig', () => {
+            const provider = factory.createWithAgentConfig(configWithLocal);
+            expect(provider).toBeInstanceOf(LocalProvider);
+            expect(provider.getConfig().model).toBe('override-model');
+        });
+
+        it('should redirect createWithAgentConfig with agent temperature override', () => {
+            const provider = factory.createWithAgentConfig(configWithLocal, {
+                temperature: 0.2,
+            });
+            // Even with agent overrides, local override takes precedence for non-local providers
+            expect(provider).toBeInstanceOf(LocalProvider);
+            expect(provider.getConfig().model).toBe('override-model');
+        });
+
+        it('should not override when explicitly requesting local provider in createFromConfig', () => {
+            const provider = factory.createFromConfig(configWithLocal, 'local');
+            expect(provider).toBeInstanceOf(LocalProvider);
+            // Gets the base local model, not the override model
+            expect(provider.getConfig().model).toBe('default-local-model');
+        });
+
+        it('should throw for createWithAgentConfig when override enabled but no local provider', () => {
+            const noLocalConfig: AIConfig = {
+                defaultProvider: 'claude-agent',
+                providers: {
+                    'claude-agent': {
+                        type: ProviderType.ANTHROPIC,
+                        model: 'claude-sonnet-4-5-20250929',
+                        maxTokens: 4096,
+                        temperature: 0.7,
+                    },
+                },
+                localOverride: { enabled: true, model: 'override-model' },
+            };
+            expect(() => factory.createWithAgentConfig(noLocalConfig)).toThrow(
+                'localOverride is enabled but no "local" provider is configured'
+            );
         });
     });
 });

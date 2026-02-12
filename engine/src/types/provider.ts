@@ -10,6 +10,7 @@ import type { AICompletionResult } from './ai.js';
  */
 export enum ProviderType {
   ANTHROPIC = 'anthropic',
+  LOCAL = 'local',
 }
 
 /**

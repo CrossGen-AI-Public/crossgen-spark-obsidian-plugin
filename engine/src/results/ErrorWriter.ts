@@ -229,6 +229,35 @@ export class ErrorWriter {
         ].join('\n');
       }
 
+      case 'LOCAL_CONTEXT_LENGTH':
+        return [
+          '1. Try a shorter message or clear conversation history',
+          '2. Reduce context by using fewer or smaller files',
+          '3. Use a model with a larger context window',
+          '4. Increase context length in LM Studio model settings',
+        ].join('\n');
+
+      case 'LOCAL_MODEL_NOT_FOUND':
+        return [
+          '1. Open LM Studio and download the model',
+          '2. Check the model name in your .spark/config.yaml matches LM Studio',
+          '3. Run `lms ls` to see available models',
+        ].join('\n');
+
+      case 'LOCAL_CONNECTION_ERROR':
+        return [
+          '1. Make sure LM Studio is running',
+          '2. Check that the LM Studio local server is started',
+          '3. Verify LM Studio is listening on the default port (1234)',
+        ].join('\n');
+
+      case 'LOCAL_MODEL_ERROR':
+        return [
+          '1. Check LM Studio is running and the local server is started',
+          '2. Verify the model is downloaded and loaded in LM Studio',
+          '3. Check LM Studio logs for details',
+        ].join('\n');
+
       case 'AI_SERVER_ERROR':
         return [
           '1. This is a temporary server issue - the engine will retry automatically',

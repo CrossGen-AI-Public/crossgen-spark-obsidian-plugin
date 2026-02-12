@@ -145,6 +145,71 @@ describe('ErrorWriter', () => {
             expect(content).toContain('API key');
         });
 
+        it('should handle local context length errors with suggestions', async () => {
+            const sparkError = new SparkError(
+                'Prompt too long for local model',
+                'LOCAL_CONTEXT_LENGTH'
+            );
+
+            const errorPath = await errorWriter.writeError({
+                error: sparkError,
+                filePath: '/vault/test.md',
+            });
+
+            const content = readFileSync(errorPath, 'utf-8');
+            expect(content).toContain('## Suggestions');
+            expect(content).toContain('shorter message');
+            expect(content).toContain('larger context window');
+        });
+
+        it('should handle local model not found errors with suggestions', async () => {
+            const sparkError = new SparkError(
+                'Model not found in LM Studio',
+                'LOCAL_MODEL_NOT_FOUND'
+            );
+
+            const errorPath = await errorWriter.writeError({
+                error: sparkError,
+                filePath: '/vault/test.md',
+            });
+
+            const content = readFileSync(errorPath, 'utf-8');
+            expect(content).toContain('## Suggestions');
+            expect(content).toContain('download the model');
+        });
+
+        it('should handle local connection errors with suggestions', async () => {
+            const sparkError = new SparkError(
+                'Cannot connect to LM Studio',
+                'LOCAL_CONNECTION_ERROR'
+            );
+
+            const errorPath = await errorWriter.writeError({
+                error: sparkError,
+                filePath: '/vault/test.md',
+            });
+
+            const content = readFileSync(errorPath, 'utf-8');
+            expect(content).toContain('## Suggestions');
+            expect(content).toContain('LM Studio is running');
+        });
+
+        it('should handle generic local model errors with suggestions', async () => {
+            const sparkError = new SparkError(
+                'Local model error: something went wrong',
+                'LOCAL_MODEL_ERROR'
+            );
+
+            const errorPath = await errorWriter.writeError({
+                error: sparkError,
+                filePath: '/vault/test.md',
+            });
+
+            const content = readFileSync(errorPath, 'utf-8');
+            expect(content).toContain('## Suggestions');
+            expect(content).toContain('LM Studio is running');
+        });
+
         it('should handle AI server errors with suggestions', async () => {
             const sparkError = new SparkError('Server unavailable', 'AI_SERVER_ERROR');
 

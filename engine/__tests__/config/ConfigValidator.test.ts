@@ -311,6 +311,181 @@ describe('ConfigValidator', () => {
             });
         });
 
+        describe('localOverride validation', () => {
+            const baseAIConfig = {
+                defaultProvider: 'claude-client',
+                providers: {
+                    'claude-client': {
+                        type: ProviderType.ANTHROPIC,
+                        model: 'claude-sonnet-4-5-20250929',
+                        maxTokens: 4096,
+                        temperature: 0.7,
+                    },
+                    'local': {
+                        type: ProviderType.LOCAL,
+                        model: 'test-model',
+                        maxTokens: 2048,
+                        temperature: 0.7,
+                    },
+                },
+            };
+
+            it('should accept config without localOverride (optional)', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: { ...baseAIConfig },
+                };
+                expect(() => validator.validate(config)).not.toThrow();
+            });
+
+            it('should accept valid enabled localOverride', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: true, model: 'override-model' },
+                    },
+                };
+                expect(() => validator.validate(config)).not.toThrow();
+            });
+
+            it('should accept disabled localOverride without model', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: false, model: '' },
+                    },
+                };
+                expect(() => validator.validate(config)).not.toThrow();
+            });
+
+            it('should throw if localOverride is not an object', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: 'yes',
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride must be an object'
+                );
+            });
+
+            it('should throw if enabled is not a boolean', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: 'true', model: 'test' },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride.enabled must be a boolean'
+                );
+            });
+
+            it('should throw if enabled but model is empty', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: true, model: '' },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride.model must be a non-empty string when enabled'
+                );
+            });
+
+            it('should throw if enabled but model is whitespace-only', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: true, model: '   ' },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride.model must be a non-empty string when enabled'
+                );
+            });
+
+            it('should throw if enabled but model is missing', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: true },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride.model must be a non-empty string when enabled'
+                );
+            });
+
+            it('should throw if enabled but model is not a string', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        ...baseAIConfig,
+                        localOverride: { enabled: true, model: 123 },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride.model must be a non-empty string when enabled'
+                );
+            });
+
+            it('should throw if enabled but no local provider configured', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'claude-client',
+                        providers: {
+                            'claude-client': {
+                                type: ProviderType.ANTHROPIC,
+                                model: 'claude-sonnet-4-5-20250929',
+                                maxTokens: 4096,
+                                temperature: 0.7,
+                            },
+                        },
+                        localOverride: { enabled: true, model: 'override-model' },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(SparkError);
+                expect(() => validator.validate(config as unknown as SparkConfig)).toThrow(
+                    'ai.localOverride requires a "local" provider in ai.providers'
+                );
+            });
+
+            it('should not require local provider when disabled', () => {
+                const config = {
+                    ...DEFAULT_SPARK_CONFIG,
+                    ai: {
+                        defaultProvider: 'claude-client',
+                        providers: {
+                            'claude-client': {
+                                type: ProviderType.ANTHROPIC,
+                                model: 'claude-sonnet-4-5-20250929',
+                                maxTokens: 4096,
+                                temperature: 0.7,
+                            },
+                        },
+                        localOverride: { enabled: false, model: '' },
+                    },
+                };
+                expect(() => validator.validate(config as unknown as SparkConfig)).not.toThrow();
+            });
+        });
+
         describe('comprehensive validation', () => {
             it('should validate a complete custom config', () => {
                 const config: SparkConfig = {

@@ -71,6 +71,11 @@ export interface AIConfig {
   providers: Record<string, ProviderConfiguration>;
 
   /**
+   * When enabled, routes all non-local AI requests through the specified local model
+   */
+  localOverride?: { enabled: boolean; model: string };
+
+  /**
    * Legacy support (deprecated)
    */
   provider?: ProviderType;

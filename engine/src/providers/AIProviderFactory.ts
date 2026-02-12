@@ -9,6 +9,7 @@ import { Logger } from '../logger/Logger.js';
 import type { AIConfig, ProviderConfiguration } from '../types/config.js';
 import { SparkError } from '../types/index.js';
 import type { IAIProvider, ProviderConfig } from '../types/provider.js';
+import { ProviderType } from '../types/provider.js';
 import { ProviderRegistry } from './ProviderRegistry.js';
 
 export class AIProviderFactory {
@@ -59,6 +60,10 @@ export class AIProviderFactory {
       });
     }
 
+    // Local override: redirect non-local providers to local
+    const redirected = this.applyLocalOverride(aiConfig, targetProvider);
+    if (redirected) return redirected;
+
     // Get provider configuration
     const providerConfig = aiConfig.providers[targetProvider];
     if (!providerConfig) {
@@ -92,6 +97,11 @@ export class AIProviderFactory {
       selectedProvider: providerName,
       configuredProviders: Object.keys(aiConfig.providers),
     });
+
+    // Local override: redirect non-local agents to local model
+    // Agents that already specify provider: 'local' keep their own model
+    const redirected = this.applyLocalOverride(aiConfig, providerName);
+    if (redirected) return redirected;
 
     const providerConfig = aiConfig.providers[providerName];
 
@@ -188,6 +198,42 @@ export class AIProviderFactory {
    */
   removeFromCache(name: string): boolean {
     return this.providers.delete(name);
+  }
+
+  /**
+   * If localOverride is enabled and the target provider is not already 'local',
+   * redirect to the local provider with the override model.
+   * Returns the local provider instance, or null if no override applies.
+   */
+  private applyLocalOverride(aiConfig: AIConfig, targetProvider: string): IAIProvider | null {
+    const override = aiConfig.localOverride;
+    if (!override?.enabled) return null;
+
+    // Don't override providers that are already local
+    const targetConfig = aiConfig.providers[targetProvider];
+    if (targetConfig?.type === ProviderType.LOCAL) return null;
+
+    const localProviderConfig = aiConfig.providers.local;
+    if (!localProviderConfig) {
+      throw new SparkError(
+        'localOverride is enabled but no "local" provider is configured',
+        'PROVIDER_NOT_CONFIGURED',
+        { configuredProviders: Object.keys(aiConfig.providers) }
+      );
+    }
+
+    this.logger.info('Local override active, redirecting to local provider', {
+      originalProvider: targetProvider,
+      overrideModel: override.model,
+    });
+
+    // Create local provider with the override model (bypass cache — model may differ)
+    const config: ProviderConfig = this.convertConfiguration('local', {
+      ...localProviderConfig,
+      model: override.model,
+    });
+
+    return this.registry.createProvider('local', config);
   }
 
   /**

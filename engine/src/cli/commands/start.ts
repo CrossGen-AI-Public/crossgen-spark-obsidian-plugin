@@ -12,6 +12,17 @@ import { cleanupEngine, cleanupPidFile, validateVault } from '../helpers.js';
 import { print, printError } from '../output.js';
 import { findEngine, registerEngine } from '../registry.js';
 
+/**
+ * Detect LM Studio SDK auto-connect rejections (harmless when server isn't running).
+ */
+function isLMStudioConnectionError(reason: unknown): boolean {
+  if (reason instanceof Error) {
+    const msg = reason.message;
+    return msg.includes('Failed to connect to LM Studio') || msg.includes('LMStudioClient');
+  }
+  return false;
+}
+
 export function registerStartCommand(program: Command): void {
   program
     .command('start')
@@ -116,6 +127,10 @@ export function registerStartCommand(program: Command): void {
       });
 
       process.on('unhandledRejection', (reason) => {
+        // The @lmstudio/sdk fires internal auto-connect rejections when the
+        // server isn't running. These are harmless — ignore them.
+        if (isLMStudioConnectionError(reason)) return;
+
         printError('Unhandled rejection:', reason);
         void shutdown('UNHANDLED_REJECTION');
       });

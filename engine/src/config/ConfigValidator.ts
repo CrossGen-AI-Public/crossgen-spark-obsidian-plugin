@@ -91,9 +91,42 @@ export class ConfigValidator implements IConfigValidator {
       );
     }
 
+    // Validate localOverride if present
+    if (a.localOverride !== undefined) {
+      this.validateLocalOverride(a.localOverride, providers);
+    }
+
     // Validate each provider configuration
     for (const [name, config] of Object.entries(providers)) {
       this.validateProviderConfig(name, config);
+    }
+  }
+
+  private validateLocalOverride(localOverride: unknown, providers: Record<string, unknown>): void {
+    if (!localOverride || typeof localOverride !== 'object') {
+      throw new SparkError('ai.localOverride must be an object', 'INVALID_LOCAL_OVERRIDE');
+    }
+
+    const lo = localOverride as Record<string, unknown>;
+
+    if (typeof lo.enabled !== 'boolean') {
+      throw new SparkError('ai.localOverride.enabled must be a boolean', 'INVALID_LOCAL_OVERRIDE');
+    }
+
+    if (lo.enabled) {
+      if (!lo.model || typeof lo.model !== 'string' || lo.model.trim().length === 0) {
+        throw new SparkError(
+          'ai.localOverride.model must be a non-empty string when enabled',
+          'INVALID_LOCAL_OVERRIDE'
+        );
+      }
+
+      if (!('local' in providers)) {
+        throw new SparkError(
+          'ai.localOverride requires a "local" provider in ai.providers',
+          'INVALID_LOCAL_OVERRIDE'
+        );
+      }
     }
   }
 
