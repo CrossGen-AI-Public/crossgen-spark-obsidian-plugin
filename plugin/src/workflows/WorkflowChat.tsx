@@ -5,6 +5,9 @@
 import type { App } from 'obsidian';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { MarkdownContent } from '../components/MarkdownContent';
+import { ModelSelectorWidget } from '../components/ModelSelectorReact';
+import { useModelSelector } from '../hooks/useModelSelector';
+import { getLocalOverride } from '../models';
 import type { ISparkPlugin } from '../types';
 import { WorkflowChatStorage } from './WorkflowChatStorage';
 import { WorkflowStorage } from './WorkflowStorage';
@@ -78,6 +81,15 @@ export function WorkflowChat({
 
 	const storage = useMemo(() => new WorkflowStorage(app), [app]);
 	const chatStorage = useMemo(() => new WorkflowChatStorage(app), [app]);
+	const localOverride = useMemo(() => getLocalOverride(), []);
+	const {
+		models,
+		selected: selectedModel,
+		setSelected: setSelectedModel,
+		defaultModel,
+		activeProvider,
+		setActiveProvider,
+	} = useModelSelector(localOverride);
 
 	// Load chat history on mount
 	useEffect(() => {
@@ -182,6 +194,7 @@ export function WorkflowChat({
 					message: clarificationAnswers || content,
 					conversationHistory,
 					threadId,
+					modelOverride: selectedModel ?? undefined,
 				};
 
 				await storage.queueWorkflowEdit(request);
@@ -379,28 +392,38 @@ export function WorkflowChat({
 					disabled={isProcessing}
 					rows={2}
 				/>
-				<button
-					type="submit"
-					className={`spark-workflow-chat-send${isProcessing ? ' spark-workflow-chat-send-loading' : ''}`}
-					disabled={isProcessing || (!inputValue.trim() && !clarificationQuestions)}
-				>
-					{isProcessing ? (
-						<svg
-							className="spark-workflow-spinner"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<path d="M21 12a9 9 0 1 1-6.219-8.56" />
-						</svg>
-					) : (
-						'↑'
-					)}
-				</button>
+				<div className="spark-chat-toolbar-row">
+					<ModelSelectorWidget
+						models={models}
+						defaultModel={defaultModel}
+						dropdownDirection="up"
+						initialProvider={activeProvider}
+						onChange={setSelectedModel}
+						onProviderChange={setActiveProvider}
+					/>
+					<button
+						type="submit"
+						className={`spark-workflow-chat-send${isProcessing ? ' spark-workflow-chat-send-loading' : ''}`}
+						disabled={isProcessing || (!inputValue.trim() && !clarificationQuestions)}
+					>
+						{isProcessing ? (
+							<svg
+								className="spark-workflow-spinner"
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							>
+								<path d="M21 12a9 9 0 1 1-6.219-8.56" />
+							</svg>
+						) : (
+							'↑'
+						)}
+					</button>
+				</div>
 			</form>
 		</div>
 	);

@@ -74,7 +74,11 @@ export class ChatQueueHandler {
         parsed
       );
 
-      const aiResponse = await this.commandExecutor.executeAndReturn(command, contextPath);
+      const aiResponse = await this.commandExecutor.executeAndReturn(
+        command,
+        contextPath,
+        parsed.modelOverride
+      );
       this.writeFinalResult(
         parsed.conversationId,
         parsed.queueId,
@@ -299,6 +303,7 @@ export class ChatQueueHandler {
     context: string;
     activeFile?: string;
     primaryAgent?: string;
+    modelOverride?: string;
   } {
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (!frontmatterMatch || !frontmatterMatch[1]) {
@@ -310,6 +315,7 @@ export class ChatQueueHandler {
     const queueIdMatch = frontmatter.match(/queue_id:\s*(.+)/);
     const activeFileMatch = frontmatter.match(/active_file:\s*(.+)/);
     const primaryAgentMatch = frontmatter.match(/primary_agent:\s*(.+)/);
+    const modelOverrideMatch = frontmatter.match(/model_override:\s*(.+)/);
 
     if (!conversationIdMatch || !conversationIdMatch[1] || !queueIdMatch || !queueIdMatch[1]) {
       throw new Error('Invalid queue file: missing required frontmatter');
@@ -333,6 +339,7 @@ export class ChatQueueHandler {
       context: contextMatch?.[1] ? contextMatch[1].trim() : '',
       activeFile: activeFileMatch?.[1] ? activeFileMatch[1].trim() : undefined,
       primaryAgent: primaryAgentMatch?.[1] ? primaryAgentMatch[1].trim() : undefined,
+      modelOverride: modelOverrideMatch?.[1] ? modelOverrideMatch[1].trim() : undefined,
     };
   }
 

@@ -83,12 +83,20 @@ export class AIProviderFactory {
   }
 
   /**
-   * Create provider with agent-specific overrides
+   * Create provider with agent-specific overrides and optional explicit model override.
+   * When modelOverride is set (from user's dropdown), it takes priority over agent config
+   * and skips local override redirect (user made an explicit choice).
    */
   createWithAgentConfig(
     aiConfig: AIConfig,
-    agentConfig?: { provider?: string; model?: string; temperature?: number; maxTokens?: number }
+    agentConfig?: { provider?: string; model?: string; temperature?: number; maxTokens?: number },
+    modelOverride?: string
   ): IAIProvider {
+    // Explicit model override from user dropdown takes priority
+    if (modelOverride) {
+      return this.createFromModelOverride(aiConfig, agentConfig, modelOverride);
+    }
+
     const providerName = agentConfig?.provider || aiConfig.defaultProvider;
 
     this.logger.debug('Selecting provider', {
@@ -137,6 +145,44 @@ export class AIProviderFactory {
     });
 
     // Create fresh instance, don't use cache
+    return this.registry.createProvider(providerName, config);
+  }
+
+  /**
+   * Create provider from an explicit model override (user's dropdown selection).
+   * Determines provider type from the model ID:
+   * - Models containing '/' are local (e.g. "lmstudio-community/Qwen2.5-3B")
+   * - Models starting with 'claude-' are Anthropic
+   * Skips local override redirect since user made an explicit choice.
+   */
+  private createFromModelOverride(
+    aiConfig: AIConfig,
+    agentConfig: { temperature?: number; maxTokens?: number } | undefined,
+    modelOverride: string
+  ): IAIProvider {
+    const isLocal = modelOverride.includes('/');
+    const providerName = isLocal ? 'local' : aiConfig.defaultProvider;
+
+    this.logger.info('Using explicit model override from dropdown', {
+      modelOverride,
+      resolvedProvider: providerName,
+    });
+
+    const providerConfig = aiConfig.providers[providerName];
+    if (!providerConfig) {
+      throw new SparkError(`Provider '${providerName}' not configured`, 'PROVIDER_NOT_CONFIGURED', {
+        configuredProviders: Object.keys(aiConfig.providers),
+      });
+    }
+
+    const config: ProviderConfig = this.convertConfiguration(providerName, {
+      ...providerConfig,
+      model: modelOverride,
+      temperature: agentConfig?.temperature ?? providerConfig.temperature,
+      maxTokens: agentConfig?.maxTokens ?? providerConfig.maxTokens,
+    });
+
+    // Always create fresh instance (override model varies)
     return this.registry.createProvider(providerName, config);
   }
 

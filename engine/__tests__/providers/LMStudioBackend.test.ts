@@ -129,6 +129,20 @@ describe('LMStudioBackend', () => {
         expect((e as SparkError).code).toBe('LOCAL_CONNECTION_ERROR');
       }
     });
+
+    it('should timeout with LOCAL_CONNECTION_ERROR when model lookup hangs', async () => {
+      // Simulate LM Studio SDK hanging forever (never resolves, never rejects)
+      mocks.mockModel.mockReturnValue(new Promise(() => {}));
+
+      try {
+        await backend.complete([{ role: 'user', content: 'Hi' }], { model: 'test/model' });
+        throw new Error('Should have thrown');
+      } catch (e) {
+        expect(e).toBeInstanceOf(SparkError);
+        expect((e as SparkError).message).toMatch(/Cannot connect to LM Studio/);
+        expect((e as SparkError).code).toBe('LOCAL_CONNECTION_ERROR');
+      }
+    }, 20_000);
   });
 
   describe('listModels', () => {

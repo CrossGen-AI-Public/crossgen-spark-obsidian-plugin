@@ -33,7 +33,8 @@ export class ResultWriter {
 		agentName: string,
 		userMessage: string,
 		uuid: string,
-		linesNeeded: number = 3
+		linesNeeded: number = 3,
+		modelOverride?: string
 	): void {
 		if (!markerId) {
 			console.warn('[ResultWriter] No marker ID to replace');
@@ -65,8 +66,10 @@ export class ResultWriter {
 
 		// Build final marker format
 		// Format: <!-- spark-inline-chat:pending:uuid:agentName:message -->
+		// With model override: <!-- spark-inline-chat:pending:uuid:agentName:message:model_override=MODEL_ID -->
 		const escapedMessage = cleanMessage.replace(NEWLINE_REGEX, '\\n');
-		const openingMarker = `<!-- spark-inline-chat:pending:${uuid}:${agentName}:${escapedMessage} -->`;
+		const modelSuffix = modelOverride ? `:model_override=${modelOverride}` : '';
+		const openingMarker = `<!-- spark-inline-chat:pending:${uuid}:${agentName}:${escapedMessage}${modelSuffix} -->`;
 		const closingMarker = `<!-- /spark-inline-chat -->`;
 
 		// Add newlines to make space for the widget

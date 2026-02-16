@@ -1,4 +1,5 @@
 import { type App, Component, MarkdownRenderer } from 'obsidian';
+import { ModelSelector } from '../components/ModelSelector';
 import {
 	DEFAULT_CHAT_BOTTOM,
 	DEFAULT_CHAT_HEIGHT,
@@ -9,6 +10,13 @@ import {
 import type SparkPlugin from '../main';
 import type { MentionDecorator } from '../mention/MentionDecorator';
 import { MentionInput } from '../mention/MentionInput';
+import {
+	fetchLocalModels,
+	fetchLocalOverride,
+	getAvailableModels,
+	getLocalOverride,
+	resolveDefaultModel,
+} from '../models';
 import { ResourceService } from '../services/ResourceService';
 import { setCssProps } from '../utils/setCssProps';
 import { ChatQueue } from './ChatQueue';
@@ -32,6 +40,7 @@ export class ChatWindow extends Component {
 	private chatSelector: ChatSelector;
 	private chatQueue: ChatQueue;
 	private resultWatcher: ChatResultWatcher;
+	private modelSelector: ModelSelector | null = null;
 	private resizeHandles: Map<string, HTMLElement> = new Map();
 	private isResizing = false;
 	private resizeStartX = 0;
@@ -48,7 +57,8 @@ export class ChatWindow extends Component {
 		isProcessing: false,
 		mentionedAgents: new Set(),
 		lastMentionedAgent: null,
-		conversationName: null, // Auto-generated name from engine
+		conversationName: null,
+		selectedModel: null,
 	};
 
 	constructor(app: App, plugin: SparkPlugin, conversationStorage: ConversationStorage) {
@@ -188,15 +198,23 @@ export class ChatWindow extends Component {
 		this.inputEl = this.mentionInput.create();
 		this.inputEl.className = 'spark-chat-input';
 
+		inputWrapperEl.appendChild(this.inputEl);
+		inputContainerEl.appendChild(inputWrapperEl);
+
+		// Toolbar row: [model pills ... send button]
+		const toolbarRow = document.createElement('div');
+		toolbarRow.className = 'spark-chat-toolbar-row';
+
+		void this.initModelSelector(toolbarRow);
+
 		const sendBtn = document.createElement('button');
 		sendBtn.className = 'spark-chat-send-btn';
 		sendBtn.textContent = '↑';
 		sendBtn.setAttribute('aria-label', 'Send message');
 		sendBtn.onclick = () => this.sendMessage();
+		toolbarRow.appendChild(sendBtn);
 
-		inputWrapperEl.appendChild(this.inputEl);
-		inputWrapperEl.appendChild(sendBtn);
-		inputContainerEl.appendChild(inputWrapperEl);
+		inputContainerEl.appendChild(toolbarRow);
 
 		// Create resize handles for all 4 corners
 		const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
@@ -222,6 +240,43 @@ export class ChatWindow extends Component {
 		this.register(() => {
 			document.body.removeChild(this.containerEl);
 		});
+	}
+
+	/**
+	 * Initialize the model selector in the input container
+	 */
+	private async initModelSelector(container: HTMLElement): Promise<void> {
+		const readFile = (path: string) => this.app.vault.adapter.read(path);
+		await Promise.all([fetchLocalModels(readFile), fetchLocalOverride(readFile)]);
+
+		const localOverride = getLocalOverride();
+		const models = getAvailableModels(localOverride.enabled);
+		const defaultModel = resolveDefaultModel(undefined, undefined, localOverride);
+
+		this.modelSelector = new ModelSelector({
+			models,
+			defaultModel,
+			dropdownDirection: 'up',
+			initialProvider: localOverride.enabled ? 'local' : 'cloud',
+			onChange: (modelId: string | null) => {
+				this.state.selectedModel = modelId;
+			},
+		});
+
+		container.insertBefore(this.modelSelector.create(), container.firstChild);
+	}
+
+	/**
+	 * Refresh the model selector with latest models/config
+	 */
+	private async refreshModelSelector(): Promise<void> {
+		const readFile = (path: string) => this.app.vault.adapter.read(path);
+		await Promise.all([fetchLocalModels(readFile), fetchLocalOverride(readFile)]);
+
+		const localOverride = getLocalOverride();
+		const models = getAvailableModels(localOverride.enabled);
+		const defaultModel = resolveDefaultModel(undefined, undefined, localOverride);
+		this.modelSelector?.refresh(models, defaultModel);
 	}
 
 	/**
@@ -533,6 +588,8 @@ export class ChatWindow extends Component {
 		void this.initializeConversation();
 		// Preload conversations for instant dropdown response
 		void this.chatSelector.loadConversations();
+		// Refresh model list (picks up new local models / config changes)
+		void this.refreshModelSelector();
 	}
 
 	hide() {
@@ -883,6 +940,8 @@ export class ChatWindow extends Component {
 		this.state.mentionedAgents.clear();
 		this.state.conversationId = this.generateConversationId();
 		this.state.conversationName = null; // Clear name for new chat
+		this.state.selectedModel = null;
+		this.modelSelector?.reset();
 		this.messagesEl.empty();
 		this.updateChatTitle();
 		this.chatSelector.update(this.state.conversationId);
@@ -902,6 +961,8 @@ export class ChatWindow extends Component {
 
 		// Load the selected conversation
 		this.state.conversationId = conversationId;
+		this.state.selectedModel = null;
+		this.modelSelector?.reset();
 		await this.loadConversation();
 		this.chatSelector.update(conversationId);
 
@@ -1098,7 +1159,8 @@ export class ChatWindow extends Component {
 					message.content,
 					history,
 					activeFilePath,
-					this.state.lastMentionedAgent || undefined
+					this.state.lastMentionedAgent || undefined,
+					this.state.selectedModel || undefined
 				);
 			}
 		} catch (error) {

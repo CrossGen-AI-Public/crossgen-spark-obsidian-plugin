@@ -5,6 +5,9 @@
 import { type App, ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { createRoot, type Root } from 'react-dom/client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ModelSelectorWidget } from '../components/ModelSelectorReact';
+import { useModelSelector } from '../hooks/useModelSelector';
+import { getLocalOverride } from '../models';
 import type { ISparkPlugin } from '../types';
 import { showConfirmModal } from '../utils/confirmModal';
 import type {
@@ -31,6 +34,16 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 	const [runsIndex, setRunsIndex] = useState<WorkflowRunsIndex | null>(null);
 	const [loading, setLoading] = useState(true);
 	const storage = useMemo(() => new WorkflowStorage(app), [app]);
+
+	const localOverride = useMemo(() => getLocalOverride(), []);
+	const {
+		models,
+		selected: selectedModel,
+		setSelected: setSelectedModel,
+		defaultModel,
+		activeProvider,
+		setActiveProvider,
+	} = useModelSelector(localOverride);
 
 	const [isGenerateOpen, setIsGenerateOpen] = useState(false);
 	const [generatePrompt, setGeneratePrompt] = useState('');
@@ -234,6 +247,7 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 				threadId,
 				attempt: attemptRef.current,
 				clarifications: clarifications?.trim() ? clarifications.trim() : undefined,
+				modelOverride: selectedModel ?? undefined,
 			};
 
 			// Abort any previous poll.
@@ -422,6 +436,14 @@ function WorkflowList({ app, onOpenWorkflow, onCreateWorkflow, refreshKey }: Wor
 							rows={3}
 						/>
 					</div>
+					<ModelSelectorWidget
+						models={models}
+						defaultModel={defaultModel}
+						dropdownDirection="down"
+						initialProvider={activeProvider}
+						onChange={setSelectedModel}
+						onProviderChange={setActiveProvider}
+					/>
 					{isGenerating && generationProgress?.status === 'processing' ? (
 						<div className="spark-workflow-generate-progress">
 							<div className="spark-workflow-generate-progress-header">

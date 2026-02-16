@@ -40,7 +40,11 @@ export class CommandExecutor {
   /**
    * Core AI execution - returns AI response without writing to files
    */
-  private async executeAI(command: ParsedCommand, filePath: string): Promise<string> {
+  private async executeAI(
+    command: ParsedCommand,
+    filePath: string,
+    modelOverride?: string
+  ): Promise<string> {
     this.logger.info('Executing command', {
       command: command.raw.substring(0, 100),
       file: filePath,
@@ -60,7 +64,8 @@ export class CommandExecutor {
     // Get appropriate AI provider (with agent-specific overrides if applicable)
     const provider = this.providerFactory.createWithAgentConfig(
       this.config.ai,
-      context.agent?.aiConfig
+      context.agent?.aiConfig,
+      modelOverride
     );
 
     this.logger.debug('Provider selected', {
@@ -70,6 +75,7 @@ export class CommandExecutor {
       hasAgentOverrides: !!context.agent?.aiConfig,
       agentProvider: context.agent?.aiConfig?.provider,
       agentModel: context.agent?.aiConfig?.model,
+      modelOverride,
     });
 
     // Build provider completion options
@@ -121,8 +127,12 @@ export class CommandExecutor {
    * Execute command and return AI response without writing to file
    * Used for chat and other cases where custom result handling is needed
    */
-  async executeAndReturn(command: ParsedCommand, filePath: string): Promise<string> {
-    return await this.executeAI(command, filePath);
+  async executeAndReturn(
+    command: ParsedCommand,
+    filePath: string,
+    modelOverride?: string
+  ): Promise<string> {
+    return await this.executeAI(command, filePath, modelOverride);
   }
 
   /**
@@ -298,6 +308,7 @@ export class CommandExecutor {
       id: chat.id,
       file: filePath,
       userMessage: chat.userMessage.substring(0, 100),
+      modelOverride: chat.modelOverride,
     });
 
     try {
@@ -362,7 +373,8 @@ export class CommandExecutor {
     // Get appropriate AI provider (with agent-specific overrides if applicable)
     const provider = this.providerFactory.createWithAgentConfig(
       this.config.ai,
-      context.agent?.aiConfig
+      context.agent?.aiConfig,
+      chat.modelOverride
     );
 
     // Build context files for provider
@@ -463,7 +475,11 @@ export class CommandExecutor {
     }
 
     // Get appropriate AI provider
-    const provider = this.providerFactory.createWithAgentConfig(this.config.ai, agentConfig);
+    const provider = this.providerFactory.createWithAgentConfig(
+      this.config.ai,
+      agentConfig,
+      request.modelOverride
+    );
 
     // Build system prompt (minimal: persona + workflow role)
     const systemPrompt = this.buildWorkflowSystemPrompt(agentPersona, request);

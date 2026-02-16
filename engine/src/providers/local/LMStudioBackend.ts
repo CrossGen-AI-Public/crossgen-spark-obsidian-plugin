@@ -42,6 +42,9 @@ export interface LMStudioClientLike {
   };
 }
 
+/** How long to wait for the LM Studio server before giving up (ms). */
+const CONNECTION_TIMEOUT_MS = 15_000;
+
 export class LMStudioBackend implements LocalBackend {
   readonly name = 'lmstudio';
   private _client: LMStudioClientLike | null;
@@ -83,7 +86,13 @@ export class LMStudioBackend implements LocalBackend {
     });
 
     try {
-      const model = await this.getClient().llm.model(options.model);
+      // Model lookup can hang forever if LM Studio isn't running (SDK retries internally).
+      // Race against a timeout so the user gets a clear error instead of infinite loading.
+      const model = await this.withTimeout(
+        this.getClient().llm.model(options.model),
+        CONNECTION_TIMEOUT_MS,
+        options.model
+      );
       const chat = Chat.from(messages);
       const prediction = model.respond(chat, {
         temperature: options.temperature,
@@ -127,9 +136,32 @@ export class LMStudioBackend implements LocalBackend {
   }
 
   /**
+   * Race a promise against a timeout. Rejects with a SparkError on timeout.
+   */
+  private withTimeout<T>(promise: Promise<T>, ms: number, model: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        setTimeout(() => {
+          reject(
+            new SparkError(
+              'Cannot connect to LM Studio. Is it running?',
+              'LOCAL_CONNECTION_ERROR',
+              { model, timeout: ms }
+            )
+          );
+        }, ms);
+      }),
+    ]);
+  }
+
+  /**
    * Strip ANSI escape codes and extract clean error message from LM Studio SDK errors.
    */
   private wrapError(error: unknown, model: string): SparkError {
+    // Already a SparkError (e.g. from withTimeout) — pass through
+    if (error instanceof SparkError) return error;
+
     const raw = error instanceof Error ? error.message : String(error);
     // Strip ANSI escape codes (ESC [ ... m sequences)
     const ansiPattern = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');

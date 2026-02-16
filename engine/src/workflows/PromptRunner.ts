@@ -67,6 +67,7 @@ export class PromptRunner {
       structuredOutput: data.structuredOutput,
       outputSchema: data.outputSchema,
       fileTargets: fileTargets && fileTargets.length > 0 ? fileTargets : undefined,
+      modelOverride: data.modelOverride,
     };
 
     // Execute via command executor

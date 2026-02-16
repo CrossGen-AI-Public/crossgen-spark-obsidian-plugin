@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import type { Logger } from '../../logger/Logger.js';
 import type { AIProviderFactory } from '../../providers/AIProviderFactory.js';
 import type { AIConfig } from '../../types/config.js';
+import type { IAIProvider } from '../../types/provider.js';
 import { layoutWorkflow } from '../generation/layoutWorkflow.js';
 import { validateAndNormalizeWorkflowDefinition } from '../generation/validateWorkflowDefinition.js';
 import type { WorkflowDefinition } from '../types.js';
@@ -47,6 +48,7 @@ interface WorkflowEditRequest {
   message: string;
   conversationHistory: ChatMessage[];
   threadId?: string;
+  modelOverride?: string;
 }
 
 /**
@@ -167,6 +169,13 @@ export class WorkflowEditHandler {
     return this.aiConfig.providers['claude-client']
       ? 'claude-client'
       : this.aiConfig.defaultProvider;
+  }
+
+  private createProvider(modelOverride?: string): IAIProvider {
+    if (modelOverride) {
+      return this.providerFactory.createWithAgentConfig(this.aiConfig, undefined, modelOverride);
+    }
+    return this.providerFactory.createFromConfig(this.aiConfig, this.selectProviderName());
   }
 
   private writeProgress(requestId: string, stage: string, message?: string): void {
@@ -303,12 +312,7 @@ export class WorkflowEditHandler {
 
       this.writeProgress(request.requestId, 'queued', 'Picked up request...');
 
-      const providerName = this.selectProviderName();
-      this.logger.debug('[WorkflowEdit] Provider selected', {
-        requestId: request.requestId,
-        providerName,
-      });
-      const provider = this.providerFactory.createFromConfig(this.aiConfig, providerName);
+      const provider = this.createProvider(request.modelOverride);
 
       this.writeProgress(request.requestId, 'processing', 'Analyzing workflow...');
 

@@ -2,7 +2,15 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
-import { type App, Modal, Notice, normalizePath, PluginSettingTab, Setting } from 'obsidian';
+import {
+	type App,
+	type DataAdapter,
+	Modal,
+	Notice,
+	normalizePath,
+	PluginSettingTab,
+	Setting,
+} from 'obsidian';
 import {
 	DEFAULT_CHAT_BOTTOM,
 	DEFAULT_CHAT_HEIGHT,
@@ -364,7 +372,9 @@ export class SparkSettingTab extends PluginSettingTab {
 				toggle.setValue(localOverride.enabled).onChange(value => {
 					localOverride.enabled = value;
 					renderModelDropdown();
-					void this.saveLocalOverride(rawConfig, localOverride, providers);
+					void this.saveLocalOverride(rawConfig, localOverride, providers).then(() => {
+						if (value) this.pollForLocalModels(adapter, renderModelDropdown);
+					});
 				});
 			});
 
@@ -523,6 +533,27 @@ export class SparkSettingTab extends PluginSettingTab {
 			console.error('[Spark] Error saving local override:', error);
 			new Notice('Error saving configuration');
 		}
+	}
+
+	/**
+	 * Poll for local-models.json updates after enabling override.
+	 * Engine writes this file shortly after config change.
+	 */
+	private pollForLocalModels(
+		adapter: DataAdapter,
+		renderModelDropdown: () => void,
+		attempts = 0
+	): void {
+		if (attempts >= 10) return; // Give up after ~5s
+		setTimeout(() => {
+			void fetchLocalModels(path => adapter.read(path)).then(() => {
+				if (isLMStudioConnected() && getLocalModels().length > 0) {
+					renderModelDropdown();
+				} else {
+					this.pollForLocalModels(adapter, renderModelDropdown, attempts + 1);
+				}
+			});
+		}, 500);
 	}
 
 	private populateAgentsTab(containerEl: HTMLElement) {

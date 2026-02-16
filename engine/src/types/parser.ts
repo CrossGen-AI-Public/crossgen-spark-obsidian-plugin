@@ -103,6 +103,8 @@ export interface ParsedInlineChat {
   raw: string;
   /** Parsed mentions from user message (@agent, @file, etc.) */
   mentions?: ParsedMention[];
+  /** Explicit model override from user's dropdown selection */
+  modelOverride?: string;
 }
 
 /**

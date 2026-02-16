@@ -592,8 +592,6 @@
 
 .spark-chat-input-wrapper {
     display: flex;
-    gap: 8px;
-    align-items: flex-end;
 }
 
 .spark-chat-input {
@@ -3973,6 +3971,7 @@ svg.react-flow__connectionline {
 
 .spark-workflow-chat-input-container {
     display: flex;
+    flex-direction: column;
     gap: 8px;
     padding: 12px;
     border-top: 1px solid var(--background-modifier-border);
@@ -3980,7 +3979,6 @@ svg.react-flow__connectionline {
 }
 
 .spark-workflow-chat-input {
-    flex: 1;
     resize: none;
     border: 1px solid var(--background-modifier-border);
     border-radius: 8px;
@@ -4036,4 +4034,150 @@ svg.react-flow__connectionline {
     width: 14px;
     height: 14px;
     animation: spark-spin 1s linear infinite;
+}
+
+/* ─── Model Selector (pill UI + dropdown) ─── */
+
+.spark-model-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+
+/* Provider toggle - segmented pill */
+.spark-model-provider-toggle {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 14px;
+    padding: 1px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 11px;
+    height: 24px;
+    color: var(--text-muted);
+    box-shadow: none;
+}
+
+.spark-provider-option {
+    padding: 2px 8px;
+    border-radius: 12px;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.spark-provider-option.is-active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Model trigger pill */
+.spark-model-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: none;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    height: 24px;
+    white-space: nowrap;
+    box-shadow: none;
+}
+
+.spark-model-trigger:hover {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+}
+
+.spark-model-trigger.is-open {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+}
+
+/* Dropdown popover - opens upward by default */
+.spark-model-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 4px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 10000;
+    padding: 4px;
+}
+
+.spark-model-dropdown.is-hidden {
+    display: none;
+}
+
+.spark-model-dropdown.is-below {
+    bottom: auto;
+    top: 100%;
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
+.spark-model-dropdown-item {
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-normal);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.spark-model-dropdown-item:hover,
+.spark-model-dropdown-item.is-highlighted {
+    background: var(--background-modifier-hover);
+}
+
+.spark-model-dropdown-item.is-selected {
+    color: var(--interactive-accent);
+}
+
+.spark-model-dropdown-item .spark-model-check {
+    font-size: 12px;
+    color: var(--interactive-accent);
+}
+
+/* Compact variant (inline chat) */
+.spark-model-selector--compact .spark-model-trigger,
+.spark-model-selector--compact .spark-model-provider-toggle {
+    font-size: 10px;
+    height: 20px;
+}
+
+.spark-model-selector--compact .spark-provider-option {
+    padding: 1px 6px;
+}
+
+/* Main chat toolbar row */
+.spark-chat-toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    position: relative;
+}
+
+/* Inline chat helper row layout */
+.spark-inline-chat-helper-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 10px 0;
 }

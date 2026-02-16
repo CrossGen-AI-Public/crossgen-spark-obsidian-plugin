@@ -4,6 +4,8 @@
 
 import type { App } from 'obsidian';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { ModelSelectorWidget } from '../components/ModelSelectorReact';
+import { getAvailableModels, getLocalModels, getLocalOverride, resolveDefaultModel } from '../models';
 import type { ISparkPlugin } from '../types';
 import { showConfirmModal } from '../utils/confirmModal';
 import type {
@@ -507,6 +509,7 @@ function PromptTab({ app, plugin, node, availableInputs, onChange }: PromptTabPr
 			<PromptFields
 				app={app}
 				plugin={plugin}
+				nodeId={node.id}
 				data={node.data}
 				availableInputs={availableInputs}
 				onChange={onChange}
@@ -589,12 +592,26 @@ function AvailableVariablesSection({ inputs }: { inputs: AvailableInput[] }) {
 interface PromptFieldsProps {
 	app: App;
 	plugin: ISparkPlugin;
+	nodeId: string;
 	data: { type: 'prompt' } & PromptNodeData;
 	availableInputs: AvailableInput[];
 	onChange: (field: string, value: unknown) => void;
 }
 
-function PromptFields({ app, plugin, data, availableInputs, onChange }: PromptFieldsProps) {
+function PromptFields({ app, plugin, nodeId, data, availableInputs, onChange }: PromptFieldsProps) {
+	// Model selector — per-node, derived directly (no shared hook state)
+	const localOverride = useMemo(() => getLocalOverride(), []);
+	const localModels = useMemo(() => getLocalModels(), []);
+	const models = useMemo(() => getAvailableModels(localOverride.enabled), [localOverride.enabled]);
+	const defaultModel = useMemo(
+		() => resolveDefaultModel(undefined, undefined, localOverride),
+		[localOverride]
+	);
+	const initialProvider = useMemo((): 'cloud' | 'local' => {
+		if (!data.modelOverride) return localOverride.enabled ? 'local' : 'cloud';
+		return localModels.includes(data.modelOverride) ? 'local' : 'cloud';
+	}, [data.modelOverride, localOverride.enabled, localModels]);
+
 	// Build example variable for hint
 	const exampleVar = availableInputs.length > 0 && availableInputs[0].fields?.[0]
 		? `$input.${availableInputs[0].fields[0].name}`
@@ -621,6 +638,23 @@ function PromptFields({ app, plugin, data, availableInputs, onChange }: PromptFi
 		<>
 			{/* Available Variables - above prompt field */}
 			{availableInputs.length > 0 && <AvailableVariablesSection inputs={availableInputs} />}
+
+			{/* Per-node model selector — key forces remount when switching nodes */}
+			<div className="spark-workflow-form-group">
+				<label>Model</label>
+				<ModelSelectorWidget
+					key={nodeId}
+					models={models}
+					defaultModel={defaultModel}
+					dropdownDirection="down"
+					initialProvider={initialProvider}
+					initialSelection={data.modelOverride}
+					onChange={(modelId) => onChange('modelOverride', modelId ?? undefined)}
+				/>
+				<span className="spark-workflow-form-hint">
+					Override the model for this step. Leave default to use agent/global config.
+				</span>
+			</div>
 
 			<div className="spark-workflow-form-group">
 				<label>Prompt Template</label>

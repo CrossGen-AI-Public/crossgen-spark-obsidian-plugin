@@ -33,6 +33,8 @@ export interface PromptNodeData extends BaseNodeData {
 	structuredOutput?: boolean;
 	/** JSON example/schema the agent must output (required when structuredOutput is true) */
 	outputSchema?: string;
+	/** Per-node model override (cloud or local model ID) */
+	modelOverride?: string;
 }
 
 /**
@@ -168,6 +170,7 @@ export interface WorkflowGenerateRequest {
 	threadId?: string;
 	attempt?: number;
 	clarifications?: string;
+	modelOverride?: string;
 }
 
 /**
@@ -289,6 +292,9 @@ export interface WorkflowEditRequest {
 
 	// For multi-turn clarification
 	threadId?: string;
+
+	// Model override from dropdown
+	modelOverride?: string;
 }
 
 /**

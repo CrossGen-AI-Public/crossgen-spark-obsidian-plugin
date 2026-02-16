@@ -443,6 +443,9 @@ export class InlineChatManager {
 		// Extract clean user message (remove @agent prefix)
 		const cleanMessage = message.replace(AGENT_PREFIX_REGEX, '').trim();
 
+		// Capture selected model before transforming widget
+		const modelOverride = this.activeWidget?.getSelectedModel() || undefined;
+
 		// Transform widget to processing state first (so we can measure its height)
 		if (this.activeWidget) {
 			this.activeWidget.transformToProcessing(cleanMessage);
@@ -463,7 +466,8 @@ export class InlineChatManager {
 						this.currentMention?.agentName || '',
 						message,
 						uuid,
-						linesNeeded
+						linesNeeded,
+						modelOverride
 					);
 				}
 			}, 10);
@@ -474,7 +478,9 @@ export class InlineChatManager {
 				this.markerId,
 				this.currentMention?.agentName || '',
 				message,
-				uuid
+				uuid,
+				undefined,
+				modelOverride
 			);
 		}
 

@@ -33,7 +33,7 @@ describe('models', () => {
 	describe('ALL_MODELS', () => {
 		it('contains all Claude model values', () => {
 			expect(ALL_MODELS).toEqual(Object.values(ClaudeModel));
-			expect(ALL_MODELS.length).toBe(7);
+			expect(ALL_MODELS.length).toBe(9);
 		});
 	});
 
@@ -59,7 +59,7 @@ describe('models', () => {
 
 	describe('getModelLabel', () => {
 		it('returns known label for Claude models', () => {
-			expect(getModelLabel(ClaudeModel.SONNET_4_5)).toBe('Claude Sonnet 4.5 (Latest)');
+			expect(getModelLabel(ClaudeModel.SONNET_4_5)).toBe('Claude Sonnet 4.5');
 			expect(getModelLabel(ClaudeModel.HAIKU_3)).toBe('Claude Haiku 3');
 		});
 

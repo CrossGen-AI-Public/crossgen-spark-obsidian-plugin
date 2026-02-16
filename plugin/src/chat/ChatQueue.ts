@@ -18,13 +18,15 @@ export class ChatQueue {
 	 * @param conversationHistory - Previous messages for context
 	 * @param activeFilePath - Currently active file path for vault context
 	 * @param primaryAgent - Primary agent for this conversation (last mentioned agent)
+	 * @param modelOverride - Explicit model override from dropdown selector
 	 */
 	async enqueue(
 		conversationId: string,
 		userMessage: string,
 		conversationHistory: Array<{ role: string; content: string }>,
 		activeFilePath?: string,
-		primaryAgent?: string
+		primaryAgent?: string,
+		modelOverride?: string
 	): Promise<string> {
 		// Ensure queue directory exists
 		await this.ensureQueueDir();
@@ -44,6 +46,9 @@ export class ChatQueue {
 		}
 		if (primaryAgent) {
 			content += `primary_agent: ${primaryAgent}\n`;
+		}
+		if (modelOverride) {
+			content += `model_override: ${modelOverride}\n`;
 		}
 		content += '---\n\n';
 

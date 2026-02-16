@@ -24,4 +24,5 @@ export interface ChatState {
 	mentionedAgents: Set<string>;
 	lastMentionedAgent: string | null; // Most recently mentioned agent (for conversation continuity)
 	conversationName: string | null; // Auto-generated name from engine
+	selectedModel: string | null; // Model override from dropdown (null = use default)
 }

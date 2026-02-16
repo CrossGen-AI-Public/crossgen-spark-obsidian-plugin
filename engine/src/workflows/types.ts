@@ -30,6 +30,8 @@ export interface PromptNodeData extends BaseNodeData {
   structuredOutput?: boolean;
   /** JSON example/schema the agent must output (required when structuredOutput is true) */
   outputSchema?: string;
+  /** Per-node model override (cloud or local model ID) */
+  modelOverride?: string;
 }
 
 /**
@@ -240,4 +242,7 @@ export interface WorkflowPromptRequest {
 
   // File targets for writing output
   fileTargets?: FileTarget[];
+
+  // Per-node model override
+  modelOverride?: string;
 }

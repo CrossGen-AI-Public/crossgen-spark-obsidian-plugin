@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import type { Logger } from '../../logger/Logger.js';
 import type { AIProviderFactory } from '../../providers/AIProviderFactory.js';
 import type { AIConfig } from '../../types/config.js';
+import type { IAIProvider } from '../../types/provider.js';
 import type { WorkflowDefinition } from '../types.js';
 import { layoutWorkflow } from './layoutWorkflow.js';
 import type {
@@ -167,6 +168,13 @@ export class WorkflowGenerateHandler {
       : this.aiConfig.defaultProvider;
   }
 
+  private createProvider(modelOverride?: string): IAIProvider {
+    if (modelOverride) {
+      return this.providerFactory.createWithAgentConfig(this.aiConfig, undefined, modelOverride);
+    }
+    return this.providerFactory.createFromConfig(this.aiConfig, this.selectProviderName());
+  }
+
   private writeProgress(
     requestId: string,
     stage: WorkflowGenerateProgressStage,
@@ -297,12 +305,7 @@ export class WorkflowGenerateHandler {
         maxAttempts: DEFAULT_MAX_ATTEMPTS,
       });
 
-      const providerName = this.selectProviderName();
-      this.logger.debug('[WorkflowGenerate] Provider selected', {
-        requestId: request.requestId,
-        providerName,
-      });
-      const provider = this.providerFactory.createFromConfig(this.aiConfig, providerName);
+      const provider = this.createProvider(request.modelOverride);
 
       this.writeProgress(request.requestId, 'generating', {
         message: 'Generating workflow…',

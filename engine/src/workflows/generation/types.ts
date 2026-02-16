@@ -11,6 +11,7 @@ export interface WorkflowGenerateRequest {
   threadId?: string;
   attempt?: number;
   clarifications?: string;
+  modelOverride?: string;
 }
 
 export type WorkflowGenerateProgressStage =

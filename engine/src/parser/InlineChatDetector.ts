@@ -14,7 +14,8 @@ import { MentionParser } from './MentionParser.js';
 export class InlineChatDetector implements IInlineChatDetector {
   private mentionParser: IMentionParser;
   // Opening marker pattern: <!-- spark-inline-chat:status:id --> or <!-- spark-inline-chat:status:id:agent:message -->
-  // Captures: status, id, agent (optional), message (optional)
+  // With optional model override suffix: :model_override=MODEL_ID
+  // Captures: status, id, agent (optional), message (optional), model_override (optional)
   private readonly OPENING_MARKER_REGEX =
     /<!--\s*spark-inline-chat:(pending|processing|complete|error):([a-z0-9-]+)(?::([^:]+?))?(?::(.+?))?\s*-->/;
 
@@ -57,7 +58,18 @@ export class InlineChatDetector implements IInlineChatDetector {
     const status = openingMatch[1] as InlineChatStatus;
     const id = openingMatch[2] ?? '';
     const agentInComment = openingMatch[3];
-    const messageInComment = openingMatch[4];
+    let messageInComment = openingMatch[4];
+
+    // Extract model_override suffix from message if present
+    // Format: message:model_override=MODEL_ID
+    let modelOverride: string | undefined;
+    if (messageInComment) {
+      const modelMatch = messageInComment.match(/:model_override=(.+)$/);
+      if (modelMatch?.[1]) {
+        modelOverride = modelMatch[1];
+        messageInComment = messageInComment.slice(0, modelMatch.index);
+      }
+    }
 
     const closingIndex = this.findClosingMarkerIndex(lines, startIndex + 1);
     if (closingIndex === null) return null;
@@ -87,6 +99,7 @@ export class InlineChatDetector implements IInlineChatDetector {
         aiResponse,
         raw,
         mentions,
+        modelOverride,
       },
       nextIndex: endLine, // move to line after closing marker (0-indexed)
     };

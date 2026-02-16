@@ -3,8 +3,10 @@
  */
 
 import type { App } from 'obsidian';
+import { ModelSelector } from '../components/ModelSelector';
 import type { MentionDecorator } from '../mention/MentionDecorator';
 import { MentionInput } from '../mention/MentionInput';
+import { getAvailableModels, getLocalOverride, resolveDefaultModel } from '../models';
 import { setCssProps } from '../utils/setCssProps';
 
 export interface InlineChatWidgetOptions {
@@ -49,6 +51,8 @@ export class InlineChatWidget {
 	private containerEl: HTMLElement | null = null;
 	private mentionInput: MentionInput | null = null;
 	private sendButtonEl: HTMLButtonElement | null = null;
+	private modelSelector: ModelSelector | null = null;
+	private selectedModel: string | null = null;
 	private options: InlineChatWidgetOptions;
 	private statusMessageEl: HTMLElement | null = null;
 	private statusIntervalId: number | null = null;
@@ -130,6 +134,8 @@ export class InlineChatWidget {
 			this.mentionInput.destroy();
 			this.mentionInput = null;
 		}
+		this.modelSelector?.destroy();
+		this.modelSelector = null;
 		if (this.containerEl) {
 			this.containerEl.remove();
 			this.containerEl = null;
@@ -172,6 +178,13 @@ export class InlineChatWidget {
 
 		// Start rotating status messages
 		this.startStatusRotation();
+	}
+
+	/**
+	 * Get the selected model override (null = use default)
+	 */
+	getSelectedModel(): string | null {
+		return this.selectedModel;
 	}
 
 	/**
@@ -238,9 +251,26 @@ export class InlineChatWidget {
 		const inputWrapper = mainContent.createDiv('spark-inline-chat-input-wrapper');
 		inputWrapper.appendChild(inputEl);
 
-		// Helper text below input
-		const helperText = mainContent.createDiv('spark-inline-chat-helper');
+		// Helper row with text and model selector
+		const helperRow = mainContent.createDiv('spark-inline-chat-helper-row');
+		const helperText = helperRow.createDiv('spark-inline-chat-helper');
 		helperText.setText('Enter to send, Shift+Enter for newline, Esc to cancel, @ for mentions');
+
+		// Compact model selector
+		const localOverride = getLocalOverride();
+		const models = getAvailableModels(localOverride.enabled);
+		const defaultModel = resolveDefaultModel(undefined, undefined, localOverride);
+		this.modelSelector = new ModelSelector({
+			models,
+			defaultModel,
+			compact: true,
+			dropdownDirection: 'up',
+			initialProvider: localOverride.enabled ? 'local' : 'cloud',
+			onChange: modelId => {
+				this.selectedModel = modelId;
+			},
+		});
+		helperRow.appendChild(this.modelSelector.create());
 
 		// Send button at bottom right corner of widget
 		this.sendButtonEl = mainContent.createEl('button', {
