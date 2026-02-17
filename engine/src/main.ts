@@ -536,21 +536,22 @@ export class SparkEngine implements ISparkEngine {
     }
 
     // Check if this is a chat queue file
-    if (this.chatQueueHandler?.isChatQueueFile(change.path)) {
+    const normalizedPath = change.path.replace(/\\/g, '/');
+    if (this.chatQueueHandler?.isChatQueueFile(normalizedPath)) {
       this.logger.debug('Chat queue file detected', { path: change.path });
       await this.chatQueueHandler.process(change.path);
       return;
     }
 
     // Check if this is a workflow queue file
-    if (this.workflowExecutor?.isQueueFile(change.path)) {
+    if (this.workflowExecutor?.isQueueFile(normalizedPath)) {
       this.logger.debug('Workflow queue file detected', { path: change.path });
       await this.workflowExecutor.processQueueFile(change.path);
       return;
     }
 
     // Check if this is a workflow generation queue file
-    if (this.workflowGenerateHandler?.isQueueFile(change.path)) {
+    if (this.workflowGenerateHandler?.isQueueFile(normalizedPath)) {
       this.logger.debug('Workflow generation queue file detected', { path: change.path });
       await this.workflowGenerateHandler.processQueueFile(change.path);
       return;

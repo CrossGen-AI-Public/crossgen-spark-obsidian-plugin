@@ -791,7 +791,7 @@ export class SparkSettingTab extends PluginSettingTab {
 	}
 
 	private parseAgentFile(content: string): AgentConfig {
-		const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+		const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
 		if (!match) {
 			throw new Error('Invalid agent file format');
 		}

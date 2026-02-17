@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/cli.ts start",
     "dev:debug": "tsx watch --clear-screen=false src/cli.ts start --debug",
-    "build": "tsc --project tsconfig.build.json && chmod +x dist/cli.js && mkdir -p dist/init/templates && cp ../example-vault/.spark/config.yaml dist/init/templates/ && cp -r ../example-vault/.spark/agents dist/init/templates/ && cp -r ../example-vault/.spark/commands dist/init/templates/",
+    "build": "tsc --project tsconfig.build.json && node build-templates.mjs",
     "build:watch": "tsc --project tsconfig.build.json --watch",
     "start": "node dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",

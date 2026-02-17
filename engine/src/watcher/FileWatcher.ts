@@ -150,14 +150,15 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
    * These bypass the normal watch patterns since they're internal engine files
    */
   private isInternalQueueFile(relativePath: string): boolean {
+    const normalized = relativePath.replace(/\\/g, '/');
     // Workflow queue files (.spark/workflow-queue/*.json)
-    if (relativePath.startsWith('.spark/workflow-queue/') && relativePath.endsWith('.json')) {
+    if (normalized.startsWith('.spark/workflow-queue/') && normalized.endsWith('.json')) {
       return true;
     }
     // Workflow generation queue files (.spark/workflow-generate-queue/*.json)
     if (
-      relativePath.startsWith('.spark/workflow-generate-queue/') &&
-      relativePath.endsWith('.json')
+      normalized.startsWith('.spark/workflow-generate-queue/') &&
+      normalized.endsWith('.json')
     ) {
       return true;
     }
