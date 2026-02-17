@@ -499,8 +499,8 @@ export class SparkSettingTab extends PluginSettingTab {
 		const configPath = '.spark/config.yaml';
 
 		// Auto-create local provider if missing and override is enabled
-		if (localOverride.enabled && !providers['local']) {
-			providers['local'] = {
+		if (localOverride.enabled && !providers.local) {
+			providers.local = {
 				type: 'local',
 				model: localOverride.model,
 				maxTokens: 4096,
