@@ -1,7 +1,7 @@
 import { execSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { App, FileSystemAdapter } from 'obsidian';
 
 interface EngineEntry {
@@ -117,31 +117,30 @@ export class EngineService {
 	 * Find the spark executable path using where.exe on Windows
 	 */
 	private findSparkWindows(): string | null {
-		// Try where.exe (Windows equivalent of which)
 		try {
 			const result = execSync('where.exe spark', {
 				encoding: 'utf8',
 				stdio: ['pipe', 'pipe', 'pipe'],
 			});
-			// where.exe can return multiple lines, take the first valid one
 			const lines = result
 				.trim()
 				.split('\n')
 				.map(l => l.trim());
+
+			// Prefer .cmd over extensionless (extensionless requires shell: true which creates a window)
+			const cmdLine = lines.find(l => l.endsWith('.cmd'));
+			if (cmdLine && existsSync(cmdLine)) return cmdLine;
+
+			// Fall back to first valid result
 			for (const line of lines) {
-				if (line && existsSync(line)) {
-					return line;
-				}
+				if (line && existsSync(line)) return line;
 			}
 		} catch {
 			// where.exe failed, check common paths
 		}
 
-		// Check common Windows installation locations
 		for (const path of this.getCommonSparkPathsWindows()) {
-			if (existsSync(path)) {
-				return path;
-			}
+			if (existsSync(path)) return path;
 		}
 
 		return null;
@@ -376,6 +375,39 @@ export class EngineService {
 	}
 
 	/**
+	 * Spawn the engine process on Windows
+	 */
+	private spawnEngineWindows(sparkPath: string, vaultPath: string): ReturnType<typeof spawn> {
+		const ext = sparkPath.split('.').pop()?.toLowerCase();
+		if (ext === 'ps1') {
+			return spawn(
+				'powershell.exe',
+				['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', sparkPath, 'start', vaultPath],
+				{ detached: true, stdio: 'ignore', windowsHide: true }
+			);
+		} else if (ext === 'cmd' || ext === 'bat') {
+			// Bypass the .cmd wrapper - it creates a console window via 'title %COMSPEC%'
+			// Call node directly on the underlying cli.js instead
+			const cliPath = join(dirname(sparkPath), 'node_modules', 'spark-engine', 'dist', 'cli.js');
+			const nodePath = existsSync('C:\\Program Files\\nodejs\\node.exe')
+				? 'C:\\Program Files\\nodejs\\node.exe'
+				: 'node.exe';
+			return spawn(nodePath, [cliPath, 'start', vaultPath], {
+				detached: true,
+				stdio: 'ignore',
+				windowsHide: true,
+			});
+		} else {
+			return spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
+				detached: true,
+				stdio: 'ignore',
+				shell: true,
+				windowsHide: true,
+			});
+		}
+	}
+
+	/**
 	 * Start the engine in background
 	 */
 	public async startEngineBackground(): Promise<boolean> {
@@ -395,43 +427,20 @@ export class EngineService {
 		try {
 			console.debug(`[Spark] Starting engine: ${sparkPath} start "${vaultPath}"`);
 
-			let child: ReturnType<typeof spawn>;
-
-			if (this.isWindows()) {
-				const ext = sparkPath.split('.').pop()?.toLowerCase();
-				if (ext === 'ps1') {
-					child = spawn(
-						'powershell.exe',
-						['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', sparkPath, 'start', vaultPath],
-						{ detached: true, stdio: 'ignore' }
-					);
-				} else if (ext === 'cmd' || ext === 'bat') {
-					child = spawn('cmd.exe', ['/c', sparkPath, 'start', vaultPath], {
-						detached: true,
-						stdio: 'ignore',
-					});
-				} else {
-					child = spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
+			const child = this.isWindows()
+				? this.spawnEngineWindows(sparkPath, vaultPath)
+				: spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
 						detached: true,
 						stdio: 'ignore',
 						shell: true,
+						env: {
+							...process.env,
+							PATH: `${process.env.PATH}:${this.buildUnixExtraPaths()}`,
+						},
 					});
-				}
-			} else {
-				child = spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
-					detached: true,
-					stdio: 'ignore',
-					shell: true,
-					env: {
-						...process.env,
-						PATH: `${process.env.PATH}:${this.buildUnixExtraPaths()}`,
-					},
-				});
-			}
 
 			child.unref();
 
-			// Poll registry until engine registers
 			const maxWait = 10000;
 			const pollInterval = 500;
 			let waited = 0;
