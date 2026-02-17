@@ -424,7 +424,7 @@ export class EngineService {
 					shell: true,
 					env: {
 						...process.env,
-						PATH: `${process.env.PATH}:${homedir()}/.nvm/versions/node/v22.20.0/bin:${homedir()}/.local/bin:/usr/local/bin`,
+						PATH: `${process.env.PATH}:${this.buildUnixExtraPaths()}`,
 					},
 				});
 			}
@@ -503,6 +503,27 @@ export class EngineService {
 			console.error('[Spark] Failed to stop engine:', error);
 			return false;
 		}
+	}
+
+	/**
+	 * Build extra PATH entries for Unix systems (nvm, homebrew, local bin)
+	 */
+	private buildUnixExtraPaths(): string {
+		const nvmBinPaths: string[] = [];
+		const nvmVersionsDir = join(homedir(), '.nvm', 'versions', 'node');
+		try {
+			if (existsSync(nvmVersionsDir)) {
+				const versions = readdirSync(nvmVersionsDir);
+				for (const version of versions) {
+					nvmBinPaths.push(join(nvmVersionsDir, version, 'bin'));
+				}
+			}
+		} catch {
+			// ignore
+		}
+		return [...nvmBinPaths, `${homedir()}/.local/bin`, '/usr/local/bin', '/opt/homebrew/bin'].join(
+			':'
+		);
 	}
 
 	/**
