@@ -64,6 +64,7 @@ export class ClaudeCodeProvider implements IAIProvider {
       const { stdout, stderr } = await execAsync(command, {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large responses
         timeout: 300000, // 5 minute timeout
+        windowsHide: true,
       });
 
       if (stderr) {
@@ -108,7 +109,7 @@ export class ClaudeCodeProvider implements IAIProvider {
    */
   private async checkCliAvailable(): Promise<void> {
     try {
-      await execAsync('which claude');
+      await execAsync('which claude', { windowsHide: true });
     } catch (error) {
       throw new SparkError(
         'Claude CLI not found. Please install it: npm install -g @anthropic-ai/claude-code',
