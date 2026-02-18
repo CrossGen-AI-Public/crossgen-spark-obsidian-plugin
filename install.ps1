@@ -544,6 +544,21 @@ if ($DEV_MODE) {
 
 Write-Success "Plugin installed to: $PLUGIN_DIR"
 
+# Disable safe mode so community plugins are allowed to run
+Write-ProgressMsg "Disabling safe mode..."
+$APP_JSON_FILE = Join-Path $VAULT_PATH ".obsidian\app.json"
+$appJson = @{}
+if (Test-Path $APP_JSON_FILE) {
+    try {
+        $appJson = Get-Content $APP_JSON_FILE -Raw | ConvertFrom-Json -AsHashtable
+    } catch {
+        $appJson = @{}
+    }
+}
+$appJson["safe-mode"] = $false
+$appJson | ConvertTo-Json | Set-Content $APP_JSON_FILE -Encoding UTF8
+Write-Success "Safe mode disabled"
+
 # Enable plugins in community-plugins.json
 Write-ProgressMsg "Enabling plugins in Obsidian config..."
 $COMMUNITY_PLUGINS_FILE = Join-Path $VAULT_PATH ".obsidian\community-plugins.json"
@@ -579,8 +594,9 @@ foreach ($plugin in $EXISTING_PLUGINS) {
 # Add spark
 $PLUGINS += "spark"
 
-# Write JSON file
-$PLUGINS | ConvertTo-Json | Set-Content $COMMUNITY_PLUGINS_FILE -Encoding UTF8
+# Write JSON file (force array even with single item)
+$jsonArray = "[" + (($PLUGINS | ForEach-Object { "`"$_`"" }) -join ",") + "]"
+$jsonArray | Set-Content $COMMUNITY_PLUGINS_FILE -Encoding UTF8
 
 Write-Success "Plugins enabled in config"
 
