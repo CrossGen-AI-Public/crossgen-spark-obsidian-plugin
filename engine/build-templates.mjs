@@ -11,18 +11,23 @@ async function buildTemplates() {
   try {
     console.log('Building init templates...');
     
-    // Create templates directory
+    // Create templates directory in dist
     const templatesDir = join(__dirname, 'dist', 'init', 'templates');
     await mkdir(templatesDir, { recursive: true });
     console.log('✓ Created templates directory');
     
-    // Source paths
-    const vaultDir = join(__dirname, '..', 'example-vault', '.spark');
-    const configPath = join(vaultDir, 'config.yaml');
-    const agentsDir = join(vaultDir, 'agents');
-    const commandsDir = join(vaultDir, 'commands');
+    // Source paths - now from engine/src/init/templates instead of example-vault
+    const templatesSourceDir = join(__dirname, 'src', 'init', 'templates');
+    const configPath = join(templatesSourceDir, 'config.yaml');
+    const agentsDir = join(templatesSourceDir, 'agents');
+    const commandsDir = join(templatesSourceDir, 'commands');
     
-    // Check if source files exist
+    // Check if source directory exists
+    if (!existsSync(templatesSourceDir)) {
+      throw new Error(`Templates source directory not found: ${templatesSourceDir}`);
+    }
+    
+    // Check if config file exists
     if (!existsSync(configPath)) {
       throw new Error(`Config file not found: ${configPath}`);
     }
