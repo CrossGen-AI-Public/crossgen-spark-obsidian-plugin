@@ -156,10 +156,7 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
       return true;
     }
     // Workflow generation queue files (.spark/workflow-generate-queue/*.json)
-    if (
-      normalized.startsWith('.spark/workflow-generate-queue/') &&
-      normalized.endsWith('.json')
-    ) {
+    if (normalized.startsWith('.spark/workflow-generate-queue/') && normalized.endsWith('.json')) {
       return true;
     }
     // Workflow edit queue files (.spark/workflow-edit-queue/*.json)

@@ -32,7 +32,8 @@ export class ChatQueueHandler {
    * Check if a path is a chat queue file
    */
   isChatQueueFile(path: string): boolean {
-    const normalized = path.replace(/\\/g, '/'); return normalized.startsWith('.spark/chat-queue/') && normalized.endsWith('.md');
+    const normalized = path.replace(/\\/g, '/');
+    return normalized.startsWith('.spark/chat-queue/') && normalized.endsWith('.md');
   }
 
   /**
