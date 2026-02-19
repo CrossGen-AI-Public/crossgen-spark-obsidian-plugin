@@ -1,7 +1,7 @@
 import { execSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { App, FileSystemAdapter } from 'obsidian';
 
 interface EngineEntry {
@@ -37,6 +37,13 @@ export class EngineService {
 	}
 
 	/**
+	 * Check if running on Windows
+	 */
+	private isWindows(): boolean {
+		return platform() === 'win32';
+	}
+
+	/**
 	 * Get the absolute path to the vault
 	 */
 	public getVaultPath(): string {
@@ -45,9 +52,9 @@ export class EngineService {
 	}
 
 	/**
-	 * Get common paths where spark might be installed
+	 * Get common paths where spark might be installed on Unix systems
 	 */
-	private getCommonSparkPaths(): string[] {
+	private getCommonSparkPathsUnix(): string[] {
 		const home = process.env.HOME || '';
 		const paths: string[] = [];
 
@@ -64,7 +71,7 @@ export class EngineService {
 			// nvm directory not accessible
 		}
 
-		// Standard locations
+		// Standard Unix locations
 		paths.push(
 			`${home}/.npm-global/bin/spark`,
 			`${home}/.local/bin/spark`,
@@ -77,13 +84,72 @@ export class EngineService {
 	}
 
 	/**
-	 * Find the spark executable path
+	 * Get common paths where spark might be installed on Windows
 	 */
-	public getSparkPath(): string | null {
-		if (this.sparkPath) {
-			return this.sparkPath;
+	private getCommonSparkPathsWindows(): string[] {
+		const appData = process.env.APPDATA || '';
+		const localAppData = process.env.LOCALAPPDATA || '';
+		const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+		const home = homedir();
+		const paths: string[] = [];
+
+		// npm global installs on Windows
+		paths.push(
+			join(appData, 'npm', 'spark.cmd'),
+			join(appData, 'npm', 'spark.ps1'),
+			join(appData, 'npm', 'spark'),
+			join(localAppData, 'npm', 'spark.cmd'),
+			join(localAppData, 'npm', 'spark.ps1'),
+			// nvm for Windows
+			join(localAppData, 'nvm', 'spark.cmd'),
+			// node installed globally
+			join(programFiles, 'nodejs', 'spark.cmd'),
+			join(programFiles, 'nodejs', 'spark.ps1'),
+			// npm-global prefix
+			join(home, '.npm-global', 'spark.cmd'),
+			join(home, '.npm-global', 'spark.ps1')
+		);
+
+		return paths;
+	}
+
+	/**
+	 * Find the spark executable path using where.exe on Windows
+	 */
+	private findSparkWindows(): string | null {
+		try {
+			const result = execSync('where.exe spark', {
+				encoding: 'utf8',
+				stdio: ['pipe', 'pipe', 'pipe'],
+			});
+			const lines = result
+				.trim()
+				.split('\n')
+				.map(l => l.trim());
+
+			// Prefer .cmd over extensionless (extensionless requires shell: true which creates a window)
+			const cmdLine = lines.find(l => l.endsWith('.cmd'));
+			if (cmdLine && existsSync(cmdLine)) return cmdLine;
+
+			// Fall back to first valid result
+			for (const line of lines) {
+				if (line && existsSync(line)) return line;
+			}
+		} catch {
+			// where.exe failed, check common paths
 		}
 
+		for (const path of this.getCommonSparkPathsWindows()) {
+			if (existsSync(path)) return path;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Find the spark executable path using which on Unix
+	 */
+	private findSparkUnix(): string | null {
 		// Try which command first
 		try {
 			const result = execSync('which spark', {
@@ -92,22 +158,37 @@ export class EngineService {
 			});
 			const path = result.trim();
 			if (path && existsSync(path)) {
-				this.sparkPath = path;
 				return path;
 			}
 		} catch {
 			// which failed, check common paths
 		}
 
-		// Check common installation locations
-		for (const path of this.getCommonSparkPaths()) {
+		// Check common Unix installation locations
+		for (const path of this.getCommonSparkPathsUnix()) {
 			if (existsSync(path)) {
-				this.sparkPath = path;
 				return path;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Find the spark executable path (cross-platform)
+	 */
+	public getSparkPath(): string | null {
+		if (this.sparkPath) {
+			return this.sparkPath;
+		}
+
+		const path = this.isWindows() ? this.findSparkWindows() : this.findSparkUnix();
+
+		if (path) {
+			this.sparkPath = path;
+		}
+
+		return path;
 	}
 
 	/**
@@ -118,7 +199,7 @@ export class EngineService {
 	}
 
 	/**
-	 * Get the engine registry file path
+	 * Get the engine registry file path (cross-platform)
 	 */
 	private getRegistryPath(): string {
 		return join(homedir(), '.spark', 'registry.json');
@@ -141,12 +222,22 @@ export class EngineService {
 	}
 
 	/**
-	 * Check if a process is running by PID
+	 * Check if a process is running by PID (cross-platform)
 	 */
 	private isProcessRunning(pid: number): boolean {
 		try {
-			process.kill(pid, 0);
-			return true;
+			if (this.isWindows()) {
+				// On Windows, process.kill(pid, 0) may not work reliably
+				// Use tasklist to check if the process exists
+				const result = execSync(`tasklist /FI "PID eq ${pid}" /NH`, {
+					encoding: 'utf8',
+					stdio: ['pipe', 'pipe', 'pipe'],
+				});
+				return result.includes(String(pid));
+			} else {
+				process.kill(pid, 0);
+				return true;
+			}
 		} catch {
 			return false;
 		}
@@ -160,14 +251,18 @@ export class EngineService {
 		const vaultPath = this.getVaultPath();
 		const registry = this.getRegistry();
 
-		// Find engine entry for this vault
-		const engine = registry.engines.find(d => d.vaultPath === vaultPath);
+		// Normalize paths for comparison (important on Windows)
+		const normalizedVaultPath = vaultPath.replace(/\\/g, '/').toLowerCase();
+
+		const engine = registry.engines.find(d => {
+			const normalizedEntry = d.vaultPath.replace(/\\/g, '/').toLowerCase();
+			return normalizedEntry === normalizedVaultPath;
+		});
 
 		if (!engine) {
 			return false;
 		}
 
-		// Verify the process is actually running
 		return this.isProcessRunning(engine.pid);
 	}
 
@@ -178,7 +273,12 @@ export class EngineService {
 		const vaultPath = this.getVaultPath();
 		const registry = this.getRegistry();
 
-		const engine = registry.engines.find(d => d.vaultPath === vaultPath);
+		const normalizedVaultPath = vaultPath.replace(/\\/g, '/').toLowerCase();
+
+		const engine = registry.engines.find(d => {
+			const normalizedEntry = d.vaultPath.replace(/\\/g, '/').toLowerCase();
+			return normalizedEntry === normalizedVaultPath;
+		});
 
 		if (engine && this.isProcessRunning(engine.pid)) {
 			return engine;
@@ -188,9 +288,12 @@ export class EngineService {
 	}
 
 	/**
-	 * Get the install command for the engine
+	 * Get the install command for the engine (platform-specific)
 	 */
 	public getInstallCommand(): string {
+		if (this.isWindows()) {
+			return `powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.ps1' -OutFile install.ps1; .\\install.ps1"`;
+		}
 		return `curl -fsSL ${INSTALL_SCRIPT_URL} | bash`;
 	}
 
@@ -211,15 +314,13 @@ export class EngineService {
 	}
 
 	/**
-	 * Open a terminal and run a command
-	 * Platform-specific implementation
+	 * Open a terminal and run a command (cross-platform)
 	 */
 	public openTerminalWithCommand(command: string): void {
 		const os = platform();
 
 		switch (os) {
 			case 'darwin': {
-				// macOS: Use osascript to open Terminal.app
 				const escapedCommand = command.replace(/"/g, '\\"');
 				const script = `tell application "Terminal"
 					activate
@@ -230,7 +331,6 @@ export class EngineService {
 			}
 
 			case 'win32': {
-				// Windows: Use start cmd
 				spawn('cmd', ['/c', 'start', 'cmd', '/k', command], {
 					detached: true,
 					stdio: 'ignore',
@@ -240,7 +340,6 @@ export class EngineService {
 			}
 
 			case 'linux': {
-				// Linux: Try common terminal emulators
 				const terminals = [
 					['gnome-terminal', '--', 'bash', '-c', `${command}; exec bash`],
 					['konsole', '-e', 'bash', '-c', `${command}; exec bash`],
@@ -258,7 +357,6 @@ export class EngineService {
 					}
 				}
 
-				// Fallback: Just run in background
 				console.warn('[Spark] No terminal emulator found, running command in background');
 				spawn('bash', ['-c', command], { detached: true, stdio: 'ignore' }).unref();
 				break;
@@ -271,16 +369,43 @@ export class EngineService {
 
 	/**
 	 * Start the engine for the current vault
-	 * Opens a terminal with the start command
 	 */
 	public startEngine(): void {
 		this.openTerminalWithCommand(this.getStartCommand());
 	}
 
 	/**
+	 * Spawn the engine process on Windows
+	 */
+	private spawnEngineWindows(sparkPath: string, vaultPath: string): ReturnType<typeof spawn> {
+		const ext = sparkPath.split('.').pop()?.toLowerCase();
+		if (ext === 'ps1') {
+			return spawn(
+				'powershell.exe',
+				['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', sparkPath, 'start', vaultPath],
+				{ detached: true, stdio: 'ignore', windowsHide: true }
+			);
+		} else if (ext === 'cmd' || ext === 'bat') {
+			// Bypass the .cmd wrapper - it creates a console window via 'title %COMSPEC%'
+			// Call node directly on the underlying cli.js instead
+			const cliPath = join(dirname(sparkPath), 'node_modules', 'spark-engine', 'dist', 'cli.js');
+			return spawn(process.execPath, [cliPath, 'start', vaultPath], {
+				detached: true,
+				stdio: 'ignore',
+				windowsHide: true,
+			});
+		} else {
+			return spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
+				detached: true,
+				stdio: 'ignore',
+				shell: true,
+				windowsHide: true,
+			});
+		}
+	}
+
+	/**
 	 * Start the engine in background
-	 * Used for auto-launch on startup and manual start from settings
-	 * Returns a promise that resolves when engine is confirmed running
 	 */
 	public async startEngineBackground(): Promise<boolean> {
 		const sparkPath = this.getSparkPath();
@@ -289,7 +414,6 @@ export class EngineService {
 			return false;
 		}
 
-		// Check if already running
 		if (this.isEngineRunning()) {
 			console.debug('[Spark] Engine is already running');
 			return true;
@@ -300,24 +424,21 @@ export class EngineService {
 		try {
 			console.debug(`[Spark] Starting engine: ${sparkPath} start "${vaultPath}"`);
 
-			// Start engine as detached background process
-			// Use shell: true to properly handle shebang scripts
-			const child = spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
-				detached: true,
-				stdio: 'ignore',
-				shell: true,
-				env: {
-					...process.env,
-					// Ensure PATH includes common Node locations
-					PATH: `${process.env.PATH}:${homedir()}/.nvm/versions/node/v22.20.0/bin:${homedir()}/.local/bin:/usr/local/bin`,
-				},
-			});
+			const child = this.isWindows()
+				? this.spawnEngineWindows(sparkPath, vaultPath)
+				: spawn(`"${sparkPath}" start "${vaultPath}"`, [], {
+						detached: true,
+						stdio: 'ignore',
+						shell: true,
+						env: {
+							...process.env,
+							PATH: `${process.env.PATH}:${this.buildUnixExtraPaths()}`,
+						},
+					});
+
 			child.unref();
 
-			console.debug('[Spark] Engine starting in background...');
-
-			// Wait for engine to register (poll registry)
-			const maxWait = 10000; // 10 seconds max (engine takes time to initialize)
+			const maxWait = 10000;
 			const pollInterval = 500;
 			let waited = 0;
 
@@ -331,7 +452,7 @@ export class EngineService {
 				}
 			}
 
-			console.warn('[Spark] Engine did not register in time - check console for errors');
+			console.warn('[Spark] Engine did not register in time');
 			return false;
 		} catch (error) {
 			console.error('[Spark] Failed to start engine:', error);
@@ -341,7 +462,6 @@ export class EngineService {
 
 	/**
 	 * Stop the engine for the current vault
-	 * Sends SIGTERM to the engine process
 	 */
 	public stopEngine(): boolean {
 		const engine = this.getEngineInfo();
@@ -352,11 +472,15 @@ export class EngineService {
 		}
 
 		try {
-			// Send SIGTERM to gracefully stop the engine
-			process.kill(engine.pid, 'SIGTERM');
-			console.debug(`[Spark] Sent SIGTERM to engine (PID ${engine.pid})`);
+			// First attempt: graceful shutdown
+			if (this.isWindows()) {
+				execSync(`taskkill /PID ${engine.pid}`, { stdio: 'ignore' });
+			} else {
+				process.kill(engine.pid, 'SIGTERM');
+			}
 
-			// Give it a moment to shut down
+			console.debug(`[Spark] Stopped engine (PID ${engine.pid})`);
+
 			const maxWait = 3000;
 			const pollInterval = 100;
 			let waited = 0;
@@ -366,18 +490,20 @@ export class EngineService {
 					console.debug('[Spark] Engine stopped successfully');
 					return true;
 				}
-				// Busy wait (sync)
 				const start = Date.now();
 				while (Date.now() - start < pollInterval) {
 					// spin
 				}
 				waited += pollInterval;
 			}
-
-			// Still running, try SIGKILL
+			// Second attempt: force kill if still running
 			if (this.isProcessRunning(engine.pid)) {
-				console.warn('[Spark] Engine did not stop gracefully, sending SIGKILL');
-				process.kill(engine.pid, 'SIGKILL');
+				console.debug('[Spark] Engine did not stop gracefully, force killing');
+				if (this.isWindows()) {
+					execSync(`taskkill /PID ${engine.pid} /F`, { stdio: 'ignore' });
+				} else {
+					process.kill(engine.pid, 'SIGKILL');
+				}
 			}
 
 			return true;
@@ -385,6 +511,27 @@ export class EngineService {
 			console.error('[Spark] Failed to stop engine:', error);
 			return false;
 		}
+	}
+
+	/**
+	 * Build extra PATH entries for Unix systems (nvm, homebrew, local bin)
+	 */
+	private buildUnixExtraPaths(): string {
+		const nvmBinPaths: string[] = [];
+		const nvmVersionsDir = join(homedir(), '.nvm', 'versions', 'node');
+		try {
+			if (existsSync(nvmVersionsDir)) {
+				const versions = readdirSync(nvmVersionsDir);
+				for (const version of versions) {
+					nvmBinPaths.push(join(nvmVersionsDir, version, 'bin'));
+				}
+			}
+		} catch {
+			// ignore
+		}
+		return [...nvmBinPaths, `${homedir()}/.local/bin`, '/usr/local/bin', '/opt/homebrew/bin'].join(
+			':'
+		);
 	}
 
 	/**

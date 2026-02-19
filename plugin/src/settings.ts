@@ -509,8 +509,8 @@ export class SparkSettingTab extends PluginSettingTab {
 		const configPath = '.spark/config.yaml';
 
 		// Auto-create local provider if missing and override is enabled
-		if (localOverride.enabled && !providers['local']) {
-			providers['local'] = {
+		if (localOverride.enabled && !providers.local) {
+			providers.local = {
 				type: 'local',
 				model: localOverride.model,
 				maxTokens: 4096,
@@ -822,7 +822,7 @@ export class SparkSettingTab extends PluginSettingTab {
 	}
 
 	private parseAgentFile(content: string): AgentConfig {
-		const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+		const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
 		if (!match) {
 			throw new Error('Invalid agent file format');
 		}

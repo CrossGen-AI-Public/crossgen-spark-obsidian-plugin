@@ -11,6 +11,7 @@ import type { Logger } from '../logger/Logger.js';
 import type { MentionParser } from '../parser/MentionParser.js';
 import { ErrorWriter } from '../results/ErrorWriter.js';
 import type { ParsedCommand, ParsedMention } from '../types/parser.js';
+import { normalizePath } from '../utils/path.js';
 import type { ChatNameGenerator } from './ChatNameGenerator.js';
 
 export class ChatQueueHandler {
@@ -32,7 +33,8 @@ export class ChatQueueHandler {
    * Check if a path is a chat queue file
    */
   isChatQueueFile(path: string): boolean {
-    return path.startsWith('.spark/chat-queue/') && path.endsWith('.md');
+    const normalized = normalizePath(path);
+    return normalized.startsWith('.spark/chat-queue/') && normalized.endsWith('.md');
   }
 
   /**
@@ -305,7 +307,7 @@ export class ChatQueueHandler {
     primaryAgent?: string;
     modelOverride?: string;
   } {
-    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!frontmatterMatch || !frontmatterMatch[1]) {
       throw new Error('Invalid queue file: missing frontmatter');
     }
@@ -322,14 +324,14 @@ export class ChatQueueHandler {
     }
 
     const messageMatch = content.match(
-      /<!-- spark-chat-message -->\n([\s\S]*?)\n<!-- \/spark-chat-message -->/
+      /<!-- spark-chat-message -->\r?\n([\s\S]*?)\r?\n<!-- \/spark-chat-message -->/
     );
     if (!messageMatch || !messageMatch[1]) {
       throw new Error('Invalid queue file: missing chat message');
     }
 
     const contextMatch = content.match(
-      /<!-- spark-chat-context -->\n([\s\S]*?)\n<!-- \/spark-chat-context -->/
+      /<!-- spark-chat-context -->\r?\n([\s\S]*?)\r?\n<!-- \/spark-chat-context -->/
     );
 
     return {
