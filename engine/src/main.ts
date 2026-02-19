@@ -32,11 +32,11 @@ import { SparkError } from './types/index.js';
 import type { ParsedCommand, ParsedInlineChat, ParsedMention } from './types/parser.js';
 import { ProviderType } from './types/provider.js';
 import type { FileChange } from './types/watcher.js';
+import { normalizePath } from './utils/path.js';
 import { FileWatcher } from './watcher/FileWatcher.js';
 import { WorkflowEditHandler } from './workflows/editing/WorkflowEditHandler.js';
 import { WorkflowGenerateHandler } from './workflows/generation/WorkflowGenerateHandler.js';
 import { WorkflowExecutor } from './workflows/WorkflowExecutor.js';
-import { normalizePath } from './utils/path.js';
 
 export class SparkEngine implements ISparkEngine {
   private readonly vaultPath: string;

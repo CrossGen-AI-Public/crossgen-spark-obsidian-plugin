@@ -11,8 +11,8 @@ import type { Logger } from '../logger/Logger.js';
 import type { MentionParser } from '../parser/MentionParser.js';
 import { ErrorWriter } from '../results/ErrorWriter.js';
 import type { ParsedCommand, ParsedMention } from '../types/parser.js';
-import type { ChatNameGenerator } from './ChatNameGenerator.js';
 import { normalizePath } from '../utils/path.js';
+import type { ChatNameGenerator } from './ChatNameGenerator.js';
 
 export class ChatQueueHandler {
   private errorWriter: ErrorWriter;

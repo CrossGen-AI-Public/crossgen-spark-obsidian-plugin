@@ -8,9 +8,9 @@ import path from 'node:path';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { Logger } from '../logger/Logger.js';
 import type { FileChange, FileWatcherConfig, IFileWatcher } from '../types/watcher.js';
+import { normalizePath } from '../utils/path.js';
 import { ChangeDebouncer } from './ChangeDebouncer.js';
 import { PathMatcher } from './PathMatcher.js';
-import { normalizePath } from '../utils/path.js';
 
 export class FileWatcher extends EventEmitter implements IFileWatcher {
   private watcher?: FSWatcher;
