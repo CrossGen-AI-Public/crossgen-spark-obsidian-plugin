@@ -36,6 +36,7 @@ import { FileWatcher } from './watcher/FileWatcher.js';
 import { WorkflowEditHandler } from './workflows/editing/WorkflowEditHandler.js';
 import { WorkflowGenerateHandler } from './workflows/generation/WorkflowGenerateHandler.js';
 import { WorkflowExecutor } from './workflows/WorkflowExecutor.js';
+import { normalizePath } from './utils/path.js';
 
 export class SparkEngine implements ISparkEngine {
   private readonly vaultPath: string;
@@ -536,7 +537,7 @@ export class SparkEngine implements ISparkEngine {
     }
 
     // Check if this is a chat queue file
-    const normalizedPath = change.path.replace(/\\/g, '/');
+    const normalizedPath = normalizePath(change.path);
     if (this.chatQueueHandler?.isChatQueueFile(normalizedPath)) {
       this.logger.debug('Chat queue file detected', { path: change.path });
       await this.chatQueueHandler.process(change.path);

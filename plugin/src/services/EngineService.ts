@@ -389,10 +389,7 @@ export class EngineService {
 			// Bypass the .cmd wrapper - it creates a console window via 'title %COMSPEC%'
 			// Call node directly on the underlying cli.js instead
 			const cliPath = join(dirname(sparkPath), 'node_modules', 'spark-engine', 'dist', 'cli.js');
-			const nodePath = existsSync('C:\\Program Files\\nodejs\\node.exe')
-				? 'C:\\Program Files\\nodejs\\node.exe'
-				: 'node.exe';
-			return spawn(nodePath, [cliPath, 'start', vaultPath], {
+			return spawn(process.execPath, [cliPath, 'start', vaultPath], {
 				detached: true,
 				stdio: 'ignore',
 				windowsHide: true,
@@ -475,8 +472,9 @@ export class EngineService {
 		}
 
 		try {
+			// First attempt: graceful shutdown
 			if (this.isWindows()) {
-				execSync(`taskkill /PID ${engine.pid} /F`, { stdio: 'ignore' });
+				execSync(`taskkill /PID ${engine.pid}`, { stdio: 'ignore' });
 			} else {
 				process.kill(engine.pid, 'SIGTERM');
 			}
@@ -498,8 +496,9 @@ export class EngineService {
 				}
 				waited += pollInterval;
 			}
-
+			// Second attempt: force kill if still running
 			if (this.isProcessRunning(engine.pid)) {
+				console.debug('[Spark] Engine did not stop gracefully, force killing');
 				if (this.isWindows()) {
 					execSync(`taskkill /PID ${engine.pid} /F`, { stdio: 'ignore' });
 				} else {

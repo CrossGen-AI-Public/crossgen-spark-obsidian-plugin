@@ -9,6 +9,7 @@
  */
 
 import { exec } from 'node:child_process';
+import { platform } from 'node:os';
 import { promisify } from 'node:util';
 import { Logger } from '../logger/Logger.js';
 import type { AICompletionResult } from '../types/ai.js';
@@ -29,6 +30,13 @@ export class ClaudeCodeProvider implements IAIProvider {
     this.config = config;
     this.logger = Logger.getInstance();
     this.logger.info(`ClaudeCodeProvider (${this.name}) initialized`);
+  }
+
+  /**
+   * Check if running on Windows
+   */
+  private isWindows(): boolean {
+    return platform() === 'win32';
   }
 
   async complete(options: ProviderCompletionOptions): Promise<AICompletionResult> {
@@ -57,7 +65,11 @@ export class ClaudeCodeProvider implements IAIProvider {
       // Call claude CLI (Claude Code)
       // Using --model flag to specify model, and piping prompt via stdin
       const model = options.model || this.config.model;
-      const command = `echo ${this.escapeForShell(fullPrompt)} | claude --model ${model}`;
+
+      // Build command differently for Windows vs Unix
+      const command = this.isWindows()
+        ? `echo ${this.escapeForShellWindows(fullPrompt)} | claude --model ${model}`
+        : `echo ${this.escapeForShellUnix(fullPrompt)} | claude --model ${model}`;
 
       this.logger.debug('Executing claude CLI', { model, command: command.substring(0, 100) });
 
@@ -109,7 +121,8 @@ export class ClaudeCodeProvider implements IAIProvider {
    */
   private async checkCliAvailable(): Promise<void> {
     try {
-      await execAsync('which claude', { windowsHide: true });
+      const command = this.isWindows() ? 'where.exe claude' : 'which claude';
+      await execAsync(command, { windowsHide: true });
     } catch (error) {
       throw new SparkError(
         'Claude CLI not found. Please install it: npm install -g @anthropic-ai/claude-code',
@@ -123,11 +136,19 @@ export class ClaudeCodeProvider implements IAIProvider {
   }
 
   /**
-   * Escape string for shell command
+   * Escape string for Unix shell (bash)
    */
-  private escapeForShell(str: string): string {
+  private escapeForShellUnix(str: string): string {
     // Replace single quotes with '\'' and wrap in single quotes
     return `'${str.replace(/'/g, "'\\''")}'`;
+  }
+
+  /**
+   * Escape string for Windows PowerShell
+   */
+  private escapeForShellWindows(str: string): string {
+    // For PowerShell, use double quotes and escape special chars
+    return `"${str.replace(/"/g, '`"').replace(/\$/g, '`$').replace(/`/g, '``')}"`;
   }
 
   /**
@@ -255,8 +276,9 @@ export class ClaudeCodeProvider implements IAIProvider {
 
   async isHealthy(): Promise<boolean> {
     try {
+      const command = this.isWindows() ? 'where.exe claude' : 'which claude';
       // Check if CLI is available
-      await execAsync('which claude');
+      await execAsync(command);
       return true;
     } catch (error) {
       this.logger.error('Health check failed', { provider: this.name, error });

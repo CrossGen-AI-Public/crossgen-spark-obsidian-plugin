@@ -10,6 +10,7 @@ import { Logger } from '../logger/Logger.js';
 import type { FileChange, FileWatcherConfig, IFileWatcher } from '../types/watcher.js';
 import { ChangeDebouncer } from './ChangeDebouncer.js';
 import { PathMatcher } from './PathMatcher.js';
+import { normalizePath } from '../utils/path.js';
 
 export class FileWatcher extends EventEmitter implements IFileWatcher {
   private watcher?: FSWatcher;
@@ -150,7 +151,7 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
    * These bypass the normal watch patterns since they're internal engine files
    */
   private isInternalQueueFile(relativePath: string): boolean {
-    const normalized = relativePath.replace(/\\/g, '/');
+    const normalized = normalizePath(relativePath);
     // Workflow queue files (.spark/workflow-queue/*.json)
     if (normalized.startsWith('.spark/workflow-queue/') && normalized.endsWith('.json')) {
       return true;

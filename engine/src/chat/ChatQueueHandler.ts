@@ -12,6 +12,7 @@ import type { MentionParser } from '../parser/MentionParser.js';
 import { ErrorWriter } from '../results/ErrorWriter.js';
 import type { ParsedCommand, ParsedMention } from '../types/parser.js';
 import type { ChatNameGenerator } from './ChatNameGenerator.js';
+import { normalizePath } from '../utils/path.js';
 
 export class ChatQueueHandler {
   private errorWriter: ErrorWriter;
@@ -32,7 +33,7 @@ export class ChatQueueHandler {
    * Check if a path is a chat queue file
    */
   isChatQueueFile(path: string): boolean {
-    const normalized = path.replace(/\\/g, '/');
+    const normalized = normalizePath(path);
     return normalized.startsWith('.spark/chat-queue/') && normalized.endsWith('.md');
   }
 
