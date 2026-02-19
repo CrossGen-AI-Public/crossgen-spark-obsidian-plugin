@@ -77,6 +77,7 @@ export class ClaudeCodeProvider implements IAIProvider {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large responses
         timeout: 300000, // 5 minute timeout
         windowsHide: true,
+        ...(this.isWindows() && { shell: 'powershell.exe' }),
       });
 
       if (stderr) {
@@ -147,8 +148,8 @@ export class ClaudeCodeProvider implements IAIProvider {
    * Escape string for Windows PowerShell
    */
   private escapeForShellWindows(str: string): string {
-    // For PowerShell, use double quotes and escape special chars
-    return `"${str.replace(/"/g, '`"').replace(/\$/g, '`$').replace(/`/g, '``')}"`;
+    // Backtick pass must come first so later substitutions don't re-introduce bare backticks
+    return `"${str.replace(/`/g, '``').replace(/"/g, '`"').replace(/\$/g, '`$')}"`;
   }
 
   /**
