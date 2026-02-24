@@ -80,6 +80,17 @@ curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-o
 curl -fsSL https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.sh | bash -s -- ~/Documents/MyVault
 ```
 
+**Windows Installation:**
+
+> **⚠️ Important:** Run PowerShell as Administrator for automatic Node.js installation
+```powershell
+# Install to example vault (for testing/development)
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.ps1' -OutFile install.ps1; .\install.ps1"
+
+# Or install to your vault
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/CrossGen-AI-Public/crossgen-spark-obsidian-plugin/main/install.ps1' -OutFile install.ps1; .\install.ps1 'C:\Users\YourName\Documents\MyVault'"
+```
+
 **What it does:**
 - ✅ Installs Node.js via nvm (if needed)
 - ✅ Downloads and builds Spark engine + plugin

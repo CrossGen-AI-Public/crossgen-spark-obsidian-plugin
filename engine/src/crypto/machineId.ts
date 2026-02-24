@@ -45,7 +45,7 @@ export function getMachineId(): string {
         // Windows: Read MachineGuid from registry
         const result = execSync(
           'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid',
-          { encoding: 'utf8' }
+          { encoding: 'utf8', windowsHide: true }
         );
         const winMatch = result.match(/MachineGuid\s+REG_SZ\s+(.+)/);
         if (!winMatch || !winMatch[1]) {

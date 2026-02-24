@@ -8,6 +8,7 @@ import path from 'node:path';
 import chokidar, { type FSWatcher } from 'chokidar';
 import { Logger } from '../logger/Logger.js';
 import type { FileChange, FileWatcherConfig, IFileWatcher } from '../types/watcher.js';
+import { normalizePath } from '../utils/path.js';
 import { ChangeDebouncer } from './ChangeDebouncer.js';
 import { PathMatcher } from './PathMatcher.js';
 
@@ -150,15 +151,13 @@ export class FileWatcher extends EventEmitter implements IFileWatcher {
    * These bypass the normal watch patterns since they're internal engine files
    */
   private isInternalQueueFile(relativePath: string): boolean {
+    const normalized = normalizePath(relativePath);
     // Workflow queue files (.spark/workflow-queue/*.json)
-    if (relativePath.startsWith('.spark/workflow-queue/') && relativePath.endsWith('.json')) {
+    if (normalized.startsWith('.spark/workflow-queue/') && normalized.endsWith('.json')) {
       return true;
     }
     // Workflow generation queue files (.spark/workflow-generate-queue/*.json)
-    if (
-      relativePath.startsWith('.spark/workflow-generate-queue/') &&
-      relativePath.endsWith('.json')
-    ) {
+    if (normalized.startsWith('.spark/workflow-generate-queue/') && normalized.endsWith('.json')) {
       return true;
     }
     // Workflow edit queue files (.spark/workflow-edit-queue/*.json)
